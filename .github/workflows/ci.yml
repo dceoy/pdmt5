@@ -64,5 +64,9 @@ jobs:
       - python-lint-and-scan
       - python-test
     uses: dceoy/gh-actions-for-devops/.github/workflows/dependabot-auto-merge.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
     with:
       unconditional: true
