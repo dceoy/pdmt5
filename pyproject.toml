@@ -38,6 +38,9 @@ dev-dependencies = [
   "types-pygments >= 2.19.0.20250516",
   "types-colorama >= 0.4.15.20240311",
   "types-pexpect >= 4.9.0.20250516",
+  "mkdocs >= 1.6.1",
+  "mkdocs-material >= 9.6.15",
+  "mkdocstrings[python] >= 0.29.1",
 ]
 required-environments = ["platform_system == 'Windows'"]
 
