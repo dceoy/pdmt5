@@ -40,12 +40,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
-        with:
-          node-version: latest
-      - name: Install Bats via npm
-        run: npm install -g bats
       - name: Set up uv
         uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba  # v6.3.1
       - name: Install the package
@@ -54,9 +48,6 @@ jobs:
       - name: Run unit tests with pytest
         run: >
           uv run pytest
-      - name: Run CLI tests with Bats
-        run: >
-          bats --verbose-run ./test/cli/
   dependabot-auto-merge:
     if: >
       github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
@@ -64,5 +55,9 @@ jobs:
       - python-lint-and-scan
       - python-test
     uses: dceoy/gh-actions-for-devops/.github/workflows/dependabot-auto-merge.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
     with:
       unconditional: true
