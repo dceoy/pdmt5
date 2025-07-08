@@ -4,75 +4,69 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from datetime import datetime
-    from types import TracebackType
+    from types import ModuleType, TracebackType
 
 logger = logging.getLogger(__name__)
 
 
-class MT5Error(RuntimeError):
+class Mt5Error(RuntimeError):
     """MetaTrader5 specific error."""
 
     pass
 
 
-class MT5Config(BaseModel):
-    """Configuration for MT5 connection."""
+class Mt5Config(BaseModel):
+    """Configuration for MetaTrader5 connection."""
 
     model_config = ConfigDict(frozen=True)
-
-    login: Optional[int] = Field(None, description="Trading account login")
-    password: Optional[str] = Field(None, description="Trading account password")
-    server: Optional[str] = Field(None, description="Trading server name")
+    login: int | None = Field(None, description="Trading account login")
+    password: str | None = Field(None, description="Trading account password")
+    server: str | None = Field(None, description="Trading server name")
     timeout: int = Field(60000, description="Connection timeout in milliseconds")
     portable: bool = Field(default=False, description="Use portable mode")
 
 
-class MT5DataClient(BaseModel):
+class Mt5DataClient(BaseModel):
     """MetaTrader5 data client with pandas DataFrame conversion.
 
     This class provides a pandas-friendly interface to MetaTrader5 functions,
-    converting native MT5 data structures to pandas DataFrames with pydantic validation.
+    converting native MetaTrader5 data structures to pandas DataFrames with pydantic
+    validation.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    config: MT5Config = Field(
-        default_factory=lambda: MT5Config(),  # pyright: ignore[reportCallIssue]  # noqa: PLW0108
-        description="MT5 connection configuration",
+    config: Mt5Config = Field(
+        default_factory=lambda: Mt5Config(),  # pyright: ignore[reportCallIssue]  # noqa: PLW0108
+        description="MetaTrader5 connection configuration",
     )
-    mt5: Optional[Any] = None
-
-    # Private attributes in pydantic need to be defined differently
+    _mt5: ModuleType | None = None
     _is_initialized: bool = False
 
     def model_post_init(self, __context: Any, /) -> None:  # noqa: ANN401
         """Post-initialization setup.
 
         Raises:
-            MT5Error: If MetaTrader5 package is not available.
+            Mt5Error: If MetaTrader5 package is not available.
         """
-        # Initialize private attributes
-        self._is_initialized = False
-
         # Import MetaTrader5 module
         try:
-            self.mt5 = importlib.import_module("MetaTrader5")
+            self._mt5 = importlib.import_module("MetaTrader5")
         except ImportError as e:
             msg = "MetaTrader5 package not available"
-            raise MT5Error(msg) from e
+            raise Mt5Error(msg) from e
 
     def __enter__(self) -> Self:
         """Context manager entry.
 
         Returns:
-            MT5DataClient: The data client instance.
+            Mt5DataClient: The data client instance.
         """
         self.initialize()
         return self
@@ -86,64 +80,66 @@ class MT5DataClient(BaseModel):
         """Context manager exit."""
         self.shutdown()
 
-
-    def initialize(self, path: Optional[str] = None) -> bool:
-        """Initialize MT5 connection.
+    def initialize(self, path: str | None = None) -> bool:
+        """Initialize MetaTrader5 connection.
 
         Args:
-            path: Optional path to MT5 terminal.
+            path: Optional path to Mt5 terminal.
 
         Returns:
             True if successful, False otherwise.
 
         Raises:
-            MT5Error: If initialization fails.
+            Mt5Error: If initialization fails.
         """
         if self._is_initialized:
             return True
+        else:
+            success = self._mt5.initialize(  # type: ignore[reportOptionalMemberAccess]
+                path=path,
+                login=self.config.login,
+                password=self.config.password,
+                server=self.config.server,
+                timeout=self.config.timeout,
+                portable=self.config.portable,
+            )
 
-        success = self.mt5.initialize(
-            path=path,
-            login=self.config.login,
-            password=self.config.password,
-            server=self.config.server,
-            timeout=self.config.timeout,
-            portable=self.config.portable,
-        )
-
-        if not success:
-            error_code, error_description = self.mt5.last_error()
-            error_msg = f"MT5 initialization failed: {error_code} - {error_description}"
-            raise MT5Error(error_msg)
-
-        self._is_initialized = True
-        logger.info("MT5 connection initialized successfully")
-        return True
+            if not success:
+                error_code, error_description = self._mt5.last_error()  # type: ignore[reportOptionalMemberAccess]
+                msg = (
+                    "MetaTrader5 initialization failed: "
+                    f"{error_code} - {error_description}"
+                )
+                raise Mt5Error(msg)
+            else:
+                self._is_initialized = True
+                logger.info("MetaTrader5 connection initialized successfully")
+                return True
 
     def shutdown(self) -> None:
-        """Shutdown MT5 connection."""
+        """Shutdown MetaTrader5 connection."""
         if self._is_initialized:
-            self.mt5.shutdown()
+            self._mt5.shutdown()  # type: ignore[reportOptionalMemberAccess]
             self._is_initialized = False
-            logger.info("MT5 connection shutdown")
+            logger.info("MetaTrader5 connection shutdown")
 
     def _ensure_initialized(self) -> None:
-        """Ensure MT5 is initialized."""
+        """Ensure MetaTrader5 is initialized."""
         if not self._is_initialized:
             self.initialize()
 
     def _handle_error(self, operation: str) -> None:
-        """Handle MT5 errors by raising appropriate exception.
+        """Handle MetaTrader5 errors by raising appropriate exception.
 
         Args:
             operation: Name of the operation that failed.
 
         Raises:
-            MT5Error: With error details from MT5.
+            Mt5Error: With error details from MetaTrader5.
         """
-        error_code, error_description = self.mt5.last_error()
-        error_msg = f"{operation} failed: {error_code} - {error_description}"
-        raise MT5Error(error_msg)
+        error_code, error_description = self._mt5.last_error()  # type: ignore[reportOptionalMemberAccess]
+        msg = f"{operation} failed: {error_code} - {error_description}"
+        raise Mt5Error(msg)
 
     def account_info(self) -> pd.DataFrame:
         """Get account information as DataFrame.
@@ -153,7 +149,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        account_info = self.mt5.account_info()
+        account_info = self._mt5.account_info()  # type: ignore[reportOptionalMemberAccess]
         if account_info is None:
             self._handle_error("account_info")
 
@@ -169,7 +165,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        terminal_info = self.mt5.terminal_info()
+        terminal_info = self._mt5.terminal_info()  # type: ignore[reportOptionalMemberAccess]
         if terminal_info is None:
             self._handle_error("terminal_info")
 
@@ -197,7 +193,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        rates = self.mt5.copy_rates_from(symbol, timeframe, date_from, count)
+        rates = self._mt5.copy_rates_from(symbol, timeframe, date_from, count)  # type: ignore[reportOptionalMemberAccess]
         if rates is None or len(rates) == 0:
             self._handle_error("copy_rates_from")
 
@@ -228,7 +224,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        rates = self.mt5.copy_rates_from_pos(symbol, timeframe, start_pos, count)
+        rates = self._mt5.copy_rates_from_pos(symbol, timeframe, start_pos, count)  # type: ignore[reportOptionalMemberAccess]
         if rates is None or len(rates) == 0:
             self._handle_error("copy_rates_from_pos")
 
@@ -259,7 +255,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        rates = self.mt5.copy_rates_range(symbol, timeframe, date_from, date_to)
+        rates = self._mt5.copy_rates_range(symbol, timeframe, date_from, date_to)  # type: ignore[reportOptionalMemberAccess]
         if rates is None or len(rates) == 0:
             self._handle_error("copy_rates_range")
 
@@ -290,7 +286,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        ticks = self.mt5.copy_ticks_from(symbol, date_from, count, flags)
+        ticks = self._mt5.copy_ticks_from(symbol, date_from, count, flags)  # type: ignore[reportOptionalMemberAccess]
         if ticks is None or len(ticks) == 0:
             self._handle_error("copy_ticks_from")
 
@@ -321,7 +317,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        ticks = self.mt5.copy_ticks_range(symbol, date_from, date_to, flags)
+        ticks = self._mt5.copy_ticks_range(symbol, date_from, date_to, flags)  # type: ignore[reportOptionalMemberAccess]
         if ticks is None or len(ticks) == 0:
             self._handle_error("copy_ticks_range")
 
@@ -343,7 +339,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        symbols = self.mt5.symbols_get(group)
+        symbols = self._mt5.symbols_get(group)  # type: ignore[reportOptionalMemberAccess]
         if symbols is None or len(symbols) == 0:
             self._handle_error("symbols_get")
 
@@ -362,7 +358,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        symbol_info = self.mt5.symbol_info(symbol)
+        symbol_info = self._mt5.symbol_info(symbol)  # type: ignore[reportOptionalMemberAccess]
         if symbol_info is None:
             self._handle_error("symbol_info")
 
@@ -381,7 +377,7 @@ class MT5DataClient(BaseModel):
         """
         self._ensure_initialized()
 
-        tick_info = self.mt5.symbol_info_tick(symbol)
+        tick_info = self._mt5.symbol_info_tick(symbol)  # type: ignore[reportOptionalMemberAccess]
         if tick_info is None:
             self._handle_error("symbol_info_tick")
 
@@ -391,7 +387,7 @@ class MT5DataClient(BaseModel):
         tick_dict["time"] = pd.to_datetime(tick_dict["time"], unit="s")
         return pd.DataFrame([tick_dict])
 
-    def orders_get(self, symbol: Optional[str] = None, group: str = "") -> pd.DataFrame:
+    def orders_get(self, symbol: str | None = None, group: str = "") -> pd.DataFrame:
         """Get orders as DataFrame.
 
         Args:
@@ -404,9 +400,9 @@ class MT5DataClient(BaseModel):
         self._ensure_initialized()
 
         if symbol:
-            orders = self.mt5.orders_get(symbol=symbol)
+            orders = self._mt5.orders_get(symbol=symbol)  # type: ignore[reportOptionalMemberAccess]
         else:
-            orders = self.mt5.orders_get(group=group)
+            orders = self._mt5.orders_get(group=group)  # type: ignore[reportOptionalMemberAccess]
 
         if orders is None or len(orders) == 0:
             # Return empty DataFrame with expected columns
@@ -424,9 +420,7 @@ class MT5DataClient(BaseModel):
 
         return orders_df
 
-    def positions_get(
-        self, symbol: Optional[str] = None, group: str = ""
-    ) -> pd.DataFrame:
+    def positions_get(self, symbol: str | None = None, group: str = "") -> pd.DataFrame:
         """Get positions as DataFrame.
 
         Args:
@@ -439,9 +433,9 @@ class MT5DataClient(BaseModel):
         self._ensure_initialized()
 
         if symbol:
-            positions = self.mt5.positions_get(symbol=symbol)
+            positions = self._mt5.positions_get(symbol=symbol)  # type: ignore[reportOptionalMemberAccess]
         else:
-            positions = self.mt5.positions_get(group=group)
+            positions = self._mt5.positions_get(group=group)  # type: ignore[reportOptionalMemberAccess]
 
         if positions is None or len(positions) == 0:
             # Return empty DataFrame with expected columns
@@ -466,7 +460,7 @@ class MT5DataClient(BaseModel):
         self,
         date_from: datetime,
         date_to: datetime,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         group: str = "",
     ) -> pd.DataFrame:
         """Get historical orders as DataFrame.
@@ -483,9 +477,9 @@ class MT5DataClient(BaseModel):
         self._ensure_initialized()
 
         if symbol:
-            orders = self.mt5.history_orders_get(date_from, date_to, symbol=symbol)
+            orders = self._mt5.history_orders_get(date_from, date_to, symbol=symbol)  # type: ignore[reportOptionalMemberAccess]
         else:
-            orders = self.mt5.history_orders_get(date_from, date_to, group=group)
+            orders = self._mt5.history_orders_get(date_from, date_to, group=group)  # type: ignore[reportOptionalMemberAccess]
 
         if orders is None or len(orders) == 0:
             # Return empty DataFrame with expected columns
@@ -509,7 +503,7 @@ class MT5DataClient(BaseModel):
         self,
         date_from: datetime,
         date_to: datetime,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         group: str = "",
     ) -> pd.DataFrame:
         """Get historical deals as DataFrame.
@@ -526,9 +520,9 @@ class MT5DataClient(BaseModel):
         self._ensure_initialized()
 
         if symbol:
-            deals = self.mt5.history_deals_get(date_from, date_to, symbol=symbol)
+            deals = self._mt5.history_deals_get(date_from, date_to, symbol=symbol)  # type: ignore[reportOptionalMemberAccess]
         else:
-            deals = self.mt5.history_deals_get(date_from, date_to, group=group)
+            deals = self._mt5.history_deals_get(date_from, date_to, group=group)  # type: ignore[reportOptionalMemberAccess]
 
         if deals is None or len(deals) == 0:
             # Return empty DataFrame with expected columns
