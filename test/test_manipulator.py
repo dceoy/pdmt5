@@ -471,13 +471,13 @@ class TestMt5DataClient:
         mock_mt5_import.account_info.return_value = mock_account
 
         client.initialize()
-        df = client.account_info()
+        df_result = client.account_info()
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 1
-        assert df.iloc[0]["login"] == 123456
-        assert df.iloc[0]["balance"] == 10000.0
-        assert df.iloc[0]["currency"] == "USD"
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert df_result.iloc[0]["login"] == 123456
+        assert df_result.iloc[0]["balance"] == 10000.0
+        assert df_result.iloc[0]["currency"] == "USD"
 
     def test_account_info_error(self, mock_mt5_import: ModuleType | None) -> None:
         """Test account_info method with error."""
@@ -520,15 +520,17 @@ class TestMt5DataClient:
         mock_mt5_import.copy_rates_from.return_value = mock_rates
 
         client.initialize()
-        df = client.copy_rates_from("EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 2)
+        df_result = client.copy_rates_from(
+            "EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 2
+        )
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 2
-        assert isinstance(df.index, pd.DatetimeIndex)
-        assert df.iloc[0]["open"] == 1.1300
-        assert df.iloc[0]["close"] == 1.1320
-        assert df.iloc[1]["open"] == 1.1320
-        assert df.iloc[1]["close"] == 1.1360
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 2
+        assert isinstance(df_result.index, pd.DatetimeIndex)
+        assert df_result.iloc[0]["open"] == 1.1300
+        assert df_result.iloc[0]["close"] == 1.1320
+        assert df_result.iloc[1]["open"] == 1.1320
+        assert df_result.iloc[1]["close"] == 1.1360
 
     def test_copy_ticks_from(self, mock_mt5_import: ModuleType | None) -> None:
         """Test copy_ticks_from method."""
@@ -556,15 +558,17 @@ class TestMt5DataClient:
         mock_mt5_import.copy_ticks_from.return_value = mock_ticks
 
         client.initialize()
-        df = client.copy_ticks_from("EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 2, 6)
+        df_result = client.copy_ticks_from(
+            "EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 2, 6
+        )
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 2
-        assert isinstance(df.index, pd.DatetimeIndex)
-        assert df.iloc[0]["bid"] == 1.1300
-        assert df.iloc[0]["ask"] == 1.1302
-        assert df.iloc[1]["bid"] == 1.1301
-        assert df.iloc[1]["ask"] == 1.1303
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 2
+        assert isinstance(df_result.index, pd.DatetimeIndex)
+        assert df_result.iloc[0]["bid"] == 1.1300
+        assert df_result.iloc[0]["ask"] == 1.1302
+        assert df_result.iloc[1]["bid"] == 1.1301
+        assert df_result.iloc[1]["ask"] == 1.1303
 
     def test_symbols_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test symbols_get method."""
@@ -673,13 +677,13 @@ class TestMt5DataClient:
         mock_mt5_import.symbols_get.return_value = mock_symbols
 
         client.initialize()
-        df = client.symbols_get()
+        df_result = client.symbols_get()
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 1
-        assert df.iloc[0]["name"] == "EURUSD"
-        assert df.iloc[0]["currency_base"] == "EUR"
-        assert df.iloc[0]["currency_profit"] == "USD"
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert df_result.iloc[0]["name"] == "EURUSD"
+        assert df_result.iloc[0]["currency_base"] == "EUR"
+        assert df_result.iloc[0]["currency_profit"] == "USD"
 
     def test_orders_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
         """Test orders_get method with empty result."""
@@ -689,10 +693,10 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        df = client.orders_get()
+        df_result = client.orders_get()
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 0
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 0
 
     def test_positions_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
         """Test positions_get method with empty result."""
@@ -702,10 +706,10 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        df = client.positions_get()
+        df_result = client.positions_get()
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 0
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 0
 
     def test_error_handling_without_mt5(self) -> None:
         """Test error handling when MetaTrader5 module is not provided."""
@@ -752,11 +756,11 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         # This should call initialize automatically
-        df = client.account_info()
+        df_result = client.account_info()
 
         assert client._is_initialized is True
         mock_mt5_import.initialize.assert_called_once()
-        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df_result, pd.DataFrame)
 
     def test_history_deals_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test history_deals_get method."""
@@ -789,18 +793,18 @@ class TestMt5DataClient:
         mock_mt5_import.history_deals_get.return_value = mock_deals
 
         client.initialize()
-        df = client.history_deals_get(
+        df_result = client.history_deals_get(
             datetime(2022, 1, 1, tzinfo=UTC),
             datetime(2022, 1, 2, tzinfo=UTC),
             symbol="EURUSD",
         )
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 1
-        assert df.iloc[0]["ticket"] == 123456
-        assert df.iloc[0]["symbol"] == "EURUSD"
-        assert df.iloc[0]["volume"] == 0.1
-        assert df.iloc[0]["profit"] == 10.0
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert df_result.iloc[0]["ticket"] == 123456
+        assert df_result.iloc[0]["symbol"] == "EURUSD"
+        assert df_result.iloc[0]["volume"] == 0.1
+        assert df_result.iloc[0]["profit"] == 10.0
         # Check that time columns are converted to datetime
-        assert isinstance(df.iloc[0]["time"], pd.Timestamp)
-        assert isinstance(df.iloc[0]["time_msc"], pd.Timestamp)
+        assert isinstance(df_result.iloc[0]["time"], pd.Timestamp)
+        assert isinstance(df_result.iloc[0]["time_msc"], pd.Timestamp)
