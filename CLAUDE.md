@@ -32,6 +32,19 @@ uv run pytest test/ -v
 uv run pyright .
 ```
 
+### Documentation
+
+```bash
+# Build documentation with MkDocs
+uv run mkdocs build
+
+# Serve documentation locally with live reload
+uv run mkdocs serve
+
+# Deploy documentation to GitHub Pages
+uv run mkdocs gh-deploy
+```
+
 ## Architecture
 
 ### Project Overview
@@ -51,6 +64,7 @@ uv run pyright .
 
 - `pdmt5/`: Main package directory
 - `test/`: Test directory (pytest-based)
+- `docs/`: MkDocs documentation source files
 - Modern Python packaging with `pyproject.toml`
 
 ### Development Tools Configuration
@@ -90,6 +104,53 @@ When users request information that requires web search:
 2. Parse and present the Gemini response appropriately
 
 This ensures consistent and reliable web search results through the Gemini API.
+
+## Documentation with MkDocs
+
+### Overview
+
+The project uses MkDocs with the Material theme for generating API documentation. The documentation is automatically built from docstrings and markdown files.
+
+### Configuration
+
+- **Theme**: Material with dark/light mode toggle
+- **Plugin**: mkdocstrings for Python API documentation
+- **Docstring Style**: Google-style docstrings
+- **Features**: Code highlighting, navigation tabs, search functionality
+
+### Documentation Structure
+
+```
+docs/
+├── index.md              # Main documentation page
+└── api/
+    ├── index.md          # API overview
+    ├── constants.md      # Constants documentation
+    └── manipulator.md    # Manipulator class documentation
+```
+
+### Navigation
+
+The documentation includes:
+- **Home**: Project overview and getting started
+- **API Reference**: Comprehensive API documentation
+  - Overview of all modules
+  - Constants and enums
+  - Core manipulator functionality
+
+### Development Workflow
+
+1. **Writing Documentation**: Add Google-style docstrings to all functions and classes
+2. **Local Testing**: Use `uv run mkdocs serve` for live preview
+3. **Building**: Use `uv run mkdocs build` to generate static site
+4. **Deployment**: Use `uv run mkdocs gh-deploy` for GitHub Pages
+
+### Docstring Guidelines
+
+- Use Google-style docstrings consistently
+- Include type hints in function signatures
+- Document all parameters, returns, and exceptions
+- Provide usage examples for complex functions
 
 ## Development Methodology
 
