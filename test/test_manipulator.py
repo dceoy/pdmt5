@@ -1,7 +1,6 @@
-"""Tests for pdmt5.core module."""
+"""Tests for pdmt5.manipulator module."""
 
 # pyright: reportPrivateUsage=false
-# pyright: reportOptionalMemberAccess=false
 
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -337,40 +336,36 @@ class TestMt5Config:
 class TestMt5DataClient:
     """Test Mt5DataClient class."""
 
-    def test_init_default(self):
+    def test_init_default(self, mock_mt5_import: MagicMock | None) -> None:
         """Test client initialization with default config."""
-        client = Mt5DataClient()
+        assert mock_mt5_import is not None
+        client = Mt5DataClient(mt5=mock_mt5_import)
         assert client.config is not None
         assert client.config.timeout == 60000
         assert not client._is_initialized
 
-    def test_init_custom_config(self):
+    def test_init_custom_config(self, mock_mt5_import: MagicMock | None) -> None:
         """Test client initialization with custom config."""
+        assert mock_mt5_import is not None
         config = Mt5Config(
             login=123456, password="test", server="test-server", timeout=30000
         )
-        client = Mt5DataClient(config=config)
+        client = Mt5DataClient(mt5=mock_mt5_import, config=config)
         assert client.config == config
         assert client.config.login == 123456
         assert client.config.timeout == 30000
 
-    def test_initialize_import_error(self):
-        """Test initialize with import error."""
-        with (
-            patch(
-                "pdmt5.manipulator.importlib.import_module",
-                side_effect=ImportError("No module named 'MetaTrader5'"),
-            ),
-            pytest.raises(Mt5Error, match="MetaTrader5 package not available"),
-        ):
-            Mt5DataClient()
+    def test_missing_mt5_module(self):
+        """Test initialization without providing mt5 module."""
+        with pytest.raises(ValidationError, match="Field required"):
+            Mt5DataClient()  # pyright: ignore[reportCallIssue]
 
     def test_initialize_success(self, mock_mt5_import: MagicMock | None) -> None:
         """Test successful initialization."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         result = client.initialize()
 
         assert result is True
@@ -383,7 +378,7 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = False
         mock_mt5_import.last_error.return_value = (1, "Connection failed")
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         with pytest.raises(
             Mt5Error, match="MetaTrader5 initialization failed: 1 - Connection failed"
         ):
@@ -394,7 +389,7 @@ class TestMt5DataClient:
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         client.shutdown()
 
@@ -406,14 +401,15 @@ class TestMt5DataClient:
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
 
-        with Mt5DataClient() as client:
+        with Mt5DataClient(mt5=mock_mt5_import) as client:
             assert client._is_initialized is True
             mock_mt5_import.initialize.assert_called_once()
 
         mock_mt5_import.shutdown.assert_called_once()
 
-    def test_account_info(self):
+    def test_account_info(self, mock_mt5_import: MagicMock | None) -> None:
         """Test account_info method."""
+        assert mock_mt5_import is not None
         mock_account = MockAccountInfo(
             login=123456,
             trade_mode=0,
@@ -445,9 +441,9 @@ class TestMt5DataClient:
             company="Test Company",
         )
 
-        client = Mt5DataClient()
-        client._mt5.initialize.return_value = True
-        client._mt5.account_info.return_value = mock_account
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.account_info.return_value = mock_account
 
         client.initialize()
         df = client.account_info()
@@ -465,15 +461,16 @@ class TestMt5DataClient:
         mock_mt5_import.account_info.return_value = None
         mock_mt5_import.last_error.return_value = (1, "Account info failed")
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
             Mt5Error, match="account_info failed: 1 - Account info failed"
         ):
             client.account_info()
 
-    def test_copy_rates_from(self):
+    def test_copy_rates_from(self, mock_mt5_import: MagicMock | None) -> None:
         """Test copy_rates_from method."""
+        assert mock_mt5_import is not None
         # Create structured numpy array like MetaTrader5 returns
         mock_rates = np.array(
             [
@@ -492,9 +489,9 @@ class TestMt5DataClient:
             ],
         )
 
-        client = Mt5DataClient()
-        client._mt5.initialize.return_value = True
-        client._mt5.copy_rates_from.return_value = mock_rates
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.copy_rates_from.return_value = mock_rates
 
         client.initialize()
         df = client.copy_rates_from("EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 2)
@@ -507,8 +504,9 @@ class TestMt5DataClient:
         assert df.iloc[1]["open"] == 1.1320
         assert df.iloc[1]["close"] == 1.1360
 
-    def test_copy_ticks_from(self):
+    def test_copy_ticks_from(self, mock_mt5_import: MagicMock | None) -> None:
         """Test copy_ticks_from method."""
+        assert mock_mt5_import is not None
         # Create structured numpy array like MetaTrader5 returns
         mock_ticks = np.array(
             [
@@ -527,9 +525,9 @@ class TestMt5DataClient:
             ],
         )
 
-        client = Mt5DataClient()
-        client._mt5.initialize.return_value = True
-        client._mt5.copy_ticks_from.return_value = mock_ticks
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
 
         client.initialize()
         df = client.copy_ticks_from("EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 2, 6)
@@ -542,8 +540,9 @@ class TestMt5DataClient:
         assert df.iloc[1]["bid"] == 1.1301
         assert df.iloc[1]["ask"] == 1.1303
 
-    def test_symbols_get(self):
+    def test_symbols_get(self, mock_mt5_import: MagicMock | None) -> None:
         """Test symbols_get method."""
+        assert mock_mt5_import is not None
         mock_symbols = [
             MockSymbolInfo(
                 custom=False,
@@ -643,9 +642,9 @@ class TestMt5DataClient:
             )
         ]
 
-        client = Mt5DataClient()
-        client._mt5.initialize.return_value = True
-        client._mt5.symbols_get.return_value = mock_symbols
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.symbols_get.return_value = mock_symbols
 
         client.initialize()
         df = client.symbols_get()
@@ -662,7 +661,7 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = None
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         df = client.orders_get()
 
@@ -675,7 +674,7 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = None
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         df = client.positions_get()
 
@@ -683,15 +682,9 @@ class TestMt5DataClient:
         assert len(df) == 0
 
     def test_error_handling_without_mt5(self):
-        """Test error handling when MetaTrader5 is not initialized."""
-        with (
-            patch(
-                "pdmt5.manipulator.importlib.import_module",
-                side_effect=ImportError("No module named 'MetaTrader5'"),
-            ),
-            pytest.raises(Mt5Error, match="MetaTrader5 package not available"),
-        ):
-            Mt5DataClient()
+        """Test error handling when MetaTrader5 module is not provided."""
+        with pytest.raises(ValidationError, match="Field required"):
+            Mt5DataClient()  # pyright: ignore[reportCallIssue]
 
     def test_ensure_initialized_calls_initialize(
         self, mock_mt5_import: MagicMock | None
@@ -730,7 +723,7 @@ class TestMt5DataClient:
             company="Test Company",
         )
 
-        client = Mt5DataClient()
+        client = Mt5DataClient(mt5=mock_mt5_import)
         # This should call initialize automatically
         df = client.account_info()
 
@@ -738,8 +731,9 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.assert_called_once()
         assert isinstance(df, pd.DataFrame)
 
-    def test_history_deals_get(self):
+    def test_history_deals_get(self, mock_mt5_import: MagicMock | None) -> None:
         """Test history_deals_get method."""
+        assert mock_mt5_import is not None
         mock_deals = [
             MockDeal(
                 ticket=123456,
@@ -763,9 +757,9 @@ class TestMt5DataClient:
             )
         ]
 
-        client = Mt5DataClient()
-        client._mt5.initialize.return_value = True
-        client._mt5.history_deals_get.return_value = mock_deals
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = mock_deals
 
         client.initialize()
         df = client.history_deals_get(
