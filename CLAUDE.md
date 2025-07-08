@@ -68,6 +68,29 @@ uv run pyright .
 - Test coverage tracking with branch coverage
 - Professional financial software standards
 
+## Web Search Instructions
+
+For tasks requiring web search, always use `gemini` command instead of the built-in web search tool.
+
+### Usage
+
+```sh
+# Basic search query
+gemini --sandbox --prompt "WebSearch: <query>"
+
+# Example: Search for latest news
+gemini --sandbox --prompt "WebSearch: What are the latest developments in AI?"
+```
+
+### Policy
+
+When users request information that requires web search:
+
+1. Use `gemini --sandbox --prompt` command via terminal
+2. Parse and present the Gemini response appropriately
+
+This ensures consistent and reliable web search results through the Gemini API.
+
 ## Development Methodology
 
 This section combines essential guidance from Martin Fowler's refactoring, Kent Beck's tidying, and t_wada's TDD approaches.
