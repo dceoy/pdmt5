@@ -323,7 +323,7 @@ class MockDeal(NamedTuple):
 class TestMt5Config:
     """Test Mt5Config class."""
 
-    def test_default_config(self):
+    def test_default_config(self) -> None:
         """Test default configuration."""
         config = Mt5Config()  # pyright: ignore[reportCallIssue]
         assert config.login is None
@@ -332,7 +332,7 @@ class TestMt5Config:
         assert config.timeout == 60000
         assert config.portable is False
 
-    def test_custom_config(self):
+    def test_custom_config(self) -> None:
         """Test custom configuration."""
         config = Mt5Config(
             login=123456,
@@ -347,7 +347,7 @@ class TestMt5Config:
         assert config.timeout == 30000
         assert config.portable is True
 
-    def test_config_immutable(self):
+    def test_config_immutable(self) -> None:
         """Test that config is immutable."""
         config = Mt5Config()  # pyright: ignore[reportCallIssue]
         with pytest.raises(ValidationError):
@@ -369,14 +369,17 @@ class TestMt5DataClient:
         """Test client initialization with custom config."""
         assert mock_mt5_import is not None
         config = Mt5Config(
-            login=123456, password="test", server="test-server", timeout=30000
+            login=123456,
+            password="test",
+            server="test-server",
+            timeout=30000,
         )
         client = Mt5DataClient(mt5=mock_mt5_import, config=config)
         assert client.config == config
         assert client.config.login == 123456
         assert client.config.timeout == 30000
 
-    def test_missing_mt5_module(self):
+    def test_missing_mt5_module(self) -> None:
         """Test initialization without providing mt5 module."""
         with pytest.raises(ValidationError, match="Field required"):
             Mt5DataClient()  # pyright: ignore[reportCallIssue]
@@ -401,7 +404,8 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         with pytest.raises(
-            Mt5Error, match="MetaTrader5 initialization failed: 1 - Connection failed"
+            Mt5Error,
+            match="MetaTrader5 initialization failed: 1 - Connection failed",
         ):
             client.initialize()
 
@@ -485,7 +489,8 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5Error, match="account_info failed: 1 - Account info failed"
+            Mt5Error,
+            match="account_info failed: 1 - Account info failed",
         ):
             client.account_info()
 
@@ -660,7 +665,7 @@ class TestMt5DataClient:
                 isin="",
                 page="",
                 path="",
-            )
+            ),
         ]
 
         client = Mt5DataClient(mt5=mock_mt5_import)
@@ -702,13 +707,14 @@ class TestMt5DataClient:
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
 
-    def test_error_handling_without_mt5(self):
+    def test_error_handling_without_mt5(self) -> None:
         """Test error handling when MetaTrader5 module is not provided."""
         with pytest.raises(ValidationError, match="Field required"):
             Mt5DataClient()  # pyright: ignore[reportCallIssue]
 
     def test_ensure_initialized_calls_initialize(
-        self, mock_mt5_import: ModuleType | None
+        self,
+        mock_mt5_import: ModuleType | None,
     ) -> None:
         """Test that _ensure_initialized calls initialize if not initialized."""
         assert mock_mt5_import is not None
@@ -775,7 +781,7 @@ class TestMt5DataClient:
                 symbol="EURUSD",
                 comment="",
                 external_id="",
-            )
+            ),
         ]
 
         client = Mt5DataClient(mt5=mock_mt5_import)

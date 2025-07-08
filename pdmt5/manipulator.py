@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 class Mt5Error(RuntimeError):
     """MetaTrader5 specific error."""
 
-    pass
-
 
 class Mt5Config(BaseModel):
     """Configuration for MetaTrader5 connection."""
@@ -480,7 +478,8 @@ class Mt5DataClient(BaseModel):
         for col in time_columns:
             if col in history_orders_df.columns:
                 history_orders_df[col] = pd.to_datetime(
-                    history_orders_df[col], unit="s"
+                    history_orders_df[col],
+                    unit="s",
                 )
 
         return history_orders_df
@@ -524,11 +523,13 @@ class Mt5DataClient(BaseModel):
             if col in history_deals_df.columns:
                 if col.endswith("_msc"):
                     history_deals_df[col] = pd.to_datetime(
-                        history_deals_df[col], unit="ms"
+                        history_deals_df[col],
+                        unit="ms",
                     )
                 else:
                     history_deals_df[col] = pd.to_datetime(
-                        history_deals_df[col], unit="s"
+                        history_deals_df[col],
+                        unit="s",
                     )
 
         return history_deals_df
