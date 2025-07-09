@@ -23,7 +23,7 @@ from .constants import (
     Timeframe,
     TradeAction,
 )
-from .manipulator import Mt5Config, Mt5DataClient, Mt5Error
+from .manipulator import Mt5Config, Mt5DataClient, Mt5RuntimeError
 
 __version__ = version(__package__) if __package__ else None
 
@@ -33,7 +33,7 @@ __all__ = [
     "DealType",
     "Mt5Config",
     "Mt5DataClient",
-    "Mt5Error",
+    "Mt5RuntimeError",
     "OrderFilling",
     "OrderState",
     "OrderTime",
