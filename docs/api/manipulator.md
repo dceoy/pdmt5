@@ -22,8 +22,8 @@ Configuration class for MetaTrader 5 connection parameters using pydantic for va
 
 Main client class that provides a pandas-friendly interface to MetaTrader 5 functions.
 
-### Mt5Error
-::: pdmt5.manipulator.Mt5Error
+### Mt5RuntimeError
+::: pdmt5.manipulator.Mt5RuntimeError
     options:
       show_bases: false
 
@@ -135,12 +135,12 @@ The Mt5DataClient automatically handles:
 
 ## Error Handling
 
-All methods raise `Mt5Error` exceptions with detailed error information when operations fail:
+All methods raise `Mt5RuntimeError` exceptions with detailed error information when operations fail:
 
 ```python
 try:
     rates_df = client.copy_rates_from("INVALID", Timeframe.H1, datetime.now(), 100)
-except Mt5Error as e:
+except Mt5RuntimeError as e:
     print(f"MetaTrader 5 error: {e}")
 ```
 
