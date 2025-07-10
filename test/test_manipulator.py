@@ -1,9 +1,11 @@
 """Tests for pdmt5.manipulator module."""
 
 # pyright: reportPrivateUsage=false
+# pyright: reportAttributeAccessIssue=false
 
 from collections.abc import Generator
 from datetime import UTC, datetime
+from pathlib import Path
 from types import ModuleType
 from typing import Any, NamedTuple
 
@@ -13,7 +15,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from pdmt5.manipulator import Mt5Config, Mt5DataClient, Mt5RuntimeError
+from pdmt5.manipulator import Mt5Config, Mt5DataClient, Mt5DataPrinter, Mt5RuntimeError
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
@@ -383,11 +385,12 @@ class TestMt5Config:
     def test_default_config(self) -> None:
         """Test default configuration."""
         config = Mt5Config()  # pyright: ignore[reportCallIssue]
+        assert config.path is None
         assert config.login is None
         assert config.password is None
         assert config.server is None
-        assert config.timeout == 60000
-        assert config.portable is False
+        assert config.timeout is None
+        assert config.portable is None
 
     def test_custom_config(self) -> None:
         """Test custom configuration."""
@@ -419,7 +422,7 @@ class TestMt5DataClient:
         assert mock_mt5_import is not None
         client = Mt5DataClient(mt5=mock_mt5_import)
         assert client.config is not None
-        assert client.config.timeout == 60000
+        assert client.config.timeout is None
         assert not client._is_initialized
 
     def test_init_custom_config(self, mock_mt5_import: ModuleType | None) -> None:
@@ -436,10 +439,17 @@ class TestMt5DataClient:
         assert client.config.login == 123456
         assert client.config.timeout == 30000
 
-    def test_missing_mt5_module(self) -> None:
-        """Test initialization without providing mt5 module."""
-        with pytest.raises(ValidationError, match=r"Field required"):
-            Mt5DataClient()  # pyright: ignore[reportCallIssue]
+    def test_mt5_module_default_factory(self, mocker: MockerFixture) -> None:
+        """Test initialization with default mt5 module factory."""
+        # Mock the importlib.import_module to verify it's called
+        mock_import = mocker.patch("importlib.import_module")
+        mock_import.return_value = mocker.MagicMock()
+
+        client = Mt5DataClient()  # pyright: ignore[reportCallIssue]
+
+        # Verify that importlib.import_module was called with "MetaTrader5"
+        mock_import.assert_called_once_with("MetaTrader5")
+        assert client.mt5 == mock_import.return_value
 
     def test_initialize_success(self, mock_mt5_import: ModuleType | None) -> None:
         """Test successful initialization."""
@@ -459,10 +469,10 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = False
         mock_mt5_import.last_error.return_value = (1, "Connection failed")
 
-        client = Mt5DataClient(mt5=mock_mt5_import)
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
         with pytest.raises(
             Mt5RuntimeError,
-            match=r"MetaTrader5 initialization failed: 1 - Connection failed",
+            match=r"initialize failed: 1 - Connection failed",
         ):
             client.initialize()
 
@@ -786,9 +796,11 @@ class TestMt5DataClient:
         assert len(df_result) == 0
 
     def test_error_handling_without_mt5(self) -> None:
-        """Test error handling when MetaTrader5 module is not provided."""
-        with pytest.raises(ValidationError, match=r"Field required"):
-            Mt5DataClient()  # pyright: ignore[reportCallIssue]
+        """Test error handling when an invalid mt5 module is provided."""
+        # Test with an invalid mt5 module object
+        invalid_mt5 = object()  # Not a proper module
+        with pytest.raises(ValidationError):
+            Mt5DataClient(mt5=invalid_mt5)  # type: ignore[arg-type]
 
     def test_ensure_initialized_calls_initialize(
         self,
@@ -2796,3 +2808,443 @@ class TestMt5DataClient:
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
         assert "time_msc" not in df_result.columns
+
+
+class TestMt5DataClientRetryLogic:
+    """Tests for Mt5DataClient retry logic and additional coverage."""
+
+    def test_initialize_with_retry_logic(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test initialize method with retry logic."""
+        assert mock_mt5_import is not None
+
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=2)
+
+        # Mock initialize to fail first two times, succeed on third
+        mock_mt5_import.initialize.side_effect = [False, False, True]
+        mock_mt5_import.last_error.return_value = (1, "Test error")
+
+        result = client.initialize()
+
+        assert result is True
+        assert mock_mt5_import.initialize.call_count == 3
+
+    def test_initialize_with_retry_logic_warning_path(
+        self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
+    ) -> None:
+        """Test initialize method with retry logic warning path."""
+        assert mock_mt5_import is not None
+
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=1)
+
+        # Mock initialize to fail first time, succeed on second
+        mock_mt5_import.initialize.side_effect = [False, True]
+        mock_mt5_import.last_error.return_value = (1, "Test error")
+
+        # Mock time.sleep to capture the call
+        mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
+
+        result = client.initialize()
+
+        assert result is True
+        assert mock_mt5_import.initialize.call_count == 2
+        mock_sleep.assert_called_once_with(1)
+
+    def test_initialize_with_retry_all_failures(
+        self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
+    ) -> None:
+        """Test initialize method with retry logic when all attempts fail."""
+        assert mock_mt5_import is not None
+
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=2)
+
+        # Mock initialize to fail all times
+        mock_mt5_import.initialize.return_value = False
+        mock_mt5_import.last_error.return_value = (1, "Test error")
+
+        # Mock time.sleep to capture the calls
+        mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
+
+        with pytest.raises(Mt5RuntimeError) as exc_info:
+            client.initialize()
+
+        assert "initialize failed" in str(exc_info.value)
+        assert mock_mt5_import.initialize.call_count == 3  # initial + 2 retries
+        # Check that sleep was called with increasing delays
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_any_call(1)
+        mock_sleep.assert_any_call(2)
+
+    def test_convert_standard_time_columns_with_time_column(self) -> None:
+        """Test _convert_standard_time_columns with time column."""
+        data_frame = pd.DataFrame({
+            "time": [1640995200, 1640995260],
+            "value": [1.0, 2.0],
+        })
+
+        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+
+        assert "time" in result.columns
+        assert pd.api.types.is_datetime64_any_dtype(result["time"])
+
+    def test_convert_standard_time_columns_with_time_msc_column(self) -> None:
+        """Test _convert_standard_time_columns with time_msc column."""
+        data_frame = pd.DataFrame({
+            "time_msc": [1640995200000, 1640995260000],
+            "value": [1.0, 2.0],
+        })
+
+        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+
+        assert "time_msc" in result.columns
+        assert pd.api.types.is_datetime64_any_dtype(result["time_msc"])
+
+    def test_convert_standard_time_columns_with_both_time_columns(self) -> None:
+        """Test _convert_standard_time_columns with both time and time_msc columns."""
+        data_frame = pd.DataFrame({
+            "time": [1640995200, 1640995260],
+            "time_msc": [1640995200000, 1640995260000],
+            "value": [1.0, 2.0],
+        })
+
+        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+
+        assert "time" in result.columns
+        assert "time_msc" in result.columns
+        assert pd.api.types.is_datetime64_any_dtype(result["time"])
+        assert pd.api.types.is_datetime64_any_dtype(result["time_msc"])
+
+
+class TestMt5DataPrinter:
+    """Tests for Mt5DataPrinter class."""
+
+    def test_print_json(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_json method."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        test_data = {"key": "value", "number": 123}
+
+        printer.print_json(test_data)
+
+        captured = capsys.readouterr()
+        assert '"key": "value"' in captured.out
+        assert '"number": 123' in captured.out
+
+    def test_print_df(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_df method."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+
+        printer.print_df(test_df)
+
+        captured = capsys.readouterr()
+        assert "A" in captured.out
+        assert "B" in captured.out
+
+    def test_drop_duplicates_in_sqlite3(
+        self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
+    ) -> None:
+        """Test drop_duplicates_in_sqlite3 method."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_cursor = mocker.MagicMock()
+
+        printer.drop_duplicates_in_sqlite3(mock_cursor, "test_table", ["id", "name"])
+
+        mock_cursor.execute.assert_called_once()
+
+    def test_export_df_with_csv(
+        self, mock_mt5_import: ModuleType | None, tmp_path: Path
+    ) -> None:
+        """Test export_df method with CSV export."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        csv_path = tmp_path / "test.csv"
+
+        printer.export_df(test_df, csv_path=str(csv_path))
+
+        assert csv_path.exists()
+
+    def test_export_df_with_sqlite(
+        self,
+        mock_mt5_import: ModuleType | None,
+        tmp_path: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test export_df method with SQLite export."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        sqlite_path = tmp_path / "test.db"
+
+        # Mock the to_sql method to avoid actual database operations
+        mocker.patch.object(test_df, "to_sql")
+        mock_connect = mocker.patch("sqlite3.connect")
+        mock_cursor = mocker.MagicMock()
+        mock_connect.return_value.__enter__.return_value.cursor.return_value = (
+            mock_cursor
+        )
+
+        printer.export_df(
+            test_df, sqlite3_path=str(sqlite_path), sqlite3_table="test_table"
+        )
+
+        mock_connect.assert_called_once_with(str(sqlite_path))
+
+    def test_print_deals(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_deals method."""
+        assert mock_mt5_import is not None
+
+        class MockDeal:
+            def _asdict(self) -> dict[str, Any]:
+                return {"ticket": 123, "symbol": "EURUSD", "profit": 10.0}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.history_deals_get.return_value = [MockDeal()]
+
+        printer.print_deals(hours=24)
+
+        captured = capsys.readouterr()
+        assert "ticket" in captured.out
+
+    def test_print_orders(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_orders method."""
+        assert mock_mt5_import is not None
+
+        class MockOrder:
+            def _asdict(self) -> dict[str, Any]:
+                return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.orders_get.return_value = [MockOrder()]
+
+        printer.print_orders()
+
+        captured = capsys.readouterr()
+        assert "ticket" in captured.out
+
+    def test_print_positions(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_positions method."""
+        assert mock_mt5_import is not None
+
+        class MockPosition:
+            def _asdict(self) -> dict[str, Any]:
+                return {"ticket": 789, "symbol": "USDJPY", "profit": 5.0}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.positions_get.return_value = [MockPosition()]
+
+        printer.print_positions()
+
+        captured = capsys.readouterr()
+        assert "ticket" in captured.out
+
+    def test_print_margins(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_margins method."""
+        assert mock_mt5_import is not None
+
+        class MockAccountInfo:
+            currency = "USD"
+
+        class MockSymbolInfo:
+            volume_min = 0.01
+
+        class MockSymbolInfoTick:
+            ask = 1.1234
+            bid = 1.1230
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.account_info.return_value = MockAccountInfo()
+        mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
+        mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
+        mock_mt5_import.order_calc_margin.return_value = 100.0
+        mock_mt5_import.ORDER_TYPE_BUY = 0
+        mock_mt5_import.ORDER_TYPE_SELL = 1
+
+        printer.print_margins("EURUSD")
+
+        captured = capsys.readouterr()
+        assert "symbol" in captured.out
+
+    def test_print_ticks(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_ticks method."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+
+        # Mock required constants
+        mock_mt5_import.COPY_TICKS_ALL = 3
+
+        # Create mock data with structured array like MetaTrader5 returns
+
+        dt = np.dtype([
+            ("time", "int64"),
+            ("bid", "float64"),
+            ("ask", "float64"),
+            ("last", "float64"),
+            ("volume", "int64"),
+            ("time_msc", "int64"),
+            ("flags", "int32"),
+            ("volume_real", "float64"),
+        ])
+        mock_ticks = np.array(
+            [(1640995200, 1.1230, 1.1234, 1.1232, 1, 1640995200000, 2, 1.0)], dtype=dt
+        )
+        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
+
+        printer.initialize()
+        printer.print_ticks("EURUSD", seconds=60)
+
+        captured = capsys.readouterr()
+        assert len(captured.out) > 0
+
+    def test_print_ticks_with_date_to(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_ticks method with date_to parameter."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+
+        # Mock required constants
+        mock_mt5_import.COPY_TICKS_ALL = 3
+
+        # Create mock data with structured array like MetaTrader5 returns
+
+        dt = np.dtype([
+            ("time", "int64"),
+            ("bid", "float64"),
+            ("ask", "float64"),
+            ("last", "float64"),
+            ("volume", "int64"),
+            ("time_msc", "int64"),
+            ("flags", "int32"),
+            ("volume_real", "float64"),
+        ])
+        mock_ticks = np.array(
+            [(1640995200, 1.1230, 1.1234, 1.1232, 1, 1640995200000, 2, 1.0)], dtype=dt
+        )
+        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
+
+        printer.initialize()
+        printer.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
+
+        captured = capsys.readouterr()
+        assert len(captured.out) > 0
+
+    def test_print_rates(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_rates method."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+
+        # Mock required constants
+        mock_mt5_import.TIMEFRAME_M1 = 1
+
+        # Create mock data with structured array like MetaTrader5 returns
+
+        dt = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+            ("tick_volume", "int64"),
+            ("spread", "int32"),
+            ("real_volume", "int64"),
+        ])
+        mock_rates = np.array(
+            [(1640995200, 1.1230, 1.1240, 1.1220, 1.1235, 100, 1, 0)], dtype=dt
+        )
+        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
+
+        printer.initialize()
+        printer.print_rates("EURUSD", granularity="M1", count=10)
+
+        captured = capsys.readouterr()
+        assert len(captured.out) > 0
+
+    def test_print_symbol_info(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_symbol_info method."""
+        assert mock_mt5_import is not None
+
+        class MockSymbolInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {
+                    "name": "EURUSD",
+                    "bid": 1.1230,
+                    "ask": 1.1234,
+                    "volume_min": 0.01,
+                }
+
+        class MockSymbolInfoTick:
+            def _asdict(self) -> dict[str, Any]:
+                return {"time": 1640995200, "bid": 1.1230, "ask": 1.1234, "volume": 1}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
+        mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
+
+        printer.print_symbol_info("EURUSD")
+
+        captured = capsys.readouterr()
+        assert "name" in captured.out
+
+    def test_print_mt5_info(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_mt5_info method."""
+        assert mock_mt5_import is not None
+
+        class MockTerminalInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {"company": "Test Company", "path": "/test/path"}
+
+        class MockAccountInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {"login": 12345, "server": "Test-Server"}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.__version__ = "5.0.45"
+        mock_mt5_import.__author__ = "MetaQuotes Ltd."
+        mock_mt5_import.version.return_value = (5, 0, 4560)
+        mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
+        mock_mt5_import.account_info.return_value = MockAccountInfo()
+        mock_mt5_import.symbols_total.return_value = 1000
+
+        printer.print_mt5_info()
+
+        captured = capsys.readouterr()
+        assert "MetaTrader 5 terminal version" in captured.out
+        assert "Terminal status and settings" in captured.out
+        assert "Trading account info" in captured.out
+        assert "Number of financial instruments" in captured.out
