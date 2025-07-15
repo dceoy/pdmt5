@@ -86,29 +86,6 @@ uv run mkdocs gh-deploy
 - Test coverage tracking with branch coverage
 - Professional financial software standards
 
-## Web Search Instructions
-
-For tasks requiring web search, always use `gemini` command instead of the built-in web search tool.
-
-### Usage
-
-```sh
-# Basic search query
-gemini --sandbox --prompt "WebSearch: <query>"
-
-# Example: Search for latest news
-gemini --sandbox --prompt "WebSearch: What are the latest developments in AI?"
-```
-
-### Policy
-
-When users request information that requires web search:
-
-1. Use `gemini --sandbox --prompt` command via terminal
-2. Parse and present the Gemini response appropriately
-
-This ensures consistent and reliable web search results through the Gemini API.
-
 ## Documentation with MkDocs
 
 ### Overview
@@ -157,6 +134,29 @@ The documentation includes:
 - Include type hints in function signatures
 - Document all parameters, returns, and exceptions
 - Provide usage examples for complex functions
+
+## Web Search Instructions
+
+For tasks requiring web search, always use `gemini` command instead of the built-in web search tool.
+
+### Usage
+
+```sh
+# Basic search query
+gemini --sandbox --prompt "WebSearch: <query>"
+
+# Example: Search for latest news
+gemini --sandbox --prompt "WebSearch: What are the latest developments in AI?"
+```
+
+### Policy
+
+When users request information that requires web search:
+
+1. Use `gemini --sandbox --prompt` command via terminal
+2. Parse and present the Gemini response appropriately
+
+This ensures consistent and reliable web search results through the Gemini API.
 
 ## Development Methodology
 
@@ -220,3 +220,99 @@ This section combines essential guidance from Martin Fowler's refactoring, Kent 
 - Focus on making code understandable to humans
 
 Quote: "Make the change easy, then make the easy change." - Kent Beck
+
+## Code Design Principles
+
+Follow Robert C. Martin's SOLID and Clean Code principles for maintainable, professional software.
+
+### SOLID Principles
+
+#### 1. Single Responsibility Principle (SRP)
+- Each class should have only one reason to change
+- Classes should have a single, well-defined responsibility
+- Keep classes small and focused
+- Example: Separate data storage, formatting, and calculation logic into different classes
+
+#### 2. Open/Closed Principle (OCP)
+- Classes should be open for extension but closed for modification
+- Add new functionality through extension, not by changing existing code
+- Use interfaces and inheritance to enable extensibility
+- Example: Use polymorphism instead of if/else chains for handling different types
+
+#### 3. Liskov Substitution Principle (LSP)
+- Subtypes must be substitutable for their base types
+- Subclasses should not break the behavior expected from the parent class
+- Avoid violating expectations when overriding methods
+
+#### 4. Interface Segregation Principle (ISP)
+- Clients should not be forced to depend on interfaces they don't use
+- Prefer many specific interfaces over one general-purpose interface
+- Split large interfaces into smaller, focused ones
+
+#### 5. Dependency Inversion Principle (DIP)
+- High-level modules should not depend on low-level modules
+- Both should depend on abstractions (interfaces)
+- Inject dependencies rather than creating them directly
+
+### Clean Code Practices
+
+#### Naming
+- Use intention-revealing names that clearly communicate purpose
+- Avoid disinformation and ambiguous terms
+- Make meaningful distinctions between similar concepts
+- Use pronounceable and searchable names
+- Example: `daysSinceLastUpdate` instead of `d`
+
+#### Functions
+- Keep functions small and focused on a single task
+- Functions should do one thing and do it well
+- Use descriptive verb or verb-phrase names
+- Limit function arguments (ideally 0-3)
+- Extract complex logic into well-named helper functions
+
+#### Classes
+- Follow the Single Responsibility Principle
+- Maintain high cohesion within classes
+- Class names should clearly describe their responsibilities
+
+#### Error Handling
+- Use exceptions instead of error codes
+- Write try-catch-finally statements first
+- Don't return null - throw exceptions or use special case objects
+- Provide context with exceptions
+- Define exception classes in terms of a caller's needs
+
+#### Testing
+- Write tests first (Test-Driven Development)
+- One assertion per test for clarity
+- Keep tests Fast, Independent, Repeatable, Self-validating, and Timely (FIRST)
+- Use the Arrange-Act-Assert pattern
+- Test names should clearly describe what is being tested
+
+#### Code Organization
+- Variables should be declared close to their usage
+- Instance variables at the top of the class
+- Public functions should follow the list of variables
+- Private utilities should be below the public functions they support
+- Maintain conceptual affinity - keep related functions close
+
+#### Comments
+- Strive for self-documenting code that doesn't need comments
+- Use comments to explain "why" not "what"
+- Avoid redundant comments
+- Don't comment out code - delete it (version control preserves history)
+- Keep comments up-to-date with code changes
+
+#### Formatting
+- Maintain consistent formatting throughout the codebase
+- Use vertical formatting to separate concepts
+- Keep lines short (follow the 88-character limit)
+- Use horizontal alignment sparingly
+- Team rules override personal preferences
+
+#### General Principles
+- Don't Repeat Yourself (DRY) - avoid code duplication
+- Keep it Simple (KISS) - favor simple solutions
+- You Aren't Gonna Need It (YAGNI) - don't add functionality until needed
+- Boy Scout Rule - leave the code cleaner than you found it
+- Fail fast - detect and report errors as early as possible
