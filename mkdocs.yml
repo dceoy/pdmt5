@@ -55,8 +55,9 @@ nav:
   - Home: index.md
   - API Reference:
     - Overview: api/index.md
-    - Constants: api/constants.md
+    - Exception: api/exception.md
     - Manipulator: api/manipulator.md
+    - Printer: api/printer.md
 
 markdown_extensions:
   - admonition
