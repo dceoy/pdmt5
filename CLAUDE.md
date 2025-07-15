@@ -28,66 +28,44 @@ Follow Robert C. Martin's SOLID and Clean Code principles:
 
 ## Development Methodology
 
-This section combines essential guidance from Martin Fowler's refactoring, Kent Beck's tidying, and t_wada's TDD approaches.
+Follow Martin Fowler's Refactoring, Kent Beck's Tidy Code, and t_wada's TDD principles:
 
 ### Core Philosophy
 
-- **Small, safe, behavior-preserving changes** - Every change should be tiny, reversible, and testable
-- **Separate concerns** - Never mix adding features with refactoring/tidying
-- **Test-driven workflow** - Tests provide safety net and drive design
-- **Economic justification** - Only refactor/tidy when it makes immediate work easier
+- **Small, safe changes**: Tiny, reversible, testable modifications
+- **Separate concerns**: Never mix features with refactoring
+- **Test-driven**: Tests provide safety and drive design
+- **Economic**: Only refactor when it aids immediate work
 
-### The Development Cycle
+### TDD Cycle
 
-1. **Red** - Write a failing test first (TDD)
-2. **Green** - Write minimum code to pass the test
-3. **Refactor/Tidy** - Clean up without changing behavior
-4. **Commit** - Separate commits for features vs refactoring
+1. **Red** → Write failing test
+2. **Green** → Minimum code to pass
+3. **Refactor** → Clean without changing behavior
+4. **Commit** → Separate commits for features vs refactoring
 
-### Essential Practices
+### Practices
 
-#### Before Coding
-
-- Create TODO list for complex tasks
-- Ensure test coverage exists
-- Identify code smells (long functions, duplication, etc.)
-
-#### While Coding
-
-- **Test-First**: Write the test before the implementation
-- **Small Steps**: Each change should be easily reversible
-- **Run Tests Frequently**: After each small change
-- **Two Hats**: Either add features OR refactor, never both
-
-#### Refactoring Techniques
-
-1. **Extract Function/Variable** - Improve readability
-2. **Rename** - Use meaningful names
-3. **Guard Clauses** - Replace nested conditionals
-4. **Remove Dead Code** - Delete unused code
-5. **Normalize Symmetries** - Make similar code consistent
-
-#### TDD Strategies
-
-1. **Fake It** - Start with hardcoded values
-2. **Obvious Implementation** - When solution is clear
-3. **Triangulation** - Multiple tests to find general solution
+- **Before**: Create TODOs, ensure coverage, identify code smells
+- **During**: Test-first, small steps, frequent tests, two hats rule
+- **Refactoring**: Extract function/variable, rename, guard clauses, remove dead code, normalize symmetries
+- **TDD Strategies**: Fake it, obvious implementation, triangulation
 
 ### When to Apply
 
-- **Rule of Three**: Refactor on third duplication
-- **Preparatory**: Before adding features to messy code
-- **Comprehension**: As you understand code better
-- **Opportunistic**: Small improvements during daily work
+- Rule of Three (3rd duplication)
+- Preparatory (before features)
+- Comprehension (as understanding grows)
+- Opportunistic (daily improvements)
 
-### Key Reminders
+### Key Rules
 
 - One assertion per test
-- Commit refactoring separately from features
+- Separate refactoring commits
 - Delete redundant tests
-- Focus on making code understandable to humans
+- Human-readable code first
 
-Quote: "Make the change easy, then make the easy change." - Kent Beck
+> "Make the change easy, then make the easy change." - Kent Beck
 
 ## Commands
 
