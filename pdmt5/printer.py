@@ -70,7 +70,7 @@ class Mt5DataPrinter(Mt5DataClient):
                 "DELETE FROM {table} WHERE ROWID NOT IN"  # noqa: RUF027
                 " (SELECT MIN(ROWID) FROM {table} GROUP BY {ids_str})"
             ),
-            {"table": table, "ids_str": ", ".join(ids)},
+            {"table": table, "ids_str": ", ".join(f'"{i}"' for i in ids)},
         )
 
     def export_df(

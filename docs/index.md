@@ -22,9 +22,20 @@ pip install pdmt5
 ## Quick Start
 
 ```python
-import pdmt5
+from pdmt5 import Mt5Config, Mt5DataClient, Mt5DataPrinter
 
-# Your trading data manipulation code here
+# Configure connection
+config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
+
+# Use the data client
+with Mt5DataClient(config) as client:
+    # Get market data
+    symbols = client.fetch_symbols()
+    rates = client.fetch_rates("EURUSD", granularity="H1", count=100)
+
+# Or use the printer for formatted output
+with Mt5DataPrinter(config) as printer:
+    printer.print_rates("EURUSD", granularity="D1", count=10)
 ```
 
 ## Requirements
@@ -37,8 +48,9 @@ import pdmt5
 
 Browse the API documentation to learn about available modules and functions:
 
-- [Constants](api/constants.md) - Configuration constants and enums
-- [Manipulator](api/manipulator.md) - Core data manipulation functionality
+- [Exception](api/exception.md) - Custom exception handling
+- [Manipulator](api/manipulator.md) - Core data client and configuration
+- [Printer](api/printer.md) - Pretty printing and data export functionality
 
 ## Development
 
