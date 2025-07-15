@@ -63,6 +63,10 @@ uv run mkdocs gh-deploy
 ### Package Structure
 
 - `pdmt5/`: Main package directory
+  - `__init__.py`: Package initialization and exports
+  - `exception.py`: Custom exception handling (`Mt5RuntimeError`)
+  - `manipulator.py`: Core data client (`Mt5Config`, `Mt5DataClient`)
+  - `printer.py`: Pretty printing and export (`Mt5DataPrinter`)
 - `test/`: Test directory (pytest-based)
 - `docs/`: MkDocs documentation source files
 - Modern Python packaging with `pyproject.toml`
@@ -125,8 +129,9 @@ docs/
 ├── index.md              # Main documentation page
 └── api/
     ├── index.md          # API overview
-    ├── constants.md      # Constants documentation
-    └── manipulator.md    # Manipulator class documentation
+    ├── exception.md      # Exception handling documentation
+    ├── manipulator.md    # Core data client documentation
+    └── printer.md        # Pretty printing and export documentation
 ```
 
 ### Navigation
@@ -135,8 +140,9 @@ The documentation includes:
 - **Home**: Project overview and getting started
 - **API Reference**: Comprehensive API documentation
   - Overview of all modules
-  - Constants and enums
-  - Core manipulator functionality
+  - Exception handling (`Mt5RuntimeError`)
+  - Core data client functionality (`Mt5DataClient`)
+  - Pretty printing and export functionality (`Mt5DataPrinter`)
 
 ### Development Workflow
 
