@@ -2,6 +2,93 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Design Principles
+
+Follow Robert C. Martin's SOLID and Clean Code principles:
+
+### SOLID Principles
+
+1. **SRP (Single Responsibility)**: One reason to change per class; separate concerns (e.g., storage vs formatting vs calculation)
+2. **OCP (Open/Closed)**: Open for extension, closed for modification; use polymorphism over if/else chains
+3. **LSP (Liskov Substitution)**: Subtypes must be substitutable for base types without breaking expectations
+4. **ISP (Interface Segregation)**: Many specific interfaces over one general; no forced unused dependencies
+5. **DIP (Dependency Inversion)**: Depend on abstractions, not concretions; inject dependencies
+
+### Clean Code Practices
+
+- **Naming**: Intention-revealing, pronounceable, searchable names (`daysSinceLastUpdate` not `d`)
+- **Functions**: Small, single-task, verb names, 0-3 args, extract complex logic
+- **Classes**: Follow SRP, high cohesion, descriptive names
+- **Error Handling**: Exceptions over error codes, no null returns, provide context, try-catch-finally first
+- **Testing**: TDD, one assertion/test, FIRST principles (Fast, Independent, Repeatable, Self-validating, Timely), Arrange-Act-Assert pattern
+- **Code Organization**: Variables near usage, instance vars at top, public then private functions, conceptual affinity
+- **Comments**: Self-documenting code preferred, explain "why" not "what", delete commented code
+- **Formatting**: Consistent, vertical separation, 88-char limit, team rules override preferences
+- **General**: DRY, KISS, YAGNI, Boy Scout Rule, fail fast
+
+## Development Methodology
+
+This section combines essential guidance from Martin Fowler's refactoring, Kent Beck's tidying, and t_wada's TDD approaches.
+
+### Core Philosophy
+
+- **Small, safe, behavior-preserving changes** - Every change should be tiny, reversible, and testable
+- **Separate concerns** - Never mix adding features with refactoring/tidying
+- **Test-driven workflow** - Tests provide safety net and drive design
+- **Economic justification** - Only refactor/tidy when it makes immediate work easier
+
+### The Development Cycle
+
+1. **Red** - Write a failing test first (TDD)
+2. **Green** - Write minimum code to pass the test
+3. **Refactor/Tidy** - Clean up without changing behavior
+4. **Commit** - Separate commits for features vs refactoring
+
+### Essential Practices
+
+#### Before Coding
+
+- Create TODO list for complex tasks
+- Ensure test coverage exists
+- Identify code smells (long functions, duplication, etc.)
+
+#### While Coding
+
+- **Test-First**: Write the test before the implementation
+- **Small Steps**: Each change should be easily reversible
+- **Run Tests Frequently**: After each small change
+- **Two Hats**: Either add features OR refactor, never both
+
+#### Refactoring Techniques
+
+1. **Extract Function/Variable** - Improve readability
+2. **Rename** - Use meaningful names
+3. **Guard Clauses** - Replace nested conditionals
+4. **Remove Dead Code** - Delete unused code
+5. **Normalize Symmetries** - Make similar code consistent
+
+#### TDD Strategies
+
+1. **Fake It** - Start with hardcoded values
+2. **Obvious Implementation** - When solution is clear
+3. **Triangulation** - Multiple tests to find general solution
+
+### When to Apply
+
+- **Rule of Three**: Refactor on third duplication
+- **Preparatory**: Before adding features to messy code
+- **Comprehension**: As you understand code better
+- **Opportunistic**: Small improvements during daily work
+
+### Key Reminders
+
+- One assertion per test
+- Commit refactoring separately from features
+- Delete redundant tests
+- Focus on making code understandable to humans
+
+Quote: "Make the change easy, then make the easy change." - Kent Beck
+
 ## Commands
 
 ### Development Setup
@@ -157,162 +244,3 @@ When users request information that requires web search:
 2. Parse and present the Gemini response appropriately
 
 This ensures consistent and reliable web search results through the Gemini API.
-
-## Development Methodology
-
-This section combines essential guidance from Martin Fowler's refactoring, Kent Beck's tidying, and t_wada's TDD approaches.
-
-### Core Philosophy
-
-- **Small, safe, behavior-preserving changes** - Every change should be tiny, reversible, and testable
-- **Separate concerns** - Never mix adding features with refactoring/tidying
-- **Test-driven workflow** - Tests provide safety net and drive design
-- **Economic justification** - Only refactor/tidy when it makes immediate work easier
-
-### The Development Cycle
-
-1. **Red** - Write a failing test first (TDD)
-2. **Green** - Write minimum code to pass the test
-3. **Refactor/Tidy** - Clean up without changing behavior
-4. **Commit** - Separate commits for features vs refactoring
-
-### Essential Practices
-
-#### Before Coding
-
-- Create TODO list for complex tasks
-- Ensure test coverage exists
-- Identify code smells (long functions, duplication, etc.)
-
-#### While Coding
-
-- **Test-First**: Write the test before the implementation
-- **Small Steps**: Each change should be easily reversible
-- **Run Tests Frequently**: After each small change
-- **Two Hats**: Either add features OR refactor, never both
-
-#### Refactoring Techniques
-
-1. **Extract Function/Variable** - Improve readability
-2. **Rename** - Use meaningful names
-3. **Guard Clauses** - Replace nested conditionals
-4. **Remove Dead Code** - Delete unused code
-5. **Normalize Symmetries** - Make similar code consistent
-
-#### TDD Strategies
-
-1. **Fake It** - Start with hardcoded values
-2. **Obvious Implementation** - When solution is clear
-3. **Triangulation** - Multiple tests to find general solution
-
-### When to Apply
-
-- **Rule of Three**: Refactor on third duplication
-- **Preparatory**: Before adding features to messy code
-- **Comprehension**: As you understand code better
-- **Opportunistic**: Small improvements during daily work
-
-### Key Reminders
-
-- One assertion per test
-- Commit refactoring separately from features
-- Delete redundant tests
-- Focus on making code understandable to humans
-
-Quote: "Make the change easy, then make the easy change." - Kent Beck
-
-## Code Design Principles
-
-Follow Robert C. Martin's SOLID and Clean Code principles for maintainable, professional software.
-
-### SOLID Principles
-
-#### 1. Single Responsibility Principle (SRP)
-- Each class should have only one reason to change
-- Classes should have a single, well-defined responsibility
-- Keep classes small and focused
-- Example: Separate data storage, formatting, and calculation logic into different classes
-
-#### 2. Open/Closed Principle (OCP)
-- Classes should be open for extension but closed for modification
-- Add new functionality through extension, not by changing existing code
-- Use interfaces and inheritance to enable extensibility
-- Example: Use polymorphism instead of if/else chains for handling different types
-
-#### 3. Liskov Substitution Principle (LSP)
-- Subtypes must be substitutable for their base types
-- Subclasses should not break the behavior expected from the parent class
-- Avoid violating expectations when overriding methods
-
-#### 4. Interface Segregation Principle (ISP)
-- Clients should not be forced to depend on interfaces they don't use
-- Prefer many specific interfaces over one general-purpose interface
-- Split large interfaces into smaller, focused ones
-
-#### 5. Dependency Inversion Principle (DIP)
-- High-level modules should not depend on low-level modules
-- Both should depend on abstractions (interfaces)
-- Inject dependencies rather than creating them directly
-
-### Clean Code Practices
-
-#### Naming
-- Use intention-revealing names that clearly communicate purpose
-- Avoid disinformation and ambiguous terms
-- Make meaningful distinctions between similar concepts
-- Use pronounceable and searchable names
-- Example: `daysSinceLastUpdate` instead of `d`
-
-#### Functions
-- Keep functions small and focused on a single task
-- Functions should do one thing and do it well
-- Use descriptive verb or verb-phrase names
-- Limit function arguments (ideally 0-3)
-- Extract complex logic into well-named helper functions
-
-#### Classes
-- Follow the Single Responsibility Principle
-- Maintain high cohesion within classes
-- Class names should clearly describe their responsibilities
-
-#### Error Handling
-- Use exceptions instead of error codes
-- Write try-catch-finally statements first
-- Don't return null - throw exceptions or use special case objects
-- Provide context with exceptions
-- Define exception classes in terms of a caller's needs
-
-#### Testing
-- Write tests first (Test-Driven Development)
-- One assertion per test for clarity
-- Keep tests Fast, Independent, Repeatable, Self-validating, and Timely (FIRST)
-- Use the Arrange-Act-Assert pattern
-- Test names should clearly describe what is being tested
-
-#### Code Organization
-- Variables should be declared close to their usage
-- Instance variables at the top of the class
-- Public functions should follow the list of variables
-- Private utilities should be below the public functions they support
-- Maintain conceptual affinity - keep related functions close
-
-#### Comments
-- Strive for self-documenting code that doesn't need comments
-- Use comments to explain "why" not "what"
-- Avoid redundant comments
-- Don't comment out code - delete it (version control preserves history)
-- Keep comments up-to-date with code changes
-
-#### Formatting
-- Maintain consistent formatting throughout the codebase
-- Use vertical formatting to separate concepts
-- Keep lines short (follow the 88-character limit)
-- Use horizontal alignment sparingly
-- Team rules override personal preferences
-
-#### General Principles
-- Don't Repeat Yourself (DRY) - avoid code duplication
-- Keep it Simple (KISS) - favor simple solutions
-- You Aren't Gonna Need It (YAGNI) - don't add functionality until needed
-- Boy Scout Rule - leave the code cleaner than you found it
-- Fail fast - detect and report errors as early as possible
