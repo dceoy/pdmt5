@@ -1,4 +1,4 @@
-"""Tests for pdmt5.manipulator module."""
+"""Tests for pdmt6.manipulator module."""
 
 # pyright: reportPrivateUsage=false
 # pyright: reportAttributeAccessIssue=false
