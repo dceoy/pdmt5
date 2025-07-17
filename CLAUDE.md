@@ -202,7 +202,8 @@ The documentation includes:
 
 ## Web Search Instructions
 
-For tasks requiring web search, always use `gemini` command instead of the built-in web search tool.
+For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tool.
+Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
 
 ### Usage
 
