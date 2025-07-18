@@ -50,7 +50,7 @@ Browse the API documentation to learn about available modules and functions:
 
 - [Exception](api/exception.md) - Custom exception handling
 - [DataFrame](api/dataframe.md) - Core data client and configuration
-- [Printer](api/printer.md) - Pretty printing and data export functionality
+- [ETL](api/etl.md) - ETL operations and data export functionality
 
 ## Development
 

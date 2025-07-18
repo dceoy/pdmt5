@@ -57,7 +57,7 @@ nav:
     - Overview: api/index.md
     - Exception: api/exception.md
     - DataFrame: api/dataframe.md
-    - Printer: api/printer.md
+    - ETL: api/etl.md
 
 markdown_extensions:
   - admonition

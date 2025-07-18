@@ -1,4 +1,4 @@
-"""Tests for pdmt5.printer module."""
+"""Tests for pdmt5.etl module."""
 
 # pyright: reportPrivateUsage=false
 # pyright: reportAttributeAccessIssue=false
@@ -14,7 +14,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from pdmt5.dataframe import Mt5DataClient
-from pdmt5.printer import Mt5DataPrinter
+from pdmt5.etl import Mt5DataPrinter
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()

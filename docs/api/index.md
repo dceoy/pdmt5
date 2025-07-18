@@ -12,8 +12,8 @@ Custom exception handling for MetaTrader 5 runtime errors.
 ### [DataFrame](dataframe.md)
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
-### [Printer](printer.md)
-Pretty printing and data export functionality for MetaTrader 5 data.
+### [ETL](etl.md)
+ETL (Extract, Transform, Load) operations and data export functionality for MetaTrader 5 data.
 
 ## Architecture Overview
 
@@ -21,7 +21,7 @@ The package follows a layered architecture:
 
 1. **Exception Layer** (`exception.py`): Defines custom exceptions for MT5-specific errors
 2. **Core Layer** (`dataframe.py`): Provides configuration (`Mt5Config`) and the base `Mt5DataClient` class with all MT5 interactions
-3. **Presentation Layer** (`printer.py`): Extends `Mt5DataClient` with formatting and export capabilities
+3. **Presentation Layer** (`etl.py`): Extends `Mt5DataClient` with ETL operations and export capabilities
 
 ## Usage Guidelines
 

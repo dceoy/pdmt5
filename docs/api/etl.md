@@ -1,15 +1,15 @@
-# Printer
+# ETL
 
-::: pdmt5.printer
+::: pdmt5.etl
 
 ## Overview
 
-The printer module extends the core `Mt5DataClient` functionality with pretty printing and data export capabilities. It provides formatted console output and export functionality to CSV and SQLite formats.
+The etl module extends the core `Mt5DataClient` functionality with ETL (Extract, Transform, Load) operations and data export capabilities. It provides formatted console output and export functionality to CSV and SQLite formats.
 
 ## Classes
 
 ### Mt5DataPrinter
-::: pdmt5.printer.Mt5DataPrinter
+::: pdmt5.etl.Mt5DataPrinter
     options:
       show_bases: false
 
