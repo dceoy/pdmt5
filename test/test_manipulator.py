@@ -527,8 +527,9 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
-            client.orders_get_as_df()
+        orders_df = client.orders_get_as_df()
+        assert orders_df.empty
+        assert isinstance(orders_df, pd.DataFrame)
 
     def test_positions_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
         """Test positions_get method with empty result."""
@@ -538,8 +539,9 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
-            client.positions_get_as_df()
+        positions_df = client.positions_get_as_df()
+        assert positions_df.empty
+        assert isinstance(positions_df, pd.DataFrame)
 
     def test_error_handling_without_mt5(self) -> None:
         """Test error handling when an invalid mt5 module is provided."""
@@ -1398,11 +1400,12 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
-            client.history_orders_get_as_df(
-                datetime(2022, 1, 1, tzinfo=UTC),
-                datetime(2022, 1, 2, tzinfo=UTC),
-            )
+        orders_df = client.history_orders_get_as_df(
+            datetime(2022, 1, 1, tzinfo=UTC),
+            datetime(2022, 1, 2, tzinfo=UTC),
+        )
+        assert orders_df.empty
+        assert isinstance(orders_df, pd.DataFrame)
 
     def test_market_book_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method."""

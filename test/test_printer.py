@@ -48,7 +48,7 @@ def mock_mt5_import(
         # Configure common mock attributes
         mock_mt5.initialize = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.shutdown = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.last_error = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.last_error = mocker.MagicMock(return_value=(0, "No error"))  # type: ignore[attr-defined]
         mock_mt5.account_info = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.terminal_info = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.symbols_get = mocker.MagicMock()  # type: ignore[attr-defined]
@@ -179,8 +179,10 @@ class TestMt5DataPrinter:
                 return {"ticket": 123, "symbol": "EURUSD", "profit": 10.0}
 
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_get.return_value = [MockDeal()]
 
+        printer.initialize()
         printer.print_deals(hours=24)
 
         captured = capsys.readouterr()
@@ -197,8 +199,10 @@ class TestMt5DataPrinter:
                 return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
 
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = [MockOrder()]
 
+        printer.initialize()
         printer.print_orders()
 
         captured = capsys.readouterr()
@@ -215,8 +219,10 @@ class TestMt5DataPrinter:
                 return {"ticket": 789, "symbol": "USDJPY", "profit": 5.0}
 
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = [MockPosition()]
 
+        printer.initialize()
         printer.print_positions()
 
         captured = capsys.readouterr()
@@ -231,14 +237,24 @@ class TestMt5DataPrinter:
         class MockAccountInfo:
             currency = "USD"
 
+            def _asdict(self) -> dict[str, Any]:
+                return {"currency": "USD"}
+
         class MockSymbolInfo:
             volume_min = 0.01
+
+            def _asdict(self) -> dict[str, Any]:
+                return {"volume_min": 0.01}
 
         class MockSymbolInfoTick:
             ask = 1.1234
             bid = 1.1230
 
+            def _asdict(self) -> dict[str, Any]:
+                return {"ask": 1.1234, "bid": 1.1230}
+
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.account_info.return_value = MockAccountInfo()
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
         mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
@@ -246,6 +262,7 @@ class TestMt5DataPrinter:
         mock_mt5_import.ORDER_TYPE_BUY = 0
         mock_mt5_import.ORDER_TYPE_SELL = 1
 
+        printer.initialize()
         printer.print_margins("EURUSD")
 
         captured = capsys.readouterr()
@@ -257,14 +274,22 @@ class TestMt5DataPrinter:
         """Test print_ticks method."""
         assert mock_mt5_import is not None
 
+        class MockSymbolInfoTick:
+            time = 1640995200
+
+            def _asdict(self) -> dict[str, Any]:
+                return {"time": 1640995200}
+
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
         mock_mt5_import.COPY_TICKS_ALL = 3
 
-        # Create mock data with structured array like MetaTrader5 returns
+        # Mock symbol info tick for non-date_to path
+        mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
 
+        # Create mock data with structured array like MetaTrader5 returns
         dt = np.dtype([
             ("time", "int64"),
             ("bid", "float64"),
@@ -278,7 +303,7 @@ class TestMt5DataPrinter:
         mock_ticks = np.array(
             [(1640995200, 1.1230, 1.1234, 1.1232, 1, 1640995200000, 2, 1.0)], dtype=dt
         )
-        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
+        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
 
         printer.initialize()
         printer.print_ticks("EURUSD", seconds=60)
@@ -376,9 +401,11 @@ class TestMt5DataPrinter:
                 return {"time": 1640995200, "bid": 1.1230, "ask": 1.1234, "volume": 1}
 
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
         mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
 
+        printer.initialize()
         printer.print_symbol_info("EURUSD")
 
         captured = capsys.readouterr()
@@ -399,6 +426,7 @@ class TestMt5DataPrinter:
                 return {"login": 12345, "server": "Test-Server"}
 
         printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
         mock_mt5_import.__version__ = "5.0.45"
         mock_mt5_import.__author__ = "MetaQuotes Ltd."
         mock_mt5_import.version.return_value = (5, 0, 4560)
@@ -406,10 +434,220 @@ class TestMt5DataPrinter:
         mock_mt5_import.account_info.return_value = MockAccountInfo()
         mock_mt5_import.symbols_total.return_value = 1000
 
+        printer.initialize()
         printer.print_mt5_info()
 
         captured = capsys.readouterr()
-        assert "MetaTrader 5 terminal version" in captured.out
-        assert "Terminal status and settings" in captured.out
-        assert "Trading account info" in captured.out
-        assert "Number of financial instruments" in captured.out
+        assert "MetaTrader5" in captured.out
+        assert "terminal" in captured.out
+        assert "account" in captured.out
+        assert "symbols_total" in captured.out
+
+    def test_print_symbols(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_symbols method."""
+        assert mock_mt5_import is not None
+
+        class MockSymbol:
+            def _asdict(self) -> dict[str, Any]:
+                return {"name": "EURUSD", "bid": 1.1230, "ask": 1.1234}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.symbols_get.return_value = [MockSymbol()]
+
+        printer.initialize()
+        printer.print_symbols()
+
+        captured = capsys.readouterr()
+        assert "name" in captured.out
+
+    def test_print_symbols_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_symbols method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.symbols_get.return_value = ()
+
+        printer.initialize()
+        printer.print_symbols()
+
+        captured = capsys.readouterr()
+        assert "No symbols found" in captured.out
+
+    def test_print_history_orders(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_history_orders method."""
+        assert mock_mt5_import is not None
+
+        class MockOrder:
+            def _asdict(self) -> dict[str, Any]:
+                return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_orders_get.return_value = [MockOrder()]
+
+        printer.initialize()
+        printer.print_history_orders(hours=24)
+
+        captured = capsys.readouterr()
+        assert "ticket" in captured.out
+
+    def test_print_history_orders_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_history_orders method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_orders_get.return_value = ()
+
+        printer.initialize()
+        printer.print_history_orders(hours=24)
+
+        captured = capsys.readouterr()
+        assert "No historical orders found" in captured.out
+
+    def test_print_account_info(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_account_info method."""
+        assert mock_mt5_import is not None
+
+        class MockAccountInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {"login": 12345, "server": "Test-Server"}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.account_info.return_value = MockAccountInfo()
+
+        printer.initialize()
+        printer.print_account_info()
+
+        captured = capsys.readouterr()
+        assert "login" in captured.out
+
+    def test_print_terminal_info(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_terminal_info method."""
+        assert mock_mt5_import is not None
+
+        class MockTerminalInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {"company": "Test Company", "path": "/test/path"}
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
+
+        printer.initialize()
+        printer.print_terminal_info()
+
+        captured = capsys.readouterr()
+        assert "company" in captured.out
+
+    def test_print_deals_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_deals method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = ()
+
+        printer.initialize()
+        printer.print_deals(hours=24)
+
+        captured = capsys.readouterr()
+        assert "No deals found" in captured.out
+
+    def test_print_orders_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_orders method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.orders_get.return_value = ()
+
+        printer.initialize()
+        printer.print_orders()
+
+        captured = capsys.readouterr()
+        assert "No orders found" in captured.out
+
+    def test_print_positions_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_positions method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.positions_get.return_value = ()
+
+        printer.initialize()
+        printer.print_positions()
+
+        captured = capsys.readouterr()
+        assert "No positions found" in captured.out
+
+    def test_print_ticks_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_ticks method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.COPY_TICKS_ALL = 3
+        tick_dtype = np.dtype([
+            ("time", "int64"),
+            ("time_msc", "int64"),
+            ("bid", "float64"),
+            ("ask", "float64"),
+        ])
+        mock_mt5_import.copy_ticks_range.return_value = np.array([], dtype=tick_dtype)
+
+        printer.initialize()
+        printer.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
+
+        captured = capsys.readouterr()
+        assert "No tick data found" in captured.out
+
+    def test_print_rates_empty(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_rates method with empty results."""
+        assert mock_mt5_import is not None
+
+        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.TIMEFRAME_M1 = 1
+        rate_dtype = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+        ])
+        mock_mt5_import.copy_rates_from_pos.return_value = np.array(
+            [], dtype=rate_dtype
+        )
+
+        printer.initialize()
+        printer.print_rates("EURUSD", granularity="M1", count=10)
+
+        captured = capsys.readouterr()
+        assert "No rate data found" in captured.out

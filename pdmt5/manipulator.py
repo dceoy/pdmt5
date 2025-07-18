@@ -304,7 +304,7 @@ class Mt5DataClient(Mt5Client):
         """
         return pd.DataFrame(
             [s._asdict() for s in self.symbols_get(group=group)],  # pyright: ignore[reportOptionalIterable]
-        ).set_index("name")
+        ).pipe(lambda d: (d.set_index("name") if not d.empty else d))
 
     def symbol_info_as_dict(self, symbol: str) -> dict[str, Any]:
         """Get data on a specific symbol as a dictionary.
@@ -349,7 +349,7 @@ class Mt5DataClient(Mt5Client):
                 o._asdict()
                 for o in self.orders_get(symbol=symbol, group=group, ticket=ticket)  # pyright: ignore[reportOptionalIterable]
             ]),
-        ).set_index("ticket")
+        ).pipe(lambda d: (d.set_index("ticket") if not d.empty else d))
 
     def order_check_as_dict(self, request: dict[str, Any]) -> dict[str, Any]:
         """Check funds sufficiency for performing a requested trading operation as a dictionary.
@@ -400,7 +400,7 @@ class Mt5DataClient(Mt5Client):
                 p._asdict()
                 for p in self.positions_get(symbol=symbol, group=group, ticket=ticket)  # pyright: ignore[reportOptionalIterable]
             ]),
-        ).set_index("ticket")
+        ).pipe(lambda d: (d.set_index("ticket") if not d.empty else d))
 
     def history_orders_get_as_df(
         self,
@@ -437,7 +437,7 @@ class Mt5DataClient(Mt5Client):
                     position=position,
                 )
             ]),
-        ).set_index("ticket")
+        ).pipe(lambda d: (d.set_index("ticket") if not d.empty else d))
 
     def history_deals_get_as_df(
         self,
@@ -474,7 +474,7 @@ class Mt5DataClient(Mt5Client):
                     position=position,
                 )
             ]),
-        ).set_index("ticket")
+        ).pipe(lambda d: (d.set_index("ticket") if not d.empty else d))
 
     @staticmethod
     def _validate_positive_count(count: int) -> None:
