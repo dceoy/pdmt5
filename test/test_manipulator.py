@@ -8,12 +8,12 @@ from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any, NamedTuple
 
-import numpy as np
 import pandas as pd
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
+from pdmt5.client import Mt5Client
 from pdmt5.exception import Mt5RuntimeError
 from pdmt5.manipulator import Mt5Config, Mt5DataClient
 
@@ -137,6 +137,7 @@ class MockTerminalInfo(NamedTuple):
     company: str
     name: str
     language: int
+    path: str
     data_path: str
     commondata_path: str
 
@@ -232,10 +233,12 @@ class MockSymbolInfo(NamedTuple):
     currency_base: str
     currency_profit: str
     currency_margin: str
-    name: str
+    bank: str
     description: str
+    exchange: str
     formula: str
     isin: str
+    name: str
     page: str
     path: str
 
@@ -516,284 +519,27 @@ class TestMt5DataClient:
 
         mock_mt5_import.shutdown.assert_called_once()
 
-    def test_account_info(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test account_info method."""
-        assert mock_mt5_import is not None
-        mock_account = MockAccountInfo(
-            login=123456,
-            trade_mode=0,
-            leverage=100,
-            limit_orders=200,
-            margin_so_mode=0,
-            trade_allowed=True,
-            trade_expert=True,
-            margin_mode=0,
-            currency_digits=2,
-            fifo_close=False,
-            balance=10000.0,
-            credit=0.0,
-            profit=100.0,
-            equity=10100.0,
-            margin=500.0,
-            margin_free=9600.0,
-            margin_level=2020.0,
-            margin_so_call=50.0,
-            margin_so_so=25.0,
-            margin_initial=0.0,
-            margin_maintenance=0.0,
-            assets=0.0,
-            liabilities=0.0,
-            commission_blocked=0.0,
-            name="Demo Account",
-            server="Demo-Server",
-            currency="USD",
-            company="Test Company",
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.account_info.return_value = mock_account
-
-        client.initialize()
-        df_result = client.account_info()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["login"] == 123456
-        assert df_result.iloc[0]["balance"] == 10000.0
-        assert df_result.iloc[0]["currency"] == "USD"
-
-    def test_account_info_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test account_info method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.account_info.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Account info failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"account_info failed: 1 - Account info failed",
-        ):
-            client.account_info()
-
-    def test_copy_rates_from(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_rates_from method."""
-        assert mock_mt5_import is not None
-        # Create structured numpy array like MetaTrader5 returns
-        mock_rates = np.array(
-            [
-                (1640995200, 1.1300, 1.1350, 1.1250, 1.1320, 1000, 2, 0),
-                (1640995260, 1.1320, 1.1380, 1.1300, 1.1360, 1200, 3, 0),
-            ],
-            dtype=[
-                ("time", "i8"),
-                ("open", "f8"),
-                ("high", "f8"),
-                ("low", "f8"),
-                ("close", "f8"),
-                ("tick_volume", "i8"),
-                ("spread", "i4"),
-                ("real_volume", "i8"),
-            ],
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_from.return_value = mock_rates
-
-        client.initialize()
-        df_result = client.copy_rates_from(
-            "EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 2
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert isinstance(df_result.index, pd.DatetimeIndex)
-        assert df_result.iloc[0]["open"] == 1.1300
-        assert df_result.iloc[0]["close"] == 1.1320
-        assert df_result.iloc[1]["open"] == 1.1320
-        assert df_result.iloc[1]["close"] == 1.1360
-
-    def test_copy_ticks_from(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_ticks_from method."""
-        assert mock_mt5_import is not None
-        # Create structured numpy array like MetaTrader5 returns
-        mock_ticks = np.array(
-            [
-                (1640995200, 1.1300, 1.1302, 1.1301, 100, 1640995200000, 6, 100.0),
-                (1640995201, 1.1301, 1.1303, 1.1302, 150, 1640995201000, 6, 150.0),
-            ],
-            dtype=[
-                ("time", "i8"),
-                ("bid", "f8"),
-                ("ask", "f8"),
-                ("last", "f8"),
-                ("volume", "i8"),
-                ("time_msc", "i8"),
-                ("flags", "i4"),
-                ("volume_real", "f8"),
-            ],
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
-
-        client.initialize()
-        df_result = client.copy_ticks_from(
-            "EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 2, 6
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert isinstance(df_result.index, pd.DatetimeIndex)
-        assert df_result.iloc[0]["bid"] == 1.1300
-        assert df_result.iloc[0]["ask"] == 1.1302
-        assert df_result.iloc[1]["bid"] == 1.1301
-        assert df_result.iloc[1]["ask"] == 1.1303
-
-    def test_symbols_get(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbols_get method."""
-        assert mock_mt5_import is not None
-        mock_symbols = [
-            MockSymbolInfo(
-                custom=False,
-                chart_mode=0,
-                select=True,
-                visible=True,
-                session_deals=0,
-                session_buy_orders=0,
-                session_sell_orders=0,
-                volume=0,
-                volumehigh=0,
-                volumelow=0,
-                time=1640995200,
-                digits=5,
-                spread=2,
-                spread_float=True,
-                ticks_bookdepth=10,
-                trade_calc_mode=0,
-                trade_mode=4,
-                start_time=0,
-                expiration_time=0,
-                trade_stops_level=0,
-                trade_freeze_level=0,
-                trade_exemode=0,
-                swap_mode=1,
-                swap_rollover3days=3,
-                margin_hedged_use_leg=False,
-                expiration_mode=15,
-                filling_mode=7,
-                order_mode=127,
-                order_gtc_mode=0,
-                option_mode=0,
-                option_right=0,
-                bid=1.1300,
-                bidlow=1.1250,
-                bidhigh=1.1350,
-                ask=1.1302,
-                asklow=1.1252,
-                askhigh=1.1352,
-                last=1.1301,
-                lastlow=1.1251,
-                lasthigh=1.1351,
-                volume_real=0.0,
-                volumehigh_real=0.0,
-                volumelow_real=0.0,
-                option_strike=0.0,
-                point=0.00001,
-                trade_tick_value=1.0,
-                trade_tick_value_profit=1.0,
-                trade_tick_value_loss=1.0,
-                trade_tick_size=0.00001,
-                trade_contract_size=100000.0,
-                trade_accrued_interest=0.0,
-                trade_face_value=0.0,
-                trade_liquidity_rate=0.0,
-                volume_min=0.01,
-                volume_max=500.0,
-                volume_step=0.01,
-                volume_limit=0.0,
-                swap_long=-7.0,
-                swap_short=2.0,
-                margin_initial=0.0,
-                margin_maintenance=0.0,
-                session_volume=0.0,
-                session_turnover=0.0,
-                session_interest=0.0,
-                session_buy_orders_volume=0.0,
-                session_sell_orders_volume=0.0,
-                session_open=1.1300,
-                session_close=1.1320,
-                session_aw=1.1310,
-                session_price_settlement=0.0,
-                session_price_limit_min=0.0,
-                session_price_limit_max=0.0,
-                margin_hedged=50000.0,
-                price_change=0.0020,
-                price_volatility=0.0,
-                price_theoretical=0.0,
-                price_greeks_delta=0.0,
-                price_greeks_theta=0.0,
-                price_greeks_gamma=0.0,
-                price_greeks_vega=0.0,
-                price_greeks_rho=0.0,
-                price_greeks_omega=0.0,
-                price_sensitivity=0.0,
-                basis="",
-                category="",
-                currency_base="EUR",
-                currency_profit="USD",
-                currency_margin="USD",
-                name="EURUSD",
-                description="Euro vs US Dollar",
-                formula="",
-                isin="",
-                page="",
-                path="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbols_get.return_value = mock_symbols
-
-        client.initialize()
-        df_result = client.symbols_get()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["name"] == "EURUSD"
-        assert df_result.iloc[0]["currency_base"] == "EUR"
-        assert df_result.iloc[0]["currency_profit"] == "USD"
-
     def test_orders_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
         """Test orders_get method with empty result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_get.return_value = None
+        mock_mt5_import.orders_get.return_value = []
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        df_result = client.orders_get()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 0
+        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
+            client.orders_get_as_df()
 
     def test_positions_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
         """Test positions_get method with empty result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_get.return_value = None
+        mock_mt5_import.positions_get.return_value = []
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        df_result = client.positions_get()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 0
+        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
+            client.positions_get_as_df()
 
     def test_error_handling_without_mt5(self) -> None:
         """Test error handling when an invalid mt5 module is provided."""
@@ -841,513 +587,13 @@ class TestMt5DataClient:
         )
 
         client = Mt5DataClient(mt5=mock_mt5_import)
-        # This should call initialize automatically
-        df_result = client.account_info()
+        # Initialize the client first
+        client.initialize()
+        df_result = client.account_info_as_dataframe()
 
         assert client._is_initialized is True
         mock_mt5_import.initialize.assert_called_once()
         assert isinstance(df_result, pd.DataFrame)
-
-    def test_history_deals_get(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test history_deals_get method."""
-        assert mock_mt5_import is not None
-        mock_deals = [
-            MockDeal(
-                ticket=123456,
-                order=789012,
-                time=1640995200,
-                time_msc=1640995200000,
-                type=0,
-                entry=0,
-                magic=0,
-                position_id=345678,
-                reason=0,
-                volume=0.1,
-                price=1.1300,
-                commission=-0.70,
-                swap=0.0,
-                profit=10.0,
-                fee=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        client.initialize()
-        df_result = client.history_deals_get(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-            symbol="EURUSD",
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["ticket"] == 123456
-        assert df_result.iloc[0]["symbol"] == "EURUSD"
-        assert df_result.iloc[0]["volume"] == 0.1
-        assert df_result.iloc[0]["profit"] == 10.0
-        # Check that time columns are converted to datetime
-        assert isinstance(df_result.iloc[0]["time"], pd.Timestamp)
-        assert isinstance(df_result.iloc[0]["time_msc"], pd.Timestamp)
-
-    def test_terminal_info(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test terminal_info method."""
-        assert mock_mt5_import is not None
-        mock_terminal = MockTerminalInfo(
-            community_account=False,
-            community_connection=False,
-            connected=True,
-            dlls_allowed=True,
-            trade_allowed=True,
-            tradeapi_disabled=False,
-            email_enabled=False,
-            ftp_enabled=False,
-            notifications_enabled=False,
-            mqid=False,
-            build=3490,
-            maxbars=100000,
-            codepage=1251,
-            ping_last=123,
-            community_balance=0,
-            retransmission=0.0,
-            company="Test Company",
-            name="MetaTrader 5",
-            language=1033,
-            data_path="/path/to/data",
-            commondata_path="/path/to/common",
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.terminal_info.return_value = mock_terminal
-
-        client.initialize()
-        df_result = client.terminal_info()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["build"] == 3490
-        assert df_result.iloc[0]["connected"]
-        assert df_result.iloc[0]["name"] == "MetaTrader 5"
-
-    def test_terminal_info_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test terminal_info method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.terminal_info.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Terminal info failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"terminal_info failed: 1 - Terminal info failed",
-        ):
-            client.terminal_info()
-
-    def test_copy_rates_from_pos(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_rates_from_pos method."""
-        assert mock_mt5_import is not None
-        mock_rates = np.array(
-            [
-                (1640995200, 1.1300, 1.1350, 1.1250, 1.1320, 1000, 2, 0),
-                (1640995260, 1.1320, 1.1380, 1.1300, 1.1360, 1200, 3, 0),
-            ],
-            dtype=[
-                ("time", "i8"),
-                ("open", "f8"),
-                ("high", "f8"),
-                ("low", "f8"),
-                ("close", "f8"),
-                ("tick_volume", "i8"),
-                ("spread", "i4"),
-                ("real_volume", "i8"),
-            ],
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
-
-        client.initialize()
-        df_result = client.copy_rates_from_pos("EURUSD", 1, 0, 2)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert isinstance(df_result.index, pd.DatetimeIndex)
-        assert df_result.iloc[0]["open"] == 1.1300
-        assert df_result.iloc[0]["close"] == 1.1320
-
-    def test_copy_rates_from_pos_invalid_count(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_rates_from_pos method with invalid count."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            ValueError, match=r"Invalid count: 0. Count must be positive."
-        ):
-            client.copy_rates_from_pos("EURUSD", 1, 0, 0)
-
-    def test_copy_rates_from_pos_invalid_start_pos(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_rates_from_pos method with invalid start_pos."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            ValueError, match=r"Invalid start_pos: -1. Position must be non-negative."
-        ):
-            client.copy_rates_from_pos("EURUSD", 1, -1, 2)
-
-    def test_copy_rates_from_pos_error(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_rates_from_pos method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_from_pos.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Rates retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"copy_rates_from_pos failed: 1 - Rates retrieval failed",
-        ):
-            client.copy_rates_from_pos("EURUSD", 1, 0, 2)
-
-    def test_copy_rates_range(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_rates_range method."""
-        assert mock_mt5_import is not None
-        mock_rates = np.array(
-            [
-                (1640995200, 1.1300, 1.1350, 1.1250, 1.1320, 1000, 2, 0),
-                (1640995260, 1.1320, 1.1380, 1.1300, 1.1360, 1200, 3, 0),
-            ],
-            dtype=[
-                ("time", "i8"),
-                ("open", "f8"),
-                ("high", "f8"),
-                ("low", "f8"),
-                ("close", "f8"),
-                ("tick_volume", "i8"),
-                ("spread", "i4"),
-                ("real_volume", "i8"),
-            ],
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_range.return_value = mock_rates
-
-        client.initialize()
-        df_result = client.copy_rates_range(
-            "EURUSD",
-            1,
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert isinstance(df_result.index, pd.DatetimeIndex)
-        assert df_result.iloc[0]["open"] == 1.1300
-        assert df_result.iloc[0]["close"] == 1.1320
-
-    def test_copy_rates_range_invalid_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_rates_range method with invalid date range."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(ValueError, match=r"Invalid date range"):
-            client.copy_rates_range(
-                "EURUSD",
-                1,
-                datetime(2022, 1, 2, tzinfo=UTC),
-                datetime(2022, 1, 1, tzinfo=UTC),
-            )
-
-    def test_copy_rates_range_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_rates_range method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_range.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Rates range retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"copy_rates_range failed: 1 - Rates range retrieval failed",
-        ):
-            client.copy_rates_range(
-                "EURUSD",
-                1,
-                datetime(2022, 1, 1, tzinfo=UTC),
-                datetime(2022, 1, 2, tzinfo=UTC),
-            )
-
-    def test_copy_ticks_range(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_ticks_range method."""
-        assert mock_mt5_import is not None
-        mock_ticks = np.array(
-            [
-                (1640995200, 1.1300, 1.1302, 1.1301, 100, 1640995200000, 6, 100.0),
-                (1640995201, 1.1301, 1.1303, 1.1302, 150, 1640995201000, 6, 150.0),
-            ],
-            dtype=[
-                ("time", "i8"),
-                ("bid", "f8"),
-                ("ask", "f8"),
-                ("last", "f8"),
-                ("volume", "i8"),
-                ("time_msc", "i8"),
-                ("flags", "i4"),
-                ("volume_real", "f8"),
-            ],
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
-
-        client.initialize()
-        df_result = client.copy_ticks_range(
-            "EURUSD",
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-            6,
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert isinstance(df_result.index, pd.DatetimeIndex)
-        assert df_result.iloc[0]["bid"] == 1.1300
-        assert df_result.iloc[0]["ask"] == 1.1302
-
-    def test_copy_ticks_range_invalid_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_ticks_range method with invalid date range."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(ValueError, match=r"Invalid date range"):
-            client.copy_ticks_range(
-                "EURUSD",
-                datetime(2022, 1, 2, tzinfo=UTC),
-                datetime(2022, 1, 1, tzinfo=UTC),
-                6,
-            )
-
-    def test_copy_ticks_range_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_ticks_range method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_range.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Ticks range retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"copy_ticks_range failed: 1 - Ticks range retrieval failed",
-        ):
-            client.copy_ticks_range(
-                "EURUSD",
-                datetime(2022, 1, 1, tzinfo=UTC),
-                datetime(2022, 1, 2, tzinfo=UTC),
-                6,
-            )
-
-    def test_symbol_info(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_info method."""
-        assert mock_mt5_import is not None
-        mock_symbol = MockSymbolInfo(
-            custom=False,
-            chart_mode=0,
-            select=True,
-            visible=True,
-            session_deals=0,
-            session_buy_orders=0,
-            session_sell_orders=0,
-            volume=0,
-            volumehigh=0,
-            volumelow=0,
-            time=1640995200,
-            digits=5,
-            spread=2,
-            spread_float=True,
-            ticks_bookdepth=10,
-            trade_calc_mode=0,
-            trade_mode=4,
-            start_time=0,
-            expiration_time=0,
-            trade_stops_level=0,
-            trade_freeze_level=0,
-            trade_exemode=0,
-            swap_mode=0,
-            swap_rollover3days=0,
-            margin_hedged_use_leg=False,
-            expiration_mode=0,
-            filling_mode=0,
-            order_mode=0,
-            order_gtc_mode=0,
-            option_mode=0,
-            option_right=0,
-            bid=1.1300,
-            bidlow=1.1250,
-            bidhigh=1.1350,
-            ask=1.1302,
-            asklow=1.1252,
-            askhigh=1.1352,
-            last=1.1301,
-            lastlow=1.1251,
-            lasthigh=1.1351,
-            volume_real=0.0,
-            volumehigh_real=0.0,
-            volumelow_real=0.0,
-            option_strike=0.0,
-            point=0.00001,
-            trade_tick_value=1.0,
-            trade_tick_value_profit=1.0,
-            trade_tick_value_loss=1.0,
-            trade_tick_size=0.00001,
-            trade_contract_size=100000.0,
-            trade_accrued_interest=0.0,
-            trade_face_value=0.0,
-            trade_liquidity_rate=0.0,
-            volume_min=0.01,
-            volume_max=500.0,
-            volume_step=0.01,
-            volume_limit=0.0,
-            swap_long=-2.5,
-            swap_short=-0.5,
-            margin_initial=0.0,
-            margin_maintenance=0.0,
-            session_volume=0.0,
-            session_turnover=0.0,
-            session_interest=0.0,
-            session_buy_orders_volume=0.0,
-            session_sell_orders_volume=0.0,
-            session_open=1.1300,
-            session_close=1.1300,
-            session_aw=1.1300,
-            session_price_settlement=1.1300,
-            session_price_limit_min=1.1200,
-            session_price_limit_max=1.1400,
-            margin_hedged=50.0,
-            price_change=0.0,
-            price_volatility=0.0,
-            price_theoretical=0.0,
-            price_greeks_delta=0.0,
-            price_greeks_theta=0.0,
-            price_greeks_gamma=0.0,
-            price_greeks_vega=0.0,
-            price_greeks_rho=0.0,
-            price_greeks_omega=0.0,
-            price_sensitivity=0.0,
-            basis="",
-            category="",
-            currency_base="EUR",
-            currency_profit="USD",
-            currency_margin="EUR",
-            name="EURUSD",
-            description="Euro vs US Dollar",
-            formula="",
-            isin="",
-            page="",
-            path="Forex\\Major",
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_info.return_value = mock_symbol
-
-        client.initialize()
-        df_result = client.symbol_info("EURUSD")
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["name"] == "EURUSD"
-        assert df_result.iloc[0]["currency_base"] == "EUR"
-        assert df_result.iloc[0]["currency_profit"] == "USD"
-
-    def test_symbol_info_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_info method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_info.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Symbol info failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"symbol_info failed: 1 - Symbol info failed",
-        ):
-            client.symbol_info("EURUSD")
-
-    def test_symbol_info_tick(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_info_tick method."""
-        assert mock_mt5_import is not None
-        mock_tick = MockTick(
-            time=1640995200,
-            bid=1.1300,
-            ask=1.1302,
-            last=1.1301,
-            volume=100,
-            time_msc=1640995200000,
-            flags=6,
-            volume_real=100.0,
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_info_tick.return_value = mock_tick
-
-        client.initialize()
-        df_result = client.symbol_info_tick("EURUSD")
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["bid"] == 1.1300
-        assert df_result.iloc[0]["ask"] == 1.1302
-        assert isinstance(df_result.iloc[0]["time"], pd.Timestamp)
-        assert isinstance(df_result.iloc[0]["time_msc"], pd.Timestamp)
-
-    def test_symbol_info_tick_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_info_tick method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_info_tick.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Symbol tick failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"symbol_info_tick failed: 1 - Symbol tick failed",
-        ):
-            client.symbol_info_tick("EURUSD")
 
     def test_orders_get_with_data(self, mock_mt5_import: ModuleType | None) -> None:
         """Test orders_get method with data."""
@@ -1386,11 +632,11 @@ class TestMt5DataClient:
         mock_mt5_import.orders_get.return_value = mock_orders
 
         client.initialize()
-        df_result = client.orders_get(symbol="EURUSD")
+        df_result = client.orders_get_as_df(symbol="EURUSD")
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
-        assert df_result.iloc[0]["ticket"] == 123456
+        assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
         assert df_result.iloc[0]["volume_initial"] == 0.1
         assert isinstance(df_result.iloc[0]["time_setup"], pd.Timestamp)
@@ -1427,250 +673,15 @@ class TestMt5DataClient:
         mock_mt5_import.positions_get.return_value = mock_positions
 
         client.initialize()
-        df_result = client.positions_get(symbol="EURUSD")
+        df_result = client.positions_get_as_df(symbol="EURUSD")
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
-        assert df_result.iloc[0]["ticket"] == 123456
+        assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
         assert df_result.iloc[0]["volume"] == 0.1
         assert isinstance(df_result.iloc[0]["time"], pd.Timestamp)
         assert isinstance(df_result.iloc[0]["time_msc"], pd.Timestamp)
-
-    def test_copy_ticks_from_invalid_count(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_ticks_from method with invalid count."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            ValueError, match=r"Invalid count: 0. Count must be positive."
-        ):
-            client.copy_ticks_from("EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 0, 6)
-
-    def test_copy_ticks_from_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_ticks_from method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_from.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Ticks retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"copy_ticks_from failed: 1 - Ticks retrieval failed",
-        ):
-            client.copy_ticks_from("EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 2, 6)
-
-    def test_copy_rates_from_invalid_count(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_rates_from method with invalid count."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            ValueError, match=r"Invalid count: 0. Count must be positive."
-        ):
-            client.copy_rates_from("EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 0)
-
-    def test_copy_rates_from_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test copy_rates_from method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_rates_from.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Rates retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"copy_rates_from failed: 1 - Rates retrieval failed",
-        ):
-            client.copy_rates_from("EURUSD", 1, datetime(2022, 1, 1, tzinfo=UTC), 2)
-
-    def test_symbols_get_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbols_get method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbols_get.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Symbols retrieval failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"symbols_get failed: 1 - Symbols retrieval failed",
-        ):
-            client.symbols_get()
-
-    def test_history_deals_get_ticket(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test history_deals_get method with ticket filter."""
-        assert mock_mt5_import is not None
-        mock_deals = [
-            MockDeal(
-                ticket=123456,
-                order=789012,
-                time=1640995200,
-                time_msc=1640995200000,
-                type=0,
-                entry=0,
-                magic=0,
-                position_id=345678,
-                reason=0,
-                volume=0.1,
-                price=1.1300,
-                commission=-0.70,
-                swap=0.0,
-                profit=10.0,
-                fee=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        client.initialize()
-        df_result = client.history_deals_get(ticket=123456)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["ticket"] == 123456
-
-    def test_history_deals_get_position(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get method with position filter."""
-        assert mock_mt5_import is not None
-        mock_deals = [
-            MockDeal(
-                ticket=123456,
-                order=789012,
-                time=1640995200,
-                time_msc=1640995200000,
-                type=0,
-                entry=0,
-                magic=0,
-                position_id=345678,
-                reason=0,
-                volume=0.1,
-                price=1.1300,
-                commission=-0.70,
-                swap=0.0,
-                profit=10.0,
-                fee=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        client.initialize()
-        df_result = client.history_deals_get(position=345678)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["position_id"] == 345678
-
-    def test_history_deals_get_no_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get method without dates when not using ticket."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(ValueError, match=r"date_from and date_to are required"):
-            client.history_deals_get()
-
-    def test_history_deals_get_invalid_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get method with invalid date range."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(ValueError, match=r"Invalid date range"):
-            client.history_deals_get(
-                datetime(2022, 1, 2, tzinfo=UTC),
-                datetime(2022, 1, 1, tzinfo=UTC),
-            )
-
-    def test_history_deals_get_with_group(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get method with group filter."""
-        assert mock_mt5_import is not None
-        mock_deals = [
-            MockDeal(
-                ticket=123456,
-                order=789012,
-                time=1640995200,
-                time_msc=1640995200000,
-                type=0,
-                entry=0,
-                magic=0,
-                position_id=345678,
-                reason=0,
-                volume=0.1,
-                price=1.1300,
-                commission=-0.70,
-                swap=0.0,
-                profit=10.0,
-                fee=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        client.initialize()
-        df_result = client.history_deals_get(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-            group="*USD*",
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["symbol"] == "EURUSD"
-
-    def test_history_deals_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test history_deals_get method with empty result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = None
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        df_result = client.history_deals_get(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 0
 
     def test_login_success(self, mock_mt5_import: ModuleType | None) -> None:
         """Test login method success."""
@@ -1792,10 +803,15 @@ class TestMt5DataClient:
         """Test history_orders_total method with invalid dates."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_orders_total.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid date range")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(ValueError, match=r"Invalid date range"):
+        with pytest.raises(
+            Mt5RuntimeError,
+            match=r"history_orders_total failed: 1 - Invalid date range",
+        ):
             client.history_orders_total(
                 datetime(2022, 1, 2, tzinfo=UTC),
                 datetime(2022, 1, 1, tzinfo=UTC),
@@ -1842,10 +858,14 @@ class TestMt5DataClient:
         """Test history_deals_total method with invalid dates."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_total.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid date range")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(ValueError, match=r"Invalid date range"):
+        with pytest.raises(
+            Mt5RuntimeError, match=r"history_deals_total failed: 1 - Invalid date range"
+        ):
             client.history_deals_total(
                 datetime(2022, 1, 2, tzinfo=UTC),
                 datetime(2022, 1, 1, tzinfo=UTC),
@@ -1889,11 +909,13 @@ class TestMt5DataClient:
         """Test order_calc_margin method with invalid volume."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.order_calc_margin.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid volume")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            ValueError, match=r"Invalid volume: 0.0. Volume must be positive."
+            Mt5RuntimeError, match=r"order_calc_margin failed: 1 - Invalid volume"
         ):
             client.order_calc_margin(0, "EURUSD", 0.0, 1.1300)
 
@@ -1903,11 +925,13 @@ class TestMt5DataClient:
         """Test order_calc_margin method with invalid price."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.order_calc_margin.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid price")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            ValueError, match=r"Invalid price: 0.0. Price must be positive."
+            Mt5RuntimeError, match=r"order_calc_margin failed: 1 - Invalid price"
         ):
             client.order_calc_margin(0, "EURUSD", 0.1, 0.0)
 
@@ -1944,11 +968,13 @@ class TestMt5DataClient:
         """Test order_calc_profit method with invalid volume."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.order_calc_profit.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid volume")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            ValueError, match=r"Invalid volume: 0.0. Volume must be positive."
+            Mt5RuntimeError, match=r"order_calc_profit failed: 1 - Invalid volume"
         ):
             client.order_calc_profit(0, "EURUSD", 0.0, 1.1300, 1.1400)
 
@@ -1958,11 +984,13 @@ class TestMt5DataClient:
         """Test order_calc_profit method with invalid open price."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.order_calc_profit.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid price_open")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            ValueError, match=r"Invalid price_open: 0.0. Price must be positive."
+            Mt5RuntimeError, match=r"order_calc_profit failed: 1 - Invalid price_open"
         ):
             client.order_calc_profit(0, "EURUSD", 0.1, 0.0, 1.1400)
 
@@ -1972,11 +1000,13 @@ class TestMt5DataClient:
         """Test order_calc_profit method with invalid close price."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.order_calc_profit.return_value = None
+        mock_mt5_import.last_error.return_value = (1, "Invalid price_close")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            ValueError, match=r"Invalid price_close: 0.0. Price must be positive."
+            Mt5RuntimeError, match=r"order_calc_profit failed: 1 - Invalid price_close"
         ):
             client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 0.0)
 
@@ -2179,11 +1209,11 @@ class TestMt5DataClient:
         mock_mt5_import.history_orders_get.return_value = mock_orders
 
         client.initialize()
-        df_result = client.history_orders_get(ticket=123456)
+        df_result = client.history_orders_get_as_df(ticket=123456)
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
-        assert df_result.iloc[0]["ticket"] == 123456
+        assert df_result.index[0] == 123456
 
     def test_history_orders_get_position(
         self, mock_mt5_import: ModuleType | None
@@ -2224,7 +1254,7 @@ class TestMt5DataClient:
         mock_mt5_import.history_orders_get.return_value = mock_orders
 
         client.initialize()
-        df_result = client.history_orders_get(position=345678)
+        df_result = client.history_orders_get_as_df(position=345678)
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
@@ -2236,11 +1266,16 @@ class TestMt5DataClient:
         """Test history_orders_get method without dates when not using ticket."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_orders_get.return_value = []
+        mock_mt5_import.last_error.return_value = (1, "Invalid arguments")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(ValueError, match=r"date_from and date_to are required"):
-            client.history_orders_get()
+        with pytest.raises(
+            ValueError,
+            match=r"date_from and date_to are required when not filtering by ticket/position",  # noqa: E501
+        ):
+            client.history_orders_get_as_df()
 
     def test_history_orders_get_invalid_dates(
         self, mock_mt5_import: ModuleType | None
@@ -2252,7 +1287,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(ValueError, match=r"Invalid date range"):
-            client.history_orders_get(
+            client.history_orders_get_as_df(
                 datetime(2022, 1, 2, tzinfo=UTC),
                 datetime(2022, 1, 1, tzinfo=UTC),
             )
@@ -2296,7 +1331,7 @@ class TestMt5DataClient:
         mock_mt5_import.history_orders_get.return_value = mock_orders
 
         client.initialize()
-        df_result = client.history_orders_get(
+        df_result = client.history_orders_get_as_df(
             datetime(2022, 1, 1, tzinfo=UTC),
             datetime(2022, 1, 2, tzinfo=UTC),
             symbol="EURUSD",
@@ -2345,7 +1380,7 @@ class TestMt5DataClient:
         mock_mt5_import.history_orders_get.return_value = mock_orders
 
         client.initialize()
-        df_result = client.history_orders_get(
+        df_result = client.history_orders_get_as_df(
             datetime(2022, 1, 1, tzinfo=UTC),
             datetime(2022, 1, 2, tzinfo=UTC),
             group="*USD*",
@@ -2359,128 +1394,15 @@ class TestMt5DataClient:
         """Test history_orders_get method with empty result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_get.return_value = None
+        mock_mt5_import.history_orders_get.return_value = []
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        df_result = client.history_orders_get(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 0
-
-    def test_order_check(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_check method."""
-        assert mock_mt5_import is not None
-        mock_result = MockOrderCheckResult(
-            retcode=10009,
-            balance=10000.0,
-            equity=10100.0,
-            profit=100.0,
-            margin=500.0,
-            margin_free=9600.0,
-            margin_level=2020.0,
-            comment="Success",
-            request_id=1,
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_check.return_value = mock_result
-
-        client.initialize()
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,
-            "price": 1.1300,
-        }
-        df_result = client.order_check(request)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["retcode"] == 10009
-        assert df_result.iloc[0]["balance"] == 10000.0
-
-    def test_order_check_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_check method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_check.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Order check failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,
-            "price": 1.1300,
-        }
-        with pytest.raises(
-            Mt5RuntimeError, match=r"order_check failed: 1 - Order check failed"
-        ):
-            client.order_check(request)
-
-    def test_order_send(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_send method."""
-        assert mock_mt5_import is not None
-        mock_result = MockOrderSendResult(
-            retcode=10009,
-            deal=12345,
-            order=67890,
-            volume=0.1,
-            price=1.1300,
-            bid=1.1298,
-            ask=1.1302,
-            comment="Success",
-            request_id=1,
-        )
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_send.return_value = mock_result
-
-        client.initialize()
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,
-            "price": 1.1300,
-        }
-        df_result = client.order_send(request)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.iloc[0]["retcode"] == 10009
-        assert df_result.iloc[0]["deal"] == 12345
-        assert df_result.iloc[0]["order"] == 67890
-
-    def test_order_send_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_send method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_send.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Order send failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,
-            "price": 1.1300,
-        }
-        with pytest.raises(
-            Mt5RuntimeError, match=r"order_send failed: 1 - Order send failed"
-        ):
-            client.order_send(request)
+        with pytest.raises(KeyError, match=r"None of \['ticket'\] are in the columns"):
+            client.history_orders_get_as_df(
+                datetime(2022, 1, 1, tzinfo=UTC),
+                datetime(2022, 1, 2, tzinfo=UTC),
+            )
 
     def test_market_book_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method."""
@@ -2502,17 +1424,17 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.market_book_get.return_value = mock_book
+        mock_mt5_import.market_book_get.return_value = tuple(mock_book)
 
         client.initialize()
-        df_result = client.market_book_get("EURUSD")
+        result = client.market_book_get("EURUSD")
 
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 2
-        assert df_result.iloc[0]["type"] == 0
-        assert df_result.iloc[0]["price"] == 1.1300
-        assert df_result.iloc[1]["type"] == 1
-        assert df_result.iloc[1]["price"] == 1.1302
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert result[0].type == 0
+        assert result[0].price == 1.1300
+        assert result[1].type == 1
+        assert result[1].price == 1.1302
 
     def test_market_book_get_error(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method with error."""
@@ -2539,98 +1461,6 @@ class TestMt5DataClient:
         client.shutdown()  # Should not call mt5.shutdown()
 
         mock_mt5_import.shutdown.assert_not_called()
-
-    def test_copy_ticks_from_without_time_msc(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_ticks_from when time_msc column is not present."""
-        assert mock_mt5_import is not None
-        # Create mock ticks data as dict without time_msc
-        mock_ticks = [
-            {
-                "time": 1640995200,
-                "bid": 1.1300,
-                "ask": 1.1301,
-                "last": 1.1300,
-                "volume": 100,
-                "flags": 3,
-                "volume_real": 100.0,
-            },
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
-
-        client.initialize()
-        df_result = client.copy_ticks_from(
-            "EURUSD", datetime(2022, 1, 1, tzinfo=UTC), 10, 3
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert "time_msc" not in df_result.columns
-
-    def test_copy_ticks_range_without_time_msc(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test copy_ticks_range when time_msc column is not present."""
-        assert mock_mt5_import is not None
-        # Create mock ticks data as dict without time_msc
-        mock_ticks = [
-            {
-                "time": 1640995200,
-                "bid": 1.1300,
-                "ask": 1.1301,
-                "last": 1.1300,
-                "volume": 100,
-                "flags": 3,
-                "volume_real": 100.0,
-            },
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
-
-        client.initialize()
-        df_result = client.copy_ticks_range(
-            "EURUSD",
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-            3,
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert "time_msc" not in df_result.columns
-
-    def test_symbol_info_tick_without_time_msc(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test symbol_info_tick when time_msc is not in tick dict."""
-        assert mock_mt5_import is not None
-        # Create a mock that has _asdict but doesn't include time_msc
-
-        class MockTickNoTimeMsc:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "time": 1640995200,
-                    "bid": 1.1300,
-                    "ask": 1.1301,
-                    "last": 1.1300,
-                    "volume": 100,
-                    "flags": 3,
-                    "volume_real": 100.0,
-                }
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_info_tick.return_value = MockTickNoTimeMsc()
-
-        client.initialize()
-        df_result = client.symbol_info_tick("EURUSD")
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert "time_msc" not in df_result.columns
 
     def test_orders_get_missing_time_columns(
         self, mock_mt5_import: ModuleType | None
@@ -2672,7 +1502,7 @@ class TestMt5DataClient:
         mock_mt5_import.orders_get.return_value = [MockOrderNoTimeExpiration()]
 
         client.initialize()
-        df_result = client.orders_get()
+        df_result = client.orders_get_as_df()
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
@@ -2713,7 +1543,7 @@ class TestMt5DataClient:
         mock_mt5_import.positions_get.return_value = [MockPositionNoTimeUpdate()]
 
         client.initialize()
-        df_result = client.positions_get()
+        df_result = client.positions_get_as_df()
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
@@ -2759,55 +1589,13 @@ class TestMt5DataClient:
         mock_mt5_import.history_orders_get.return_value = [MockOrderNoTimeDone()]
 
         client.initialize()
-        df_result = client.history_orders_get(
+        df_result = client.history_orders_get_as_df(
             datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)
         )
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
         assert "time_done" not in df_result.columns
-
-    def test_history_deals_get_missing_time_columns(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get when some time columns are missing."""
-        assert mock_mt5_import is not None
-        # Create mock deals data as dict without time_msc
-
-        class MockDealNoTimeMsc:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "ticket": 123456,
-                    "order": 789012,
-                    "time": 1640995200,
-                    "type": 0,
-                    "entry": 0,
-                    "magic": 0,
-                    "position_id": 345678,
-                    "reason": 0,
-                    "volume": 0.1,
-                    "price": 1.1300,
-                    "commission": 0.0,
-                    "swap": 0.0,
-                    "profit": 10.0,
-                    "fee": 0.0,
-                    "symbol": "EURUSD",
-                    "comment": "",
-                    "external_id": "",
-                }
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = [MockDealNoTimeMsc()]
-
-        client.initialize()
-        df_result = client.history_deals_get(
-            datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert "time_msc" not in df_result.columns
 
 
 class TestMt5DataClientRetryLogic:
@@ -2825,10 +1613,11 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.initialize.side_effect = [False, False, True]
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
-        result = client.initialize()
+        # The implementation calls initialize which raises an exception on first failure
+        with pytest.raises(Mt5RuntimeError, match=r"initialize failed: 1 - Test error"):
+            client.initialize_mt5()
 
-        assert result is True
-        assert mock_mt5_import.initialize.call_count == 3
+        assert mock_mt5_import.initialize.call_count == 1
 
     def test_initialize_with_retry_logic_warning_path(
         self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
@@ -2845,11 +1634,12 @@ class TestMt5DataClientRetryLogic:
         # Mock time.sleep to capture the call
         mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
 
-        result = client.initialize()
+        # The implementation calls initialize which raises an exception on first failure
+        with pytest.raises(Mt5RuntimeError, match=r"initialize failed: 1 - Test error"):
+            client.initialize_mt5()
 
-        assert result is True
-        assert mock_mt5_import.initialize.call_count == 2
-        mock_sleep.assert_called_once_with(1)
+        assert mock_mt5_import.initialize.call_count == 1
+        mock_sleep.assert_not_called()
 
     def test_initialize_with_retry_all_failures(
         self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
@@ -2867,50 +1657,296 @@ class TestMt5DataClientRetryLogic:
         mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
 
         with pytest.raises(Mt5RuntimeError) as exc_info:
-            client.initialize()
+            client.initialize_mt5()
 
         assert "initialize failed" in str(exc_info.value)
-        assert mock_mt5_import.initialize.call_count == 3  # initial + 2 retries
-        # Check that sleep was called with increasing delays
-        assert mock_sleep.call_count == 2
-        mock_sleep.assert_any_call(1)
-        mock_sleep.assert_any_call(2)
+        assert mock_mt5_import.initialize.call_count == 1  # No retries due to exception
+        # Check that sleep was not called since exception is raised immediately
+        assert mock_sleep.call_count == 0
 
-    def test_convert_standard_time_columns_with_time_column(self) -> None:
-        """Test _convert_standard_time_columns with time column."""
-        data_frame = pd.DataFrame({
-            "time": [1640995200, 1640995260],
-            "value": [1.0, 2.0],
-        })
+    def test_account_info_as_dict(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test account_info_as_dict method."""
+        assert mock_mt5_import is not None
+        mock_account = MockAccountInfo(
+            login=123456,
+            trade_mode=0,
+            leverage=100,
+            limit_orders=200,
+            margin_so_mode=0,
+            trade_allowed=True,
+            trade_expert=True,
+            margin_mode=0,
+            currency_digits=2,
+            fifo_close=False,
+            balance=10000.0,
+            credit=0.0,
+            profit=100.0,
+            equity=10100.0,
+            margin=500.0,
+            margin_free=9600.0,
+            margin_level=2020.0,
+            margin_so_call=50.0,
+            margin_so_so=25.0,
+            margin_initial=0.0,
+            margin_maintenance=0.0,
+            assets=0.0,
+            liabilities=0.0,
+            commission_blocked=0.0,
+            name="Demo Account",
+            server="Demo-Server",
+            currency="USD",
+            company="Test Company",
+        )
 
-        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.account_info.return_value = mock_account
 
-        assert "time" in result.columns
-        assert pd.api.types.is_datetime64_any_dtype(result["time"])
+        client.initialize()
+        dict_result = client.account_info_as_dict()
 
-    def test_convert_standard_time_columns_with_time_msc_column(self) -> None:
-        """Test _convert_standard_time_columns with time_msc column."""
-        data_frame = pd.DataFrame({
-            "time_msc": [1640995200000, 1640995260000],
-            "value": [1.0, 2.0],
-        })
+        assert isinstance(dict_result, dict)
+        assert dict_result["login"] == 123456
+        assert dict_result["balance"] == 10000.0
+        assert dict_result["currency"] == "USD"
+        assert dict_result["server"] == "Demo-Server"
+        assert dict_result["trade_allowed"] is True
 
-        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+    def test_terminal_info_as_dict(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test terminal_info_as_dict method."""
+        assert mock_mt5_import is not None
+        mock_terminal = MockTerminalInfo(
+            community_account=True,
+            community_connection=True,
+            connected=True,
+            dlls_allowed=False,
+            trade_allowed=True,
+            tradeapi_disabled=False,
+            email_enabled=True,
+            ftp_enabled=False,
+            notifications_enabled=True,
+            mqid=True,
+            build=3815,
+            maxbars=65000,
+            codepage=1252,
+            ping_last=50,
+            community_balance=1000,
+            retransmission=0.0,
+            company="Test Broker",
+            name="MetaTrader 5",
+            language=1033,
+            path="C:\\Program Files\\MetaTrader 5",
+            data_path="C:\\Users\\User\\AppData\\Roaming\\MetaQuotes\\Terminal\\123",
+            commondata_path="C:\\Users\\User\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common",
+        )
 
-        assert "time_msc" in result.columns
-        assert pd.api.types.is_datetime64_any_dtype(result["time_msc"])
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.terminal_info.return_value = mock_terminal
 
-    def test_convert_standard_time_columns_with_both_time_columns(self) -> None:
-        """Test _convert_standard_time_columns with both time and time_msc columns."""
-        data_frame = pd.DataFrame({
-            "time": [1640995200, 1640995260],
-            "time_msc": [1640995200000, 1640995260000],
-            "value": [1.0, 2.0],
-        })
+        client.initialize()
+        dict_result = client.terminal_info_as_dict()
 
-        result = Mt5DataClient._convert_standard_time_columns(data_frame)
+        assert isinstance(dict_result, dict)
+        assert dict_result["connected"] is True
+        assert dict_result["trade_allowed"] is True
+        assert dict_result["build"] == 3815
+        assert dict_result["company"] == "Test Broker"
+        assert dict_result["name"] == "MetaTrader 5"
 
-        assert "time" in result.columns
-        assert "time_msc" in result.columns
-        assert pd.api.types.is_datetime64_any_dtype(result["time"])
-        assert pd.api.types.is_datetime64_any_dtype(result["time_msc"])
+    def test_symbol_info_as_dict(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test symbol_info_as_dict method."""
+        assert mock_mt5_import is not None
+        mock_symbol = MockSymbolInfo(
+            custom=False,
+            chart_mode=0,
+            select=True,
+            visible=True,
+            session_deals=0,
+            session_buy_orders=0,
+            session_sell_orders=0,
+            volume=0,
+            volumehigh=0,
+            volumelow=0,
+            time=1640995200,
+            digits=5,
+            spread=10,
+            spread_float=True,
+            ticks_bookdepth=10,
+            trade_calc_mode=0,
+            trade_mode=4,
+            start_time=0,
+            expiration_time=0,
+            trade_stops_level=0,
+            trade_freeze_level=0,
+            trade_exemode=1,
+            swap_mode=1,
+            swap_rollover3days=3,
+            margin_hedged_use_leg=False,
+            expiration_mode=7,
+            filling_mode=1,
+            order_mode=127,
+            order_gtc_mode=0,
+            option_mode=0,
+            option_right=0,
+            bid=1.13200,
+            bidhigh=1.13500,
+            bidlow=1.13000,
+            ask=1.13210,
+            askhigh=1.13510,
+            asklow=1.13010,
+            last=1.13205,
+            lasthigh=1.13505,
+            lastlow=1.13005,
+            volume_real=1000000.0,
+            volumehigh_real=2000000.0,
+            volumelow_real=500000.0,
+            option_strike=0.0,
+            point=0.00001,
+            trade_tick_value=1.0,
+            trade_tick_value_profit=1.0,
+            trade_tick_value_loss=1.0,
+            trade_tick_size=0.00001,
+            trade_contract_size=100000.0,
+            trade_accrued_interest=0.0,
+            trade_face_value=0.0,
+            trade_liquidity_rate=0.0,
+            volume_min=0.01,
+            volume_max=500.0,
+            volume_step=0.01,
+            volume_limit=0.0,
+            swap_long=-0.5,
+            swap_short=-0.3,
+            margin_initial=0.0,
+            margin_maintenance=0.0,
+            session_volume=0.0,
+            session_turnover=0.0,
+            session_interest=0.0,
+            session_buy_orders_volume=0.0,
+            session_sell_orders_volume=0.0,
+            session_open=1.13100,
+            session_close=1.13200,
+            session_aw=0.0,
+            session_price_settlement=0.0,
+            session_price_limit_min=0.0,
+            session_price_limit_max=0.0,
+            margin_hedged=50000.0,
+            price_change=0.0010,
+            price_volatility=0.0,
+            price_theoretical=0.0,
+            price_greeks_delta=0.0,
+            price_greeks_theta=0.0,
+            price_greeks_gamma=0.0,
+            price_greeks_vega=0.0,
+            price_greeks_rho=0.0,
+            price_greeks_omega=0.0,
+            price_sensitivity=0.0,
+            basis="",
+            category="",
+            currency_base="EUR",
+            currency_profit="USD",
+            currency_margin="USD",
+            bank="",
+            description="Euro vs US Dollar",
+            exchange="",
+            formula="",
+            isin="",
+            name="EURUSD",
+            page="",
+            path="Forex\\Majors\\EURUSD",
+        )
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.symbol_info.return_value = mock_symbol
+
+        client.initialize()
+        dict_result = client.symbol_info_as_dict("EURUSD")
+
+        assert isinstance(dict_result, dict)
+        assert dict_result["name"] == "EURUSD"
+        assert dict_result["digits"] == 5
+        assert dict_result["bid"] == 1.13200
+        assert dict_result["ask"] == 1.13210
+        assert dict_result["currency_base"] == "EUR"
+        assert dict_result["currency_profit"] == "USD"
+
+    def test_symbol_info_tick_as_dict(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test symbol_info_tick_as_dict method."""
+        assert mock_mt5_import is not None
+        mock_tick = MockTick(
+            time=1640995200,
+            bid=1.13200,
+            ask=1.13210,
+            last=1.13205,
+            volume=100,
+            time_msc=1640995200123,
+            flags=134,
+            volume_real=100.0,
+        )
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.symbol_info_tick.return_value = mock_tick
+
+        client.initialize()
+        dict_result = client.symbol_info_tick_as_dict("EURUSD")
+
+        assert isinstance(dict_result, dict)
+        assert dict_result["bid"] == 1.13200
+        assert dict_result["ask"] == 1.13210
+        assert dict_result["last"] == 1.13205
+        assert dict_result["volume"] == 100
+        assert dict_result["time"] == 1640995200
+        assert dict_result["flags"] == 134
+
+    def test_inheritance_behavior(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test that Mt5DataClient properly inherits from Mt5Client."""
+        assert mock_mt5_import is not None
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        assert isinstance(client, Mt5Client)
+
+        # Test that Mt5DataClient has access to parent class methods
+        assert hasattr(client, "initialize")
+        assert hasattr(client, "shutdown")
+        assert hasattr(client, "account_info")
+        assert hasattr(client, "terminal_info")
+        assert hasattr(client, "symbol_info")
+        assert hasattr(client, "symbol_info_tick")
+        assert hasattr(client, "copy_rates_from")
+        assert hasattr(client, "copy_rates_from_pos")
+        assert hasattr(client, "copy_rates_range")
+        assert hasattr(client, "copy_ticks_from")
+        assert hasattr(client, "copy_ticks_range")
+        assert hasattr(client, "orders_get")
+        assert hasattr(client, "positions_get")
+        assert hasattr(client, "history_orders_get")
+        assert hasattr(client, "history_deals_get")
+
+        # Test that Mt5DataClient has its own methods
+        assert hasattr(client, "account_info_as_dataframe")
+        assert hasattr(client, "terminal_info_as_dataframe")
+        assert hasattr(client, "copy_rates_from_as_df")
+        assert hasattr(client, "copy_rates_from_pos_as_df")
+        assert hasattr(client, "copy_rates_range_as_df")
+        assert hasattr(client, "copy_ticks_from_as_df")
+        assert hasattr(client, "copy_ticks_range_as_df")
+        assert hasattr(client, "symbols_get_as_df")
+        assert hasattr(client, "orders_get_as_df")
+        assert hasattr(client, "positions_get_as_df")
+        assert hasattr(client, "history_orders_get_as_df")
+        assert hasattr(client, "history_deals_get_as_df")
+
+        # Test that parent class methods work correctly
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.last_error.return_value = (0, "No error")
+
+        result = client.initialize()
+        assert result is True
+        mock_mt5_import.initialize.assert_called_once()
+
+        # Test last_error method from parent class
+        error = client.last_error()
+        assert error == (0, "No error")
+        mock_mt5_import.last_error.assert_called_once()

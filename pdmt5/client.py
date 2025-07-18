@@ -152,11 +152,14 @@ class Mt5Client(BaseModel):
             kwargs["timeout"] = timeout
         result = self.mt5.login(**kwargs)
         if not result:
-            self._handle_error("login", f"account={login}, server={server}")
+            self._handle_error(
+                "login",
+                f"login={login}, server={server}, timeout={timeout}",
+            )
         return result
 
     def shutdown(self) -> None:
-        """Close the previously established connection."""
+        """Close the previously established connection to the MetaTrader 5 terminal."""
         if self._is_initialized:
             self.mt5.shutdown()
             self._is_initialized = False
@@ -166,7 +169,7 @@ class Mt5Client(BaseModel):
         """Return the MetaTrader 5 terminal version.
 
         Returns:
-            Tuple of (version, build, release_date).
+            Tuple of (terminal_version, build, release_date).
         """
         self._ensure_initialized()
         result = self.mt5.version()
@@ -182,8 +185,32 @@ class Mt5Client(BaseModel):
         """
         return self.mt5.last_error()
 
+    def account_info(self) -> Any:
+        """Get info on the current trading account.
+
+        Returns:
+            AccountInfo structure or None.
+        """
+        self._ensure_initialized()
+        result = self.mt5.account_info()
+        if result is None:
+            self._handle_error("account_info")
+        return result
+
+    def terminal_info(self) -> Any:
+        """Get the connected MetaTrader 5 client terminal status and settings.
+
+        Returns:
+            TerminalInfo structure or None.
+        """
+        self._ensure_initialized()
+        result = self.mt5.terminal_info()
+        if result is None:
+            self._handle_error("terminal_info")
+        return result
+
     def symbols_total(self) -> int:
-        """Get the number of all financial instruments.
+        """Get the number of all financial instruments in the terminal.
 
         Returns:
             Total number of symbols.
@@ -195,7 +222,7 @@ class Mt5Client(BaseModel):
         return result
 
     def symbols_get(self, group: str = "") -> tuple[Any, ...] | None:
-        """Get all financial instruments.
+        """Get all financial instruments from the terminal.
 
         Args:
             group: Symbol group filter.
@@ -209,8 +236,8 @@ class Mt5Client(BaseModel):
             self._handle_error("symbols_get", f"group={group}")
         return result
 
-    def symbol_info(self, symbol: str) -> Any | None:
-        """Get data on a specified financial instrument.
+    def symbol_info(self, symbol: str) -> Any:
+        """Get data on the specified financial instrument.
 
         Args:
             symbol: Symbol name.
@@ -224,8 +251,8 @@ class Mt5Client(BaseModel):
             self._handle_error("symbol_info", f"symbol={symbol}")
         return result
 
-    def symbol_info_tick(self, symbol: str) -> Any | None:
-        """Get the last tick for a financial instrument.
+    def symbol_info_tick(self, symbol: str) -> Any:
+        """Get the last tick for the specified financial instrument.
 
         Args:
             symbol: Symbol name.
@@ -240,7 +267,7 @@ class Mt5Client(BaseModel):
         return result
 
     def symbol_select(self, symbol: str, enable: bool = True) -> bool:
-        """Select a symbol in the Market Watch window or remove it.
+        """Select a symbol in the MarketWatch window or remove a symbol from the window.
 
         Args:
             symbol: Symbol name.
@@ -256,14 +283,14 @@ class Mt5Client(BaseModel):
         return result
 
     def market_book_add(self, symbol: str) -> bool:
-        """Subscribe to the Market Depth for a specified symbol.
+        """Subscribe the terminal to the Market Depth change events for a specified symbol.
 
         Args:
             symbol: Symbol name.
 
         Returns:
             True if successful, False otherwise.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         result = self.mt5.market_book_add(symbol)
         if not result:
@@ -271,14 +298,14 @@ class Mt5Client(BaseModel):
         return result
 
     def market_book_release(self, symbol: str) -> bool:
-        """Unsubscribe from the Market Depth for a specified symbol.
+        """Cancels subscription of the terminal to the Market Depth change events for a specified symbol.
 
         Args:
             symbol: Symbol name.
 
         Returns:
             True if successful, False otherwise.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         result = self.mt5.market_book_release(symbol)
         if not result:
@@ -286,14 +313,14 @@ class Mt5Client(BaseModel):
         return result
 
     def market_book_get(self, symbol: str) -> tuple[Any, ...] | None:
-        """Get the Market Depth content for a specified symbol.
+        """Return a tuple from BookInfo featuring Market Depth entries for the specified symbol.
 
         Args:
             symbol: Symbol name.
 
         Returns:
             Tuple of BookInfo structures or None.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         result = self.mt5.market_book_get(symbol)
         if result is None:
@@ -306,8 +333,8 @@ class Mt5Client(BaseModel):
         timeframe: int,
         date_from: datetime | int,
         count: int,
-    ) -> Any | None:
-        """Get bars starting from a specified date.
+    ) -> Any:
+        """Get bars from the terminal starting from the specified date.
 
         Args:
             symbol: Symbol name.
@@ -324,7 +351,7 @@ class Mt5Client(BaseModel):
             self._handle_error(
                 "copy_rates_from",
                 f"symbol={symbol}, timeframe={timeframe}, "
-                f"from={date_from}, count={count}",
+                f"date_from={date_from}, count={count}",
             )
         return result
 
@@ -334,8 +361,8 @@ class Mt5Client(BaseModel):
         timeframe: int,
         start_pos: int,
         count: int,
-    ) -> Any | None:
-        """Get bars starting from a specified position.
+    ) -> Any:
+        """Get bars from the terminal starting from the specified index.
 
         Args:
             symbol: Symbol name.
@@ -352,7 +379,7 @@ class Mt5Client(BaseModel):
             self._handle_error(
                 "copy_rates_from_pos",
                 f"symbol={symbol}, timeframe={timeframe}, "
-                f"pos={start_pos}, count={count}",
+                f"start_pos={start_pos}, count={count}",
             )
         return result
 
@@ -362,8 +389,8 @@ class Mt5Client(BaseModel):
         timeframe: int,
         date_from: datetime | int,
         date_to: datetime | int,
-    ) -> Any | None:
-        """Get bars for a specified date range.
+    ) -> Any:
+        """Get bars in the specified date range from the terminal.
 
         Args:
             symbol: Symbol name.
@@ -380,7 +407,7 @@ class Mt5Client(BaseModel):
             self._handle_error(
                 "copy_rates_range",
                 f"symbol={symbol}, timeframe={timeframe}, "
-                f"from={date_from}, to={date_to}",
+                f"date_from={date_from}, date_to={date_to}",
             )
         return result
 
@@ -390,8 +417,8 @@ class Mt5Client(BaseModel):
         date_from: datetime | int,
         count: int,
         flags: int,
-    ) -> Any | None:
-        """Get ticks starting from a specified date.
+    ) -> Any:
+        """Get ticks from the terminal starting from the specified date.
 
         Args:
             symbol: Symbol name.
@@ -407,7 +434,7 @@ class Mt5Client(BaseModel):
         if result is None:
             self._handle_error(
                 "copy_ticks_from",
-                f"symbol={symbol}, from={date_from}, count={count}, flags={flags}",
+                f"symbol={symbol}, date_from={date_from}, count={count}, flags={flags}",
             )
         return result
 
@@ -417,8 +444,8 @@ class Mt5Client(BaseModel):
         date_from: datetime | int,
         date_to: datetime | int,
         flags: int,
-    ) -> Any | None:
-        """Get ticks for a specified date range.
+    ) -> Any:
+        """Get ticks for the specified date range from the terminal.
 
         Args:
             symbol: Symbol name.
@@ -434,7 +461,8 @@ class Mt5Client(BaseModel):
         if result is None:
             self._handle_error(
                 "copy_ticks_range",
-                f"symbol={symbol}, from={date_from}, to={date_to}, flags={flags}",
+                f"symbol={symbol}, date_from={date_from}, "
+                f"date_to={date_to}, flags={flags}",
             )
         return result
 
@@ -456,7 +484,7 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
     ) -> tuple[Any, ...] | None:
-        """Get active orders with filtering options.
+        """Get active orders with the ability to filter by symbol or ticket.
 
         Args:
             symbol: Symbol name filter.
@@ -474,7 +502,7 @@ class Mt5Client(BaseModel):
             kwargs["group"] = group
         if ticket is not None:
             kwargs["ticket"] = ticket
-        result = self.mt5.orders_get(**kwargs) if kwargs else self.mt5.orders_get()
+        result = self.mt5.orders_get(**(kwargs or {}))
         return result
 
     def order_calc_margin(
@@ -484,7 +512,7 @@ class Mt5Client(BaseModel):
         volume: float,
         price: float,
     ) -> float | None:
-        """Calculate margin required for a specified order.
+        """Return margin in the account currency to perform a specified trading operation.
 
         Args:
             action: Order type (ORDER_TYPE_BUY or ORDER_TYPE_SELL).
@@ -494,7 +522,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             Required margin amount or None.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         result = self.mt5.order_calc_margin(action, symbol, volume, price)
         if result is None:
@@ -512,7 +540,7 @@ class Mt5Client(BaseModel):
         price_open: float,
         price_close: float,
     ) -> float | None:
-        """Calculate profit for a specified order.
+        """Return profit in the account currency for a specified trading operation.
 
         Args:
             action: Order type (ORDER_TYPE_BUY or ORDER_TYPE_SELL).
@@ -532,12 +560,12 @@ class Mt5Client(BaseModel):
             self._handle_error(
                 "order_calc_profit",
                 f"action={action}, symbol={symbol}, volume={volume}, "
-                f"open={price_open}, close={price_close}",
+                f"price_open={price_open}, price_close={price_close}",
             )
         return result
 
-    def order_check(self, request: dict[str, Any]) -> Any | None:
-        """Check funds sufficiency for a trading operation.
+    def order_check(self, request: dict[str, Any]) -> Any:
+        """Check funds sufficiency for performing a required trading operation.
 
         Args:
             request: Trade request dictionary.
@@ -551,15 +579,15 @@ class Mt5Client(BaseModel):
             self._handle_error("order_check", f"request={request}")
         return result
 
-    def order_send(self, request: dict[str, Any]) -> Any | None:
-        """Send a request to perform a trading operation.
+    def order_send(self, request: dict[str, Any]) -> Any:
+        """Send a request to perform a trading operation from the terminal to the trade server.
 
         Args:
             request: Trade request dictionary.
 
         Returns:
             OrderSendResult structure or None.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         result = self.mt5.order_send(request)
         if result is None:
@@ -584,7 +612,7 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
     ) -> tuple[Any, ...] | None:
-        """Get open positions with filtering options.
+        """Get open positions with the ability to filter by symbol or ticket.
 
         Args:
             symbol: Symbol name filter.
@@ -602,33 +630,7 @@ class Mt5Client(BaseModel):
             kwargs["group"] = group
         if ticket is not None:
             kwargs["ticket"] = ticket
-        result = (
-            self.mt5.positions_get(**kwargs) if kwargs else self.mt5.positions_get()
-        )
-        return result
-
-    def account_info(self) -> Any | None:
-        """Get info on the current trading account.
-
-        Returns:
-            AccountInfo structure or None.
-        """
-        self._ensure_initialized()
-        result = self.mt5.account_info()
-        if result is None:
-            self._handle_error("account_info")
-        return result
-
-    def terminal_info(self) -> Any | None:
-        """Get status and parameters of the connected terminal.
-
-        Returns:
-            TerminalInfo structure or None.
-        """
-        self._ensure_initialized()
-        result = self.mt5.terminal_info()
-        if result is None:
-            self._handle_error("terminal_info")
+        result = self.mt5.positions_get(**(kwargs or {}))
         return result
 
     def history_orders_total(
@@ -636,7 +638,7 @@ class Mt5Client(BaseModel):
         date_from: datetime | int,
         date_to: datetime | int,
     ) -> int:
-        """Get number of orders in trading history.
+        """Get the number of orders in trading history within the specified interval.
 
         Args:
             date_from: Start date or timestamp.
@@ -649,7 +651,7 @@ class Mt5Client(BaseModel):
         result = self.mt5.history_orders_total(date_from, date_to)
         if result is None:
             self._handle_error(
-                "history_orders_total", f"from={date_from}, to={date_to}"
+                "history_orders_total", f"date_from={date_from}, date_to={date_to}"
             )
         return result
 
@@ -661,7 +663,7 @@ class Mt5Client(BaseModel):
         ticket: int | None = None,
         position: int | None = None,
     ) -> tuple[Any, ...] | None:
-        """Get orders from trading history.
+        """Get orders from trading history with the ability to filter by ticket or position.
 
         Args:
             date_from: Start date or timestamp.
@@ -676,7 +678,7 @@ class Mt5Client(BaseModel):
         Raises:
             ValueError: If date_from and date_to are not provided when not filtering
                 by ticket/position.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         if ticket is not None:
             result = self.mt5.history_orders_get(ticket=ticket)
@@ -692,11 +694,7 @@ class Mt5Client(BaseModel):
             kwargs = {}
             if group is not None:
                 kwargs["group"] = group
-            result = (
-                self.mt5.history_orders_get(date_from, date_to, **kwargs)
-                if kwargs
-                else self.mt5.history_orders_get(date_from, date_to)
-            )
+            result = self.mt5.history_orders_get(date_from, date_to, **(kwargs or {}))
         return result
 
     def history_deals_total(
@@ -704,7 +702,7 @@ class Mt5Client(BaseModel):
         date_from: datetime | int,
         date_to: datetime | int,
     ) -> int:
-        """Get number of deals in trading history.
+        """Get the number of deals in trading history within the specified interval.
 
         Args:
             date_from: Start date or timestamp.
@@ -716,7 +714,9 @@ class Mt5Client(BaseModel):
         self._ensure_initialized()
         result = self.mt5.history_deals_total(date_from, date_to)
         if result is None:
-            self._handle_error("history_deals_total", f"from={date_from}, to={date_to}")
+            self._handle_error(
+                "history_deals_total", f"date_from={date_from}, date_to={date_to}"
+            )
         return result
 
     def history_deals_get(
@@ -727,7 +727,7 @@ class Mt5Client(BaseModel):
         ticket: int | None = None,
         position: int | None = None,
     ) -> tuple[Any, ...] | None:
-        """Get deals from trading history.
+        """Get deals from trading history within the specified interval with the ability to filter by ticket or position.
 
         Args:
             date_from: Start date or timestamp.
@@ -742,7 +742,7 @@ class Mt5Client(BaseModel):
         Raises:
             ValueError: If date_from and date_to are not provided when not filtering
                 by ticket/position.
-        """
+        """  # noqa: E501
         self._ensure_initialized()
         if ticket is not None:
             result = self.mt5.history_deals_get(ticket=ticket)
@@ -758,9 +758,5 @@ class Mt5Client(BaseModel):
             kwargs = {}
             if group is not None:
                 kwargs["group"] = group
-            result = (
-                self.mt5.history_deals_get(date_from, date_to, **kwargs)
-                if kwargs
-                else self.mt5.history_deals_get(date_from, date_to)
-            )
+            result = self.mt5.history_deals_get(date_from, date_to, **(kwargs or {}))
         return result
