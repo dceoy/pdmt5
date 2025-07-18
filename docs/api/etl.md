@@ -8,8 +8,8 @@ The etl module extends the core `Mt5DataClient` functionality with ETL (Extract,
 
 ## Classes
 
-### Mt5DataPrinter
-::: pdmt5.etl.Mt5DataPrinter
+### Mt5EtlClient
+::: pdmt5.etl.Mt5EtlClient
     options:
       show_bases: false
 
@@ -28,11 +28,11 @@ Enhanced data client that inherits from `Mt5DataClient` and adds presentation an
 ### Basic Usage
 
 ```python
-from pdmt5 import Mt5Config, Mt5DataPrinter
+from pdmt5 import Mt5Config, Mt5EtlClient
 import MetaTrader5 as mt5
 
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
-printer = Mt5DataPrinter(mt5=mt5, config=config)
+printer = Mt5EtlClient(mt5=mt5, config=config)
 
 with printer:
     # Pretty print current positions

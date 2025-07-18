@@ -3,7 +3,7 @@
 from importlib.metadata import version
 
 from .dataframe import Mt5Config, Mt5DataClient
-from .etl import Mt5DataPrinter
+from .etl import Mt5EtlClient
 from .mt5 import Mt5Client, Mt5RuntimeError
 
 __version__ = version(__package__) if __package__ else None
@@ -12,6 +12,6 @@ __all__ = [
     "Mt5Client",
     "Mt5Config",
     "Mt5DataClient",
-    "Mt5DataPrinter",
+    "Mt5EtlClient",
     "Mt5RuntimeError",
 ]

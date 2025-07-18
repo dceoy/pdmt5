@@ -14,7 +14,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from pdmt5.dataframe import Mt5DataClient
-from pdmt5.etl import Mt5DataPrinter
+from pdmt5.etl import Mt5EtlClient
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
@@ -81,8 +81,8 @@ def mock_mt5_import(
         yield mock_mt5
 
 
-class TestMt5DataPrinter:
-    """Tests for Mt5DataPrinter class."""
+class TestMt5EtlClient:
+    """Tests for Mt5EtlClient class."""
 
     def test_print_json(
         self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
@@ -90,10 +90,10 @@ class TestMt5DataPrinter:
         """Test print_json method."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         test_data = {"key": "value", "number": 123}
 
-        printer.print_json(test_data)
+        client.print_json(test_data)
 
         captured = capsys.readouterr()
         assert '"key": "value"' in captured.out
@@ -105,10 +105,10 @@ class TestMt5DataPrinter:
         """Test print_df method."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
 
-        printer.print_df(test_df)
+        client.print_df(test_df)
 
         captured = capsys.readouterr()
         assert "A" in captured.out
@@ -120,10 +120,10 @@ class TestMt5DataPrinter:
         """Test drop_duplicates_in_sqlite3 method."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_cursor = mocker.MagicMock()
 
-        printer.drop_duplicates_in_sqlite3(mock_cursor, "test_table", ["id", "name"])
+        client.drop_duplicates_in_sqlite3(mock_cursor, "test_table", ["id", "name"])
 
         mock_cursor.execute.assert_called_once()
 
@@ -133,11 +133,11 @@ class TestMt5DataPrinter:
         """Test export_df method with CSV export."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
         csv_path = tmp_path / "test.csv"
 
-        printer.export_df(test_df, csv_path=str(csv_path))
+        client.export_df(test_df, csv_path=str(csv_path))
 
         assert csv_path.exists()
 
@@ -150,7 +150,7 @@ class TestMt5DataPrinter:
         """Test export_df method with SQLite export."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
         sqlite_path = tmp_path / "test.db"
 
@@ -162,7 +162,7 @@ class TestMt5DataPrinter:
             mock_cursor
         )
 
-        printer.export_df(
+        client.export_df(
             test_df, sqlite3_path=str(sqlite_path), sqlite3_table="test_table"
         )
 
@@ -178,12 +178,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 123, "symbol": "EURUSD", "profit": 10.0}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_get.return_value = [MockDeal()]
 
-        printer.initialize()
-        printer.print_deals(hours=24)
+        client.initialize()
+        client.print_deals(hours=24)
 
         captured = capsys.readouterr()
         assert "ticket" in captured.out
@@ -198,12 +198,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = [MockOrder()]
 
-        printer.initialize()
-        printer.print_orders()
+        client.initialize()
+        client.print_orders()
 
         captured = capsys.readouterr()
         assert "ticket" in captured.out
@@ -218,12 +218,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 789, "symbol": "USDJPY", "profit": 5.0}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = [MockPosition()]
 
-        printer.initialize()
-        printer.print_positions()
+        client.initialize()
+        client.print_positions()
 
         captured = capsys.readouterr()
         assert "ticket" in captured.out
@@ -253,7 +253,7 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"ask": 1.1234, "bid": 1.1230}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.account_info.return_value = MockAccountInfo()
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
@@ -262,8 +262,8 @@ class TestMt5DataPrinter:
         mock_mt5_import.ORDER_TYPE_BUY = 0
         mock_mt5_import.ORDER_TYPE_SELL = 1
 
-        printer.initialize()
-        printer.print_margins("EURUSD")
+        client.initialize()
+        client.print_margins("EURUSD")
 
         captured = capsys.readouterr()
         assert "symbol" in captured.out
@@ -280,7 +280,7 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"time": 1640995200}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -305,8 +305,8 @@ class TestMt5DataPrinter:
         )
         mock_mt5_import.copy_ticks_from.return_value = mock_ticks
 
-        printer.initialize()
-        printer.print_ticks("EURUSD", seconds=60)
+        client.initialize()
+        client.print_ticks("EURUSD", seconds=60)
 
         captured = capsys.readouterr()
         assert len(captured.out) > 0
@@ -317,7 +317,7 @@ class TestMt5DataPrinter:
         """Test print_ticks method with date_to parameter."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -340,8 +340,8 @@ class TestMt5DataPrinter:
         )
         mock_mt5_import.copy_ticks_range.return_value = mock_ticks
 
-        printer.initialize()
-        printer.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
+        client.initialize()
+        client.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
 
         captured = capsys.readouterr()
         assert len(captured.out) > 0
@@ -352,7 +352,7 @@ class TestMt5DataPrinter:
         """Test print_rates method."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -375,8 +375,8 @@ class TestMt5DataPrinter:
         )
         mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
 
-        printer.initialize()
-        printer.print_rates("EURUSD", granularity="M1", count=10)
+        client.initialize()
+        client.print_rates("EURUSD", granularity="M1", count=10)
 
         captured = capsys.readouterr()
         assert len(captured.out) > 0
@@ -400,13 +400,13 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"time": 1640995200, "bid": 1.1230, "ask": 1.1234, "volume": 1}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
         mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
 
-        printer.initialize()
-        printer.print_symbol_info("EURUSD")
+        client.initialize()
+        client.print_symbol_info("EURUSD")
 
         captured = capsys.readouterr()
         assert "name" in captured.out
@@ -425,7 +425,7 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"login": 12345, "server": "Test-Server"}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.__version__ = "5.0.45"
         mock_mt5_import.__author__ = "MetaQuotes Ltd."
@@ -434,8 +434,8 @@ class TestMt5DataPrinter:
         mock_mt5_import.account_info.return_value = MockAccountInfo()
         mock_mt5_import.symbols_total.return_value = 1000
 
-        printer.initialize()
-        printer.print_mt5_info()
+        client.initialize()
+        client.print_mt5_info()
 
         captured = capsys.readouterr()
         assert "MetaTrader5" in captured.out
@@ -453,12 +453,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"name": "EURUSD", "bid": 1.1230, "ask": 1.1234}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbols_get.return_value = [MockSymbol()]
 
-        printer.initialize()
-        printer.print_symbols()
+        client.initialize()
+        client.print_symbols()
 
         captured = capsys.readouterr()
         assert "name" in captured.out
@@ -469,12 +469,12 @@ class TestMt5DataPrinter:
         """Test print_symbols method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbols_get.return_value = ()
 
-        printer.initialize()
-        printer.print_symbols()
+        client.initialize()
+        client.print_symbols()
 
         captured = capsys.readouterr()
         assert "No symbols found" in captured.out
@@ -489,12 +489,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_orders_get.return_value = [MockOrder()]
 
-        printer.initialize()
-        printer.print_history_orders(hours=24)
+        client.initialize()
+        client.print_history_orders(hours=24)
 
         captured = capsys.readouterr()
         assert "ticket" in captured.out
@@ -505,12 +505,12 @@ class TestMt5DataPrinter:
         """Test print_history_orders method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_orders_get.return_value = ()
 
-        printer.initialize()
-        printer.print_history_orders(hours=24)
+        client.initialize()
+        client.print_history_orders(hours=24)
 
         captured = capsys.readouterr()
         assert "No historical orders found" in captured.out
@@ -525,12 +525,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"login": 12345, "server": "Test-Server"}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.account_info.return_value = MockAccountInfo()
 
-        printer.initialize()
-        printer.print_account_info()
+        client.initialize()
+        client.print_account_info()
 
         captured = capsys.readouterr()
         assert "login" in captured.out
@@ -545,12 +545,12 @@ class TestMt5DataPrinter:
             def _asdict(self) -> dict[str, Any]:
                 return {"company": "Test Company", "path": "/test/path"}
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
 
-        printer.initialize()
-        printer.print_terminal_info()
+        client.initialize()
+        client.print_terminal_info()
 
         captured = capsys.readouterr()
         assert "company" in captured.out
@@ -561,12 +561,12 @@ class TestMt5DataPrinter:
         """Test print_deals method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_get.return_value = ()
 
-        printer.initialize()
-        printer.print_deals(hours=24)
+        client.initialize()
+        client.print_deals(hours=24)
 
         captured = capsys.readouterr()
         assert "No deals found" in captured.out
@@ -577,12 +577,12 @@ class TestMt5DataPrinter:
         """Test print_orders method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = ()
 
-        printer.initialize()
-        printer.print_orders()
+        client.initialize()
+        client.print_orders()
 
         captured = capsys.readouterr()
         assert "No orders found" in captured.out
@@ -593,12 +593,12 @@ class TestMt5DataPrinter:
         """Test print_positions method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = ()
 
-        printer.initialize()
-        printer.print_positions()
+        client.initialize()
+        client.print_positions()
 
         captured = capsys.readouterr()
         assert "No positions found" in captured.out
@@ -609,7 +609,7 @@ class TestMt5DataPrinter:
         """Test print_ticks method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.COPY_TICKS_ALL = 3
         tick_dtype = np.dtype([
@@ -620,8 +620,8 @@ class TestMt5DataPrinter:
         ])
         mock_mt5_import.copy_ticks_range.return_value = np.array([], dtype=tick_dtype)
 
-        printer.initialize()
-        printer.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
+        client.initialize()
+        client.print_ticks("EURUSD", seconds=60, date_to="2022-01-01 12:00:00")
 
         captured = capsys.readouterr()
         assert "No tick data found" in captured.out
@@ -632,7 +632,7 @@ class TestMt5DataPrinter:
         """Test print_rates method with empty results."""
         assert mock_mt5_import is not None
 
-        printer = Mt5DataPrinter(mt5=mock_mt5_import)
+        client = Mt5EtlClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.TIMEFRAME_M1 = 1
         rate_dtype = np.dtype([
@@ -646,8 +646,8 @@ class TestMt5DataPrinter:
             [], dtype=rate_dtype
         )
 
-        printer.initialize()
-        printer.print_rates("EURUSD", granularity="M1", count=10)
+        client.initialize()
+        client.print_rates("EURUSD", granularity="M1", count=10)
 
         captured = capsys.readouterr()
         assert "No rate data found" in captured.out

@@ -12,8 +12,8 @@ import pandas as pd
 from .dataframe import Mt5DataClient
 
 
-class Mt5DataPrinter(Mt5DataClient):
-    """MetaTrader5 data client with pretty printing capabilities.
+class Mt5EtlClient(Mt5DataClient):
+    """MetaTrader5 data client with ETL capabilities.
 
     This class extends Mt5DataClient to provide methods for pretty-printing
     DataFrames and other data structures with consistent DataFrame-based operations.

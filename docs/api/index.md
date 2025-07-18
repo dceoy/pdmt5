@@ -36,7 +36,7 @@ All modules follow these conventions:
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Config, Mt5DataClient, Mt5DataPrinter
+from pdmt5 import Mt5Config, Mt5DataClient, Mt5EtlClient
 
 # Basic usage with Mt5DataClient
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
@@ -44,8 +44,8 @@ with Mt5DataClient(config) as client:
     symbols = client.fetch_symbols()
     rates = client.fetch_rates("EURUSD", timeframe="H1", count=100)
 
-# Enhanced functionality with Mt5DataPrinter
-with Mt5DataPrinter(config) as printer:
+# Enhanced functionality with Mt5EtlClient
+with Mt5EtlClient(config) as printer:
     printer.print_rates("EURUSD", timeframe="D1", count=10)
 ```
 
