@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pdmt5.client import Mt5Client
 from pdmt5.exception import Mt5RuntimeError
+from pdmt5.mt5 import Mt5Client
 
 if TYPE_CHECKING:
     from unittest.mock import Mock
@@ -23,7 +23,7 @@ def mock_metatrader5_import(mocker: MockerFixture) -> Mock:
     """Mock MetaTrader5 import globally for all tests."""
     mock_mt5 = mocker.Mock()
     mock_mt5.last_error.return_value = (1001, "Test error")
-    mocker.patch("pdmt5.client.importlib.import_module", return_value=mock_mt5)
+    mocker.patch("pdmt5.mt5.importlib.import_module", return_value=mock_mt5)
     return mock_mt5
 
 

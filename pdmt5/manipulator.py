@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
-from .client import Mt5Client
+from .mt5 import Mt5Client
 
 
 class Mt5Config(BaseModel):
