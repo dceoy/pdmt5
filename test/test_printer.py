@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 from pytest_mock import MockerFixture
 
-from pdmt5.manipulator import Mt5DataClient
+from pdmt5.dataframe import Mt5DataClient
 from pdmt5.printer import Mt5DataPrinter
 
 # Rebuild models to ensure they are fully defined for testing

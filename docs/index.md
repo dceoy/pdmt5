@@ -49,7 +49,7 @@ with Mt5DataPrinter(config) as printer:
 Browse the API documentation to learn about available modules and functions:
 
 - [Exception](api/exception.md) - Custom exception handling
-- [Manipulator](api/manipulator.md) - Core data client and configuration
+- [DataFrame](api/dataframe.md) - Core data client and configuration
 - [Printer](api/printer.md) - Pretty printing and data export functionality
 
 ## Development

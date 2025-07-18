@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from .manipulator import Mt5DataClient
+from .dataframe import Mt5DataClient
 
 
 class Mt5DataPrinter(Mt5DataClient):

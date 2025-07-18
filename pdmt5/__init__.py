@@ -2,7 +2,7 @@
 
 from importlib.metadata import version
 
-from .manipulator import Mt5Config, Mt5DataClient
+from .dataframe import Mt5Config, Mt5DataClient
 from .mt5 import Mt5Client, Mt5RuntimeError
 from .printer import Mt5DataPrinter
 

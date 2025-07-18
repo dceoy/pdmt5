@@ -1,4 +1,4 @@
-"""Tests for pdmt6.manipulator module."""
+"""Tests for pdmt5.dataframe module."""
 
 # pyright: reportPrivateUsage=false
 # pyright: reportAttributeAccessIssue=false
@@ -13,7 +13,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from pdmt5.manipulator import Mt5Config, Mt5DataClient
+from pdmt5.dataframe import Mt5Config, Mt5DataClient
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
 # Rebuild models to ensure they are fully defined for testing
@@ -1634,7 +1634,7 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
         # Mock time.sleep to capture the call
-        mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
+        mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
 
         # The implementation calls initialize which raises an exception on first failure
         with pytest.raises(Mt5RuntimeError, match=r"initialize failed: 1 - Test error"):
@@ -1656,7 +1656,7 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
         # Mock time.sleep to capture the calls
-        mock_sleep = mocker.patch("pdmt5.manipulator.time.sleep")
+        mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
 
         with pytest.raises(Mt5RuntimeError) as exc_info:
             client.initialize_mt5()

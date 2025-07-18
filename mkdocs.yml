@@ -56,7 +56,7 @@ nav:
   - API Reference:
     - Overview: api/index.md
     - Exception: api/exception.md
-    - Manipulator: api/manipulator.md
+    - DataFrame: api/dataframe.md
     - Printer: api/printer.md
 
 markdown_extensions:

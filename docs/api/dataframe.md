@@ -1,22 +1,22 @@
-# Manipulator
+# DataFrame
 
-::: pdmt5.manipulator
+::: pdmt5.dataframe
 
 ## Overview
 
-The manipulator module provides the core functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, error handling, and comprehensive data conversion utilities.
+The dataframe module provides the core functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, error handling, and comprehensive data conversion utilities.
 
 ## Classes
 
 ### Mt5Config
-::: pdmt5.manipulator.Mt5Config
+::: pdmt5.dataframe.Mt5Config
     options:
       show_bases: false
 
 Configuration class for MetaTrader 5 connection parameters using pydantic for validation.
 
 ### Mt5DataClient
-::: pdmt5.manipulator.Mt5DataClient
+::: pdmt5.dataframe.Mt5DataClient
     options:
       show_bases: false
 
@@ -29,7 +29,7 @@ Main client class that provides a pandas-friendly interface to MetaTrader 5 func
 
 ```python
 import MetaTrader5 as mt5
-from pdmt5.manipulator import Mt5DataClient, Mt5Config
+from pdmt5.dataframe import Mt5DataClient, Mt5Config
 
 # Create configuration
 config = Mt5Config(

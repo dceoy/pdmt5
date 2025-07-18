@@ -29,7 +29,7 @@ class Mt5Config(BaseModel):
 
 
 class Mt5DataClient(Mt5Client):
-    """MetaTrader5 data client with pandas DataFrame conversion.
+    """MetaTrader5 data client with pandas DataFrame and dictionary conversion.
 
     This class provides a pandas-friendly interface to MetaTrader5 functions,
     converting native MetaTrader5 data structures to pandas DataFrames with pydantic
