@@ -11,11 +11,13 @@ from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .exception import Mt5RuntimeError
-
 if TYPE_CHECKING:
     from datetime import datetime
     from types import TracebackType
+
+
+class Mt5RuntimeError(RuntimeError):
+    """MetaTrader5 specific error."""
 
 
 class Mt5Client(BaseModel):

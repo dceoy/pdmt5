@@ -13,9 +13,8 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from pdmt5.exception import Mt5RuntimeError
 from pdmt5.manipulator import Mt5Config, Mt5DataClient
-from pdmt5.mt5 import Mt5Client
+from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()

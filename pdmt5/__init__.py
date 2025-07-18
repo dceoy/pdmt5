@@ -2,9 +2,8 @@
 
 from importlib.metadata import version
 
-from .exception import Mt5RuntimeError
 from .manipulator import Mt5Config, Mt5DataClient
-from .mt5 import Mt5Client
+from .mt5 import Mt5Client, Mt5RuntimeError
 from .printer import Mt5DataPrinter
 
 __version__ = version(__package__) if __package__ else None

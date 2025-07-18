@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pdmt5.exception import Mt5RuntimeError
-from pdmt5.mt5 import Mt5Client
+from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
 if TYPE_CHECKING:
     from unittest.mock import Mock
