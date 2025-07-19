@@ -651,3 +651,120 @@ class TestMt5ReportClient:
 
         captured = capsys.readouterr()
         assert "Empty DataFrame" in captured.out
+
+    def test_print_rates_with_csv_export(
+        self, mock_mt5_import: ModuleType | None, tmp_path: Path
+    ) -> None:
+        """Test print_rates method with CSV export."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.TIMEFRAME_H1 = 16385
+
+        # Mock rates data with proper structure
+        rate_dtype = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+            ("tick_volume", "int64"),
+            ("spread", "int32"),
+            ("real_volume", "int64"),
+        ])
+        mock_rates = np.array(
+            [
+                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320, 1000, 0, 0),
+            ],
+            dtype=rate_dtype,
+        )
+        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
+
+        csv_file = tmp_path / "test_rates.csv"
+
+        client.initialize()
+        client.print_rates(
+            symbol="EURUSD", granularity="H1", count=10, csv_file_path=str(csv_file)
+        )
+
+        # Verify CSV file was created
+        assert csv_file.exists()
+
+    def test_print_rates_with_sqlite_export(
+        self, mock_mt5_import: ModuleType | None, tmp_path: Path
+    ) -> None:
+        """Test print_rates method with SQLite export."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.TIMEFRAME_H1 = 16385
+
+        # Mock rates data with proper structure
+        rate_dtype = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+            ("tick_volume", "int64"),
+            ("spread", "int32"),
+            ("real_volume", "int64"),
+        ])
+        mock_rates = np.array(
+            [
+                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320, 1000, 0, 0),
+            ],
+            dtype=rate_dtype,
+        )
+        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
+
+        sqlite_file = tmp_path / "test_rates.db"
+
+        client.initialize()
+        client.print_rates(
+            symbol="EURUSD",
+            granularity="H1",
+            count=10,
+            sqlite3_file_path=str(sqlite_file),
+        )
+
+        # Verify SQLite file was created
+        assert sqlite_file.exists()
+
+    def test_print_history_deals_with_date_parsing(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_history_deals method with date string parsing."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = ()
+
+        client.initialize()
+        # Test with string dates to trigger date parsing logic
+        client.print_history_deals(hours=24, date_to="2023-01-02")
+
+        captured = capsys.readouterr()
+        assert len(captured.out) > 0
+
+    def test_print_history_orders_with_date_parsing(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_history_orders method with date string parsing."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_orders_get.return_value = ()
+
+        client.initialize()
+        # Test with date_from and date_to as strings (not hours) to trigger line 470-471
+        client.print_history_orders(
+            hours=None, date_from="2023-01-01", date_to="2023-01-02"
+        )
+
+        captured = capsys.readouterr()
+        assert len(captured.out) > 0

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any, NamedTuple
 
+import numpy as np
 import pandas as pd
 import pytest
 from pydantic import ValidationError
@@ -1606,6 +1607,220 @@ class TestMt5DataClient:
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
         assert "time_done" not in df_result.columns
+
+
+class TestMt5DataClientValidation:
+    """Test Mt5DataClient validation methods."""
+
+    def test_validate_positive_count_valid(self) -> None:
+        """Test _validate_positive_count with valid count."""
+        # Should not raise for positive count
+        Mt5DataClient._validate_positive_count(count=1)
+        Mt5DataClient._validate_positive_count(count=100)
+
+    def test_validate_positive_count_invalid(self) -> None:
+        """Test _validate_positive_count with invalid count."""
+        with pytest.raises(
+            ValueError, match=r"Invalid count: 0\. Count must be positive\."
+        ):
+            Mt5DataClient._validate_positive_count(count=0)
+
+        with pytest.raises(
+            ValueError, match=r"Invalid count: -1\. Count must be positive\."
+        ):
+            Mt5DataClient._validate_positive_count(count=-1)
+
+    def test_validate_date_range_valid(self) -> None:
+        """Test _validate_date_range with valid date range."""
+        date_from = datetime(2023, 1, 1, tzinfo=UTC)
+        date_to = datetime(2023, 1, 2, tzinfo=UTC)
+        # Should not raise for valid date range
+        Mt5DataClient._validate_date_range(date_from=date_from, date_to=date_to)
+
+    def test_validate_date_range_invalid(self) -> None:
+        """Test _validate_date_range with invalid date range."""
+        date_from = datetime(2023, 1, 2, tzinfo=UTC)
+        date_to = datetime(2023, 1, 1, tzinfo=UTC)
+        with pytest.raises(
+            ValueError, match=r"Invalid date range: from=.* must be before to=.*"
+        ):
+            Mt5DataClient._validate_date_range(date_from=date_from, date_to=date_to)
+
+    def test_validate_positive_value_valid(self) -> None:
+        """Test _validate_positive_value with valid values."""
+        # Should not raise for positive values
+        Mt5DataClient._validate_positive_value(value=1.0, name="volume")
+        Mt5DataClient._validate_positive_value(value=0.1, name="volume")
+
+    def test_validate_positive_value_invalid(self) -> None:
+        """Test _validate_positive_value with invalid volume."""
+        with pytest.raises(
+            ValueError, match=r"Invalid volume: 0\. Volume must be positive\."
+        ):
+            Mt5DataClient._validate_positive_value(value=0, name="volume")
+
+        with pytest.raises(
+            ValueError, match=r"Invalid volume: -1\. Volume must be positive\."
+        ):
+            Mt5DataClient._validate_positive_value(value=-1, name="volume")
+
+    def test_validate_positive_value_price_invalid(self) -> None:
+        """Test _validate_positive_value with invalid price."""
+        with pytest.raises(
+            ValueError, match=r"Invalid price_open: 0\. Price must be positive\."
+        ):
+            Mt5DataClient._validate_positive_value(value=0, name="price_open")
+
+        with pytest.raises(
+            ValueError, match=r"Invalid price_close: -1\. Price must be positive\."
+        ):
+            Mt5DataClient._validate_positive_value(value=-1, name="price_close")
+
+    def test_validate_non_negative_position_valid(self) -> None:
+        """Test _validate_non_negative_position with valid position."""
+        # Should not raise for non-negative position
+        Mt5DataClient._validate_non_negative_position(position=0)
+        Mt5DataClient._validate_non_negative_position(position=10)
+
+    def test_validate_non_negative_position_invalid(self) -> None:
+        """Test _validate_non_negative_position with invalid position."""
+        with pytest.raises(
+            ValueError,
+            match=r"Invalid start_pos: -1\. Position must be non-negative\.",
+        ):
+            Mt5DataClient._validate_non_negative_position(position=-1)
+
+    def test_order_check_as_dict(
+        self,
+        mock_mt5_import: ModuleType,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test order_check_as_dict method."""
+        config = Mt5Config()
+
+        # Mock order check result with nested structure
+        mock_request = mocker.MagicMock()
+        mock_request._asdict.return_value = {"action": 1, "symbol": "EURUSD"}
+
+        mock_result = mocker.MagicMock()
+        mock_result._asdict.return_value = {
+            "retcode": 10009,
+            "request": mock_request,
+            "volume": 1.0,
+        }
+
+        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
+            mock_mt5_import.order_check.return_value = mock_result
+
+            result = client.order_check_as_dict(
+                request={"action": 1, "symbol": "EURUSD"}
+            )
+
+            assert result["retcode"] == 10009
+            assert result["request"] == {"action": 1, "symbol": "EURUSD"}
+            assert result["volume"] == 1.0
+
+    def test_order_send_as_dict(
+        self,
+        mock_mt5_import: ModuleType,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test order_send_as_dict method."""
+        config = Mt5Config()
+
+        # Mock order send result with nested structure
+        mock_request = mocker.MagicMock()
+        mock_request._asdict.return_value = {"action": 1, "symbol": "EURUSD"}
+
+        mock_result = mocker.MagicMock()
+        mock_result._asdict.return_value = {
+            "retcode": 10009,
+            "request": mock_request,
+            "order": 12345,
+        }
+
+        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
+            mock_mt5_import.order_send.return_value = mock_result
+
+            result = client.order_send_as_dict(
+                request={"action": 1, "symbol": "EURUSD"}
+            )
+
+            assert result["retcode"] == 10009
+            assert result["request"] == {"action": 1, "symbol": "EURUSD"}
+            assert result["order"] == 12345
+
+    def test_copy_rates_from_as_df(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test copy_rates_from_as_df method to cover validation line."""
+        config = Mt5Config()
+
+        # Mock rates data
+        rate_dtype = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+        ])
+        mock_rates = np.array(
+            [
+                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320),
+            ],
+            dtype=rate_dtype,
+        )
+
+        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
+            mock_mt5_import.copy_rates_from.return_value = mock_rates
+
+            # This should trigger the _validate_positive_count call on line 163
+            result = client.copy_rates_from_as_df(
+                symbol="EURUSD",
+                timeframe=16385,
+                date_from=datetime(2023, 1, 1, tzinfo=UTC),
+                count=10,
+            )
+
+            assert len(result) == 1
+            assert "time" in result.index.names
+
+    def test_copy_rates_range_as_df(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test copy_rates_range_as_df method to cover validation line."""
+        config = Mt5Config()
+
+        # Mock rates data
+        rate_dtype = np.dtype([
+            ("time", "int64"),
+            ("open", "float64"),
+            ("high", "float64"),
+            ("low", "float64"),
+            ("close", "float64"),
+        ])
+        mock_rates = np.array(
+            [
+                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320),
+            ],
+            dtype=rate_dtype,
+        )
+
+        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
+            mock_mt5_import.copy_rates_range.return_value = mock_rates
+
+            # This should trigger the _validate_date_range call on line 224
+            result = client.copy_rates_range_as_df(
+                symbol="EURUSD",
+                timeframe=16385,
+                date_from=datetime(2023, 1, 1, tzinfo=UTC),
+                date_to=datetime(2023, 1, 2, tzinfo=UTC),
+            )
+
+            assert len(result) == 1
+            assert "time" in result.index.names
 
 
 class TestMt5DataClientRetryLogic:

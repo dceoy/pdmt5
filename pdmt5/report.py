@@ -67,14 +67,22 @@ class Mt5ReportClient(Mt5DataClient):
             cursor: SQLite3 cursor for executing SQL commands.
             table: Table name to deduplicate.
             ids: Column names to use for duplicate detection.
+
+        Raises:
+            ValueError: If table or column names are invalid.
         """
-        cursor.execute(
-            (
-                "DELETE FROM {table} WHERE ROWID NOT IN"  # noqa: RUF027
-                " (SELECT MIN(ROWID) FROM {table} GROUP BY {ids_str})"
-            ),
-            {"table": table, "ids_str": ", ".join(f'"{i}"' for i in ids)},
-        )
+        if not table.isidentifier():
+            error_message = f"Invalid table name: {table}"
+            raise ValueError(error_message)
+        elif {i for i in ids if not i.isidentifier()}:
+            error_message = f"Invalid column names: {', '.join(ids)}"
+            raise ValueError(error_message)
+        else:
+            ids_csv = ", ".join(f'"{i}"' for i in ids)
+            cursor.execute(
+                f"DELETE FROM {table} WHERE ROWID NOT IN"  # noqa: S608
+                f" (SELECT MIN(ROWID) FROM {table} GROUP BY {ids_csv})"
+            )
 
     def write_df_to_sqlite3(
         self,
