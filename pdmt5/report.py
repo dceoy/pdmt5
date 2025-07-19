@@ -205,27 +205,16 @@ class Mt5ReportClient(Mt5DataClient):
             },
         )
 
-    def print_symbol_info(self, symbol: str) -> None:
-        """Print detailed information about a financial instrument."""
-        self.logger.info("symbol: %s", symbol)
-        symbol_info = self.symbol_info_as_dict(symbol=symbol)
-        self.logger.debug("symbol_info: %s", symbol_info)
-        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        self.logger.debug("symbol_info_tick: %s", symbol_info_tick)
-        self.print_json(
-            data={"symbol": symbol, "info": symbol_info, "tick": symbol_info_tick},
-        )
-
     def print_symbols(
         self,
-        group: str = "",
+        group: str | None = None,
         csv_file_path: str | None = None,
         sqlite3_file_path: str | None = None,
     ) -> None:
         """Print available symbols as DataFrame.
 
         Args:
-            group: Symbol group filter (e.g., "*USD*", "Forex*").
+            group: Symbol group filter (e.g., "*USD*", "Forex*") (optional).
             csv_file_path: Path for CSV export (optional).
             sqlite3_file_path: Path for SQLite export (optional).
         """
@@ -237,42 +226,29 @@ class Mt5ReportClient(Mt5DataClient):
             sqlite3_table="symbols",
         )
 
-    def print_account_info(
-        self,
-        csv_file_path: str | None = None,
-        sqlite3_file_path: str | None = None,
-    ) -> None:
-        """Print account information as DataFrame.
-
-        Args:
-            csv_file_path: Path for CSV export (optional).
-            sqlite3_file_path: Path for SQLite export (optional).
-        """
-        self.logger.info("Fetching account information")
-        self._print_and_write_df(
-            df=self.account_info_as_df(),
-            csv_file_path=csv_file_path,
-            sqlite3_file_path=sqlite3_file_path,
-            sqlite3_table="account_info",
+    def print_symbol_info(self, symbol: str) -> None:
+        """Print detailed information about a financial instrument."""
+        self.logger.info("symbol: %s", symbol)
+        symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        self.logger.debug("symbol_info: %s", symbol_info)
+        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+        self.logger.debug("symbol_info_tick: %s", symbol_info_tick)
+        self.print_json(
+            data={"symbol": symbol, "info": symbol_info, "tick": symbol_info_tick},
         )
 
-    def print_terminal_info(
-        self,
-        csv_file_path: str | None = None,
-        sqlite3_file_path: str | None = None,
-    ) -> None:
-        """Print terminal information as DataFrame.
+    def print_market_book(self, symbol: str) -> None:
+        """Print market book (order book) for a financial instrument.
 
         Args:
-            csv_file_path: Path for CSV export (optional).
-            sqlite3_file_path: Path for SQLite export (optional).
+            symbol: Financial instrument symbol (e.g., 'EURUSD').
         """
-        self.logger.info("Fetching terminal information")
+        self.logger.info("symbol: %s", symbol)
         self._print_and_write_df(
-            df=self.terminal_info_as_df(),
-            csv_file_path=csv_file_path,
-            sqlite3_file_path=sqlite3_file_path,
-            sqlite3_table="terminal_info",
+            df=self.market_book_get_as_df(symbol=symbol),
+            csv_file_path=None,
+            sqlite3_file_path=None,
+            sqlite3_table=f"market_book_{symbol}",
         )
 
     def print_rates(
@@ -372,6 +348,10 @@ class Mt5ReportClient(Mt5DataClient):
             sqlite3_table=f"tick_{symbol}",
         )
 
+    def print_orders(self) -> None:
+        """Print active orders for a symbol."""
+        self.print_json(data=self.orders_get_as_df().to_dict(orient="records"))
+
     def print_margins(self, symbol: str) -> None:
         """Print margin requirements for a symbol.
 
@@ -407,44 +387,6 @@ class Mt5ReportClient(Mt5DataClient):
     def print_positions(self) -> None:
         """Print open positions for a symbol."""
         self.print_json(data=self.positions_get_as_df().to_dict(orient="records"))
-
-    def print_orders(self) -> None:
-        """Print active orders for a symbol."""
-        self.print_json(data=self.orders_get_as_df().to_dict(orient="records"))
-
-    def print_history_deals(
-        self,
-        hours: float,
-        date_to: str | None = None,
-        group: str | None = None,
-        symbol: str | None = None,
-    ) -> None:
-        """Print trading deals from history as DataFrame.
-
-        Args:
-            hours: Number of hours to look back from end date.
-            date_to: End date for history search (defaults to now).
-            group: Symbol group filter (optional).
-            symbol: Symbol filter (optional).
-        """
-        self.logger.info(
-            "hours: %s, date_to: %s, group: %s, symbol: %s",
-            hours,
-            date_to,
-            group,
-            symbol,
-        )
-        end_date = pd.to_datetime(date_to) if date_to else datetime.now(UTC)
-        start_date = end_date - timedelta(hours=float(hours))
-        self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
-        self.print_json(
-            data=self.history_deals_get_as_df(
-                date_from=start_date,
-                date_to=end_date,
-                group=group,
-                symbol=symbol,
-            ).to_dict(orient="records"),
-        )
 
     def print_history_orders(
         self,
@@ -493,5 +435,39 @@ class Mt5ReportClient(Mt5DataClient):
                 symbol=symbol,
                 ticket=ticket,
                 position=position,
+            ).to_dict(orient="records"),
+        )
+
+    def print_history_deals(
+        self,
+        hours: float,
+        date_to: str | None = None,
+        group: str | None = None,
+        symbol: str | None = None,
+    ) -> None:
+        """Print trading deals from history as DataFrame.
+
+        Args:
+            hours: Number of hours to look back from end date.
+            date_to: End date for history search (defaults to now).
+            group: Symbol group filter (optional).
+            symbol: Symbol filter (optional).
+        """
+        self.logger.info(
+            "hours: %s, date_to: %s, group: %s, symbol: %s",
+            hours,
+            date_to,
+            group,
+            symbol,
+        )
+        end_date = pd.to_datetime(date_to) if date_to else datetime.now(UTC)
+        start_date = end_date - timedelta(hours=float(hours))
+        self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
+        self.print_json(
+            data=self.history_deals_get_as_df(
+                date_from=start_date,
+                date_to=end_date,
+                group=group,
+                symbol=symbol,
             ).to_dict(orient="records"),
         )

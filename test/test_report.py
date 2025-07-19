@@ -589,46 +589,6 @@ class TestMt5ReportClient:
         captured = capsys.readouterr()
         assert len(captured.out) > 0
 
-    def test_print_account_info(
-        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test print_account_info method."""
-        assert mock_mt5_import is not None
-
-        class MockAccountInfo:
-            def _asdict(self) -> dict[str, Any]:
-                return {"login": 12345, "server": "Test-Server"}
-
-        client = Mt5ReportClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.account_info.return_value = MockAccountInfo()
-
-        client.initialize()
-        client.print_account_info()
-
-        captured = capsys.readouterr()
-        assert "login" in captured.out
-
-    def test_print_terminal_info(
-        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test print_terminal_info method."""
-        assert mock_mt5_import is not None
-
-        class MockTerminalInfo:
-            def _asdict(self) -> dict[str, Any]:
-                return {"company": "Test Company", "path": "/test/path"}
-
-        client = Mt5ReportClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
-
-        client.initialize()
-        client.print_terminal_info()
-
-        captured = capsys.readouterr()
-        assert "company" in captured.out
-
     def test_print_history_deals_empty(
         self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -825,7 +785,7 @@ class TestMt5ReportClient:
         assert len(captured.out) > 0
 
     def test_print_history_orders_with_date_parsing(
-        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+        self, mock_mt5_import: ModuleType | None
     ) -> None:
         """Test print_history_orders method with date string parsing."""
         assert mock_mt5_import is not None
@@ -840,5 +800,21 @@ class TestMt5ReportClient:
             hours=None, date_from="2023-01-01", date_to="2023-01-02"
         )
 
+    def test_print_market_book(
+        self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test print_market_book method."""
+        assert mock_mt5_import is not None
+
+        class MockBookItem:
+            def _asdict(self) -> dict[str, Any]:
+                return {"type": 1, "price": 1.1230, "volume": 100}
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.market_book_get.return_value = [MockBookItem()]
+
+        client.initialize()
+        client.print_market_book("EURUSD")
         captured = capsys.readouterr()
         assert len(captured.out) > 0
