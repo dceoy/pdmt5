@@ -103,10 +103,9 @@ class TestMt5Client:
         """Test initialization failure."""
         mock_mt5.initialize.return_value = False
 
-        with pytest.raises(Mt5RuntimeError) as exc_info:
-            client.initialize()
+        result = client.initialize()
 
-        assert "initialize failed" in str(exc_info.value)
+        assert result is False
         assert client._is_initialized is False
 
     def test_shutdown(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
@@ -140,17 +139,16 @@ class TestMt5Client:
 
         assert result is True
         mock_mt5.login.assert_called_once_with(
-            login=12345, password="secret", server="Demo", timeout=60000
+            12345, password="secret", server="Demo", timeout=60000
         )
 
     def test_login_failure(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test login failure."""
         mock_mt5.login.return_value = False
 
-        with pytest.raises(Mt5RuntimeError) as exc_info:
-            initialized_client.login(12345, "secret", "Demo")
+        result = initialized_client.login(12345, "secret", "Demo")
 
-        assert "login failed" in str(exc_info.value)
+        assert result is False
 
     def test_version(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test version method."""
@@ -167,10 +165,9 @@ class TestMt5Client:
         """Test version method failure."""
         mock_mt5.version.return_value = None
 
-        with pytest.raises(Mt5RuntimeError) as exc_info:
-            initialized_client.version()
+        result = initialized_client.version()
 
-        assert "version failed" in str(exc_info.value)
+        assert result is None
 
     def test_symbols_total(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test symbols_total method."""
@@ -196,7 +193,7 @@ class TestMt5Client:
 
         assert result is not None
         assert len(result) == 1
-        mock_mt5.symbols_get.assert_called_once_with("*USD*")
+        mock_mt5.symbols_get.assert_called_once_with(group="*USD*")
 
     def test_symbols_get_empty(
         self, initialized_client: Mt5Client, mock_mt5: Mock
@@ -557,11 +554,14 @@ class TestMt5Client:
         mock_mt5.history_orders_get.assert_called_once_with(ticket=12345)
 
     def test_history_orders_get_missing_dates(
-        self, initialized_client: Mt5Client
+        self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:
         """Test history_orders_get without required dates."""
-        with pytest.raises(ValueError, match="date_from and date_to are required"):
-            initialized_client.history_orders_get()
+        # With new implementation, calling without dates passes None, None to MT5
+        mock_mt5.history_orders_get.return_value = ()
+        result = initialized_client.history_orders_get()
+        assert result == ()
+        mock_mt5.history_orders_get.assert_called_once_with(None, None)
 
     def test_history_deals_total(
         self, initialized_client: Mt5Client, mock_mt5: Mock
@@ -674,19 +674,7 @@ class TestMt5Client:
         self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:
         """Test error handling for methods that return None."""
-        # Test methods that handle None return values
-        mock_mt5.symbols_total.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.symbols_total()
-
-        mock_mt5.orders_total.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.orders_total()
-
-        mock_mt5.positions_total.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.positions_total()
-
+        # Test methods that handle None return values with validation
         mock_mt5.account_info.return_value = None
         with pytest.raises(Mt5RuntimeError):
             initialized_client.account_info()
@@ -695,31 +683,44 @@ class TestMt5Client:
         with pytest.raises(Mt5RuntimeError):
             initialized_client.terminal_info()
 
+        # These methods now return None directly without raising errors
+        mock_mt5.symbols_total.return_value = None
+        result = initialized_client.symbols_total()
+        assert result is None
+
+        mock_mt5.orders_total.return_value = None
+        result = initialized_client.orders_total()
+        assert result is None
+
+        mock_mt5.positions_total.return_value = None
+        result = initialized_client.positions_total()
+        assert result is None
+
         mock_mt5.history_orders_total.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.history_orders_total(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-            )
+        result = initialized_client.history_orders_total(
+            datetime(2023, 1, 1, tzinfo=UTC),
+            datetime(2023, 1, 31, tzinfo=UTC),
+        )
+        assert result is None
 
         mock_mt5.history_deals_total.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.history_deals_total(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-            )
+        result = initialized_client.history_deals_total(
+            datetime(2023, 1, 1, tzinfo=UTC),
+            datetime(2023, 1, 31, tzinfo=UTC),
+        )
+        assert result is None
 
     def test_market_book_failures(
         self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:
         """Test market book method failures."""
         mock_mt5.market_book_add.return_value = False
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.market_book_add("EURUSD")
+        result = initialized_client.market_book_add("EURUSD")
+        assert result is False
 
         mock_mt5.market_book_release.return_value = False
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.market_book_release("EURUSD")
+        result = initialized_client.market_book_release("EURUSD")
+        assert result is False
 
         mock_mt5.market_book_get.return_value = None
         with pytest.raises(Mt5RuntimeError):
@@ -796,8 +797,8 @@ class TestMt5Client:
     ) -> None:
         """Test orders_get with empty results."""
         mock_mt5.orders_get.return_value = None
-        result = initialized_client.orders_get()
-        assert result is None
+        with pytest.raises(Mt5RuntimeError):
+            initialized_client.orders_get()
 
         mock_mt5.orders_get.return_value = ()
         result = initialized_client.orders_get()
@@ -808,8 +809,8 @@ class TestMt5Client:
     ) -> None:
         """Test positions_get with empty results."""
         mock_mt5.positions_get.return_value = None
-        result = initialized_client.positions_get()
-        assert result is None
+        with pytest.raises(Mt5RuntimeError):
+            initialized_client.positions_get()
 
         mock_mt5.positions_get.return_value = ()
         result = initialized_client.positions_get()
@@ -820,11 +821,11 @@ class TestMt5Client:
     ) -> None:
         """Test history methods with empty results."""
         mock_mt5.history_orders_get.return_value = None
-        result = initialized_client.history_orders_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
-        assert result is None
+        with pytest.raises(Mt5RuntimeError):
+            initialized_client.history_orders_get(
+                datetime(2023, 1, 1, tzinfo=UTC),
+                datetime(2023, 1, 31, tzinfo=UTC),
+            )
 
         mock_mt5.history_orders_get.return_value = ()
         result = initialized_client.history_orders_get(
@@ -834,11 +835,11 @@ class TestMt5Client:
         assert result == ()
 
         mock_mt5.history_deals_get.return_value = None
-        result = initialized_client.history_deals_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
-        assert result is None
+        with pytest.raises(Mt5RuntimeError):
+            initialized_client.history_deals_get(
+                datetime(2023, 1, 1, tzinfo=UTC),
+                datetime(2023, 1, 31, tzinfo=UTC),
+            )
 
         mock_mt5.history_deals_get.return_value = ()
         result = initialized_client.history_deals_get(
@@ -943,20 +944,6 @@ class TestMt5Client:
         assert result is not None
         mock_mt5.positions_get.assert_called_with(ticket=12345)
 
-    def test_symbols_get_with_empty_group(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test symbols_get with empty group parameter."""
-        mock_symbol = mocker.MagicMock()
-        mock_mt5.symbols_get.return_value = (mock_symbol,)
-
-        result = initialized_client.symbols_get("")
-        assert result is not None
-        mock_mt5.symbols_get.assert_called_with()  # Empty string is falsy, so no args
-
     def test_login_without_timeout(
         self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:
@@ -965,7 +952,7 @@ class TestMt5Client:
 
         result = initialized_client.login(12345, "secret", "Demo")
         assert result is True
-        mock_mt5.login.assert_called_with(login=12345, password="secret", server="Demo")
+        mock_mt5.login.assert_called_with(12345, password="secret", server="Demo")
 
     def test_empty_market_book_get(
         self, initialized_client: Mt5Client, mock_mt5: Mock

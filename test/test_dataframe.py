@@ -476,7 +476,7 @@ class TestMt5DataClient:
             Mt5RuntimeError,
             match=r"initialize failed: 1 - Connection failed",
         ):
-            client.initialize()
+            client.initialize_mt5()
 
     def test_initialize_already_initialized(
         self, mock_mt5_import: ModuleType | None
@@ -696,7 +696,7 @@ class TestMt5DataClient:
 
         assert result is True
         mock_mt5_import.login.assert_called_once_with(
-            login=123456,
+            123456,
             password="password",
             server="server.com",
         )
@@ -713,7 +713,7 @@ class TestMt5DataClient:
 
         assert result is True
         mock_mt5_import.login.assert_called_once_with(
-            login=123456,
+            123456,
             password="password",
             server="server.com",
             timeout=30000,
@@ -724,12 +724,12 @@ class TestMt5DataClient:
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.login.return_value = False
-        mock_mt5_import.last_error.return_value = (1, "Login failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(Mt5RuntimeError, match=r"login failed: 1 - Login failed"):
-            client.login(123456, "password", "server.com")
+        result = client.login(123456, "password", "server.com")
+
+        assert result is False
 
     def test_orders_total(self, mock_mt5_import: ModuleType | None) -> None:
         """Test orders_total method."""
@@ -743,19 +743,17 @@ class TestMt5DataClient:
 
         assert result == 5
 
-    def test_orders_total_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test orders_total method with error."""
+    def test_orders_total_none_result(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test orders_total method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Orders total failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"orders_total failed: 1 - Orders total failed"
-        ):
-            client.orders_total()
+        result = client.orders_total()
+
+        assert result is None
 
     def test_positions_total(self, mock_mt5_import: ModuleType | None) -> None:
         """Test positions_total method."""
@@ -769,19 +767,19 @@ class TestMt5DataClient:
 
         assert result == 3
 
-    def test_positions_total_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test positions_total method with error."""
+    def test_positions_total_none_result(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test positions_total method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Positions total failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"positions_total failed: 1 - Positions total failed"
-        ):
-            client.positions_total()
+        result = client.positions_total()
+
+        assert result is None
 
     def test_history_orders_total(self, mock_mt5_import: ModuleType | None) -> None:
         """Test history_orders_total method."""
@@ -804,39 +802,33 @@ class TestMt5DataClient:
         """Test history_orders_total method with invalid dates."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid date range")
+        mock_mt5_import.history_orders_total.return_value = 0
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"history_orders_total failed: 1 - Invalid date range",
-        ):
-            client.history_orders_total(
-                datetime(2022, 1, 2, tzinfo=UTC),
-                datetime(2022, 1, 1, tzinfo=UTC),
-            )
+        # Method doesn't validate dates, just passes them to MT5
+        result = client.history_orders_total(
+            datetime(2022, 1, 2, tzinfo=UTC),
+            datetime(2022, 1, 1, tzinfo=UTC),
+        )
+        assert result == 0
 
-    def test_history_orders_total_error(
+    def test_history_orders_total_none_result(
         self, mock_mt5_import: ModuleType | None
     ) -> None:
-        """Test history_orders_total method with error."""
+        """Test history_orders_total method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_orders_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "History orders total failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"history_orders_total failed: 1 - History orders total failed",
-        ):
-            client.history_orders_total(
-                datetime(2022, 1, 1, tzinfo=UTC),
-                datetime(2022, 1, 2, tzinfo=UTC),
-            )
+        result = client.history_orders_total(
+            datetime(2022, 1, 1, tzinfo=UTC),
+            datetime(2022, 1, 2, tzinfo=UTC),
+        )
+
+        assert result is None
 
     def test_history_deals_total(self, mock_mt5_import: ModuleType | None) -> None:
         """Test history_deals_total method."""
@@ -859,38 +851,33 @@ class TestMt5DataClient:
         """Test history_deals_total method with invalid dates."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid date range")
+        mock_mt5_import.history_deals_total.return_value = 0
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"history_deals_total failed: 1 - Invalid date range"
-        ):
-            client.history_deals_total(
-                datetime(2022, 1, 2, tzinfo=UTC),
-                datetime(2022, 1, 1, tzinfo=UTC),
-            )
+        # Method doesn't validate dates, just passes them to MT5
+        result = client.history_deals_total(
+            datetime(2022, 1, 2, tzinfo=UTC),
+            datetime(2022, 1, 1, tzinfo=UTC),
+        )
+        assert result == 0
 
-    def test_history_deals_total_error(
+    def test_history_deals_total_none_result(
         self, mock_mt5_import: ModuleType | None
     ) -> None:
-        """Test history_deals_total method with error."""
+        """Test history_deals_total method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "History deals total failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"history_deals_total failed: 1 - History deals total failed",
-        ):
-            client.history_deals_total(
-                datetime(2022, 1, 1, tzinfo=UTC),
-                datetime(2022, 1, 2, tzinfo=UTC),
-            )
+        result = client.history_deals_total(
+            datetime(2022, 1, 1, tzinfo=UTC),
+            datetime(2022, 1, 2, tzinfo=UTC),
+        )
+
+        assert result is None
 
     def test_order_calc_margin(self, mock_mt5_import: ModuleType | None) -> None:
         """Test order_calc_margin method."""
@@ -1038,19 +1025,17 @@ class TestMt5DataClient:
 
         assert result == (2460, 2460, "15 Feb 2022")
 
-    def test_version_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test version method with error."""
+    def test_version_none_result(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test version method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.version.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Version failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"version failed: 1 - Version failed"
-        ):
-            client.version()
+        result = client.version()
+
+        assert result is None
 
     def test_symbols_total(self, mock_mt5_import: ModuleType | None) -> None:
         """Test symbols_total method."""
@@ -1064,19 +1049,19 @@ class TestMt5DataClient:
 
         assert result == 1000
 
-    def test_symbols_total_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbols_total method with error."""
+    def test_symbols_total_none_result(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test symbols_total method with None result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbols_total.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Symbols total failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"symbols_total failed: 1 - Symbols total failed"
-        ):
-            client.symbols_total()
+        result = client.symbols_total()
+
+        assert result is None
 
     def test_symbol_select(self, mock_mt5_import: ModuleType | None) -> None:
         """Test symbol_select method."""
@@ -1274,7 +1259,10 @@ class TestMt5DataClient:
         client.initialize()
         with pytest.raises(
             ValueError,
-            match=r"date_from and date_to are required when not filtering by ticket/position",  # noqa: E501
+            match=(
+                r"Both date_from and date_to must be provided"
+                r" if not using ticket or position"
+            ),
         ):
             client.history_orders_get_as_df()
 
@@ -1405,6 +1393,26 @@ class TestMt5DataClient:
         )
         assert orders_df.empty
         assert isinstance(orders_df, pd.DataFrame)
+
+    def test_history_deals_get_no_dates(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test history_deals_get method without dates when not using ticket."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = []
+        mock_mt5_import.last_error.return_value = (1, "Invalid arguments")
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+        with pytest.raises(
+            ValueError,
+            match=(
+                r"Both date_from and date_to must be provided"
+                r" if not using ticket or position"
+            ),
+        ):
+            client.history_deals_get_as_df()
 
     def test_market_book_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method."""
@@ -1615,11 +1623,10 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.initialize.side_effect = [False, False, True]
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
-        # The implementation calls initialize which raises an exception on first failure
-        with pytest.raises(Mt5RuntimeError, match=r"initialize failed: 1 - Test error"):
-            client.initialize_mt5()
+        # Should succeed on third attempt
+        client.initialize_mt5()
 
-        assert mock_mt5_import.initialize.call_count == 1
+        assert mock_mt5_import.initialize.call_count == 3
 
     def test_initialize_with_retry_logic_warning_path(
         self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
@@ -1636,12 +1643,11 @@ class TestMt5DataClientRetryLogic:
         # Mock time.sleep to capture the call
         mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
 
-        # The implementation calls initialize which raises an exception on first failure
-        with pytest.raises(Mt5RuntimeError, match=r"initialize failed: 1 - Test error"):
-            client.initialize_mt5()
+        # Should succeed on second attempt
+        client.initialize_mt5()
 
-        assert mock_mt5_import.initialize.call_count == 1
-        mock_sleep.assert_not_called()
+        assert mock_mt5_import.initialize.call_count == 2
+        mock_sleep.assert_called_once_with(1)
 
     def test_initialize_with_retry_all_failures(
         self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
@@ -1662,9 +1668,9 @@ class TestMt5DataClientRetryLogic:
             client.initialize_mt5()
 
         assert "initialize failed" in str(exc_info.value)
-        assert mock_mt5_import.initialize.call_count == 1  # No retries due to exception
-        # Check that sleep was not called since exception is raised immediately
-        assert mock_sleep.call_count == 0
+        assert mock_mt5_import.initialize.call_count == 3  # All attempts made
+        # Check that sleep was called for retries
+        assert mock_sleep.call_count == 2
 
     def test_account_info_as_dict(self, mock_mt5_import: ModuleType | None) -> None:
         """Test account_info_as_dict method."""
@@ -1952,3 +1958,183 @@ class TestMt5DataClientRetryLogic:
         error = client.last_error()
         assert error == (0, "No error")
         mock_mt5_import.last_error.assert_called_once()
+
+    def test_validate_history_input_with_ticket(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with ticket parameter."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should not raise when ticket is provided
+        client._validate_history_input(ticket=123456)
+
+    def test_validate_history_input_with_position(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with position parameter."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should not raise when position is provided
+        client._validate_history_input(position=789012)
+
+    def test_validate_history_input_with_dates(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with date parameters."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should not raise when both dates are provided
+        client._validate_history_input(
+            date_from=datetime(2022, 1, 1, tzinfo=UTC),
+            date_to=datetime(2022, 1, 2, tzinfo=UTC),
+        )
+
+    def test_validate_history_input_missing_date_to(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with missing date_to."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should raise when only date_from is provided
+        with pytest.raises(
+            ValueError,
+            match=(
+                r"Both date_from and date_to must be provided"
+                r" if not using ticket or position"
+            ),
+        ):
+            client._validate_history_input(date_from=datetime(2022, 1, 1, tzinfo=UTC))
+
+    def test_validate_history_input_missing_date_from(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with missing date_from."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should raise when only date_to is provided
+        with pytest.raises(
+            ValueError,
+            match=(
+                r"Both date_from and date_to must be provided"
+                r" if not using ticket or position"
+            ),
+        ):
+            client._validate_history_input(date_to=datetime(2022, 1, 2, tzinfo=UTC))
+
+    def test_validate_history_input_no_params(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test _validate_history_input with no parameters."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # Should raise when no parameters are provided
+        with pytest.raises(
+            ValueError,
+            match=(
+                r"Both date_from and date_to must be provided"
+                r" if not using ticket or position"
+            ),
+        ):
+            client._validate_history_input()
+
+    def test_history_deals_get_ticket_only(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test history_deals_get method with only ticket parameter."""
+        assert mock_mt5_import is not None
+        mock_deals = [
+            MockDeal(
+                ticket=123456,
+                order=789012,
+                time=1640995200,
+                time_msc=1640995200000,
+                type=0,
+                entry=0,
+                magic=0,
+                position_id=345678,
+                reason=0,
+                volume=0.1,
+                price=1.1300,
+                commission=-2.5,
+                swap=0.0,
+                profit=10.0,
+                fee=0.0,
+                symbol="EURUSD",
+                comment="",
+                external_id="",
+            ),
+        ]
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = mock_deals
+
+        client.initialize()
+        df_result = client.history_deals_get_as_df(ticket=123456)
+
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert df_result.index[0] == 123456
+
+    def test_history_deals_get_position_only(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test history_deals_get method with only position parameter."""
+        assert mock_mt5_import is not None
+        mock_deals = [
+            MockDeal(
+                ticket=123456,
+                order=789012,
+                time=1640995200,
+                time_msc=1640995200000,
+                type=0,
+                entry=0,
+                magic=0,
+                position_id=345678,
+                reason=0,
+                volume=0.1,
+                price=1.1300,
+                commission=-2.5,
+                swap=0.0,
+                profit=10.0,
+                fee=0.0,
+                symbol="EURUSD",
+                comment="",
+                external_id="",
+            ),
+        ]
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.history_deals_get.return_value = mock_deals
+
+        client.initialize()
+        df_result = client.history_deals_get_as_df(position=345678)
+
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert df_result.iloc[0]["position_id"] == 345678

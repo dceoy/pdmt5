@@ -424,8 +424,12 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with historical order information.
         """
-        if date_from is not None and date_to is not None:
-            self._validate_date_range(date_from=date_from, date_to=date_to)
+        self._validate_history_input(
+            date_from=date_from,
+            date_to=date_to,
+            ticket=ticket,
+            position=position,
+        )
         return self._convert_time_columns(
             df=pd.DataFrame([
                 o._asdict()
@@ -461,8 +465,12 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with historical deal information.
         """
-        if date_from is not None and date_to is not None:
-            self._validate_date_range(date_from=date_from, date_to=date_to)
+        self._validate_history_input(
+            date_from=date_from,
+            date_to=date_to,
+            ticket=ticket,
+            position=position,
+        )
         return self._convert_time_columns(
             df=pd.DataFrame([
                 d._asdict()
@@ -475,6 +483,36 @@ class Mt5DataClient(Mt5Client):
                 )
             ]),
         ).pipe(lambda d: (d.set_index("ticket") if not d.empty else d))
+
+    def _validate_history_input(
+        self,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        ticket: int | None = None,
+        position: int | None = None,
+    ) -> None:
+        """Validate input parameters for history retrieval methods.
+
+        Args:
+            date_from: Start date.
+            date_to: End date.
+            ticket: Order ticket.
+            position: Position ticket.
+
+        Raises:
+            ValueError: If both date_from and date_to are not provided
+                when not using ticket or position.
+        """
+        if ticket is not None or position is not None:
+            pass
+        elif date_from is None or date_to is None:
+            error_message = (
+                "Both date_from and date_to must be provided"
+                " if not using ticket or position."
+            )
+            raise ValueError(error_message)
+        else:
+            self._validate_date_range(date_from=date_from, date_to=date_to)
 
     @staticmethod
     def _validate_positive_count(count: int) -> None:
@@ -519,7 +557,6 @@ class Mt5DataClient(Mt5Client):
             ValueError: If value is not positive.
         """
         if value <= 0:
-            # For price_open and price_close, use just "Price" in the message
             if name.startswith("price_"):
                 display_name = "Price"
             else:
