@@ -90,19 +90,6 @@ The main interface for interacting with MetaTrader 5:
 - **Trading Info**: `get_orders()`, `get_positions()`, `get_deals()`
 - **Symbol Info**: `get_symbols()`, `get_symbol_info()`
 
-### Constants
-
-Comprehensive enums for MT5 constants:
-
-```python
-from pdmt5 import (
-    TIMEFRAME_M1, TIMEFRAME_H1, TIMEFRAME_D1,
-    ORDER_TYPE_BUY, ORDER_TYPE_SELL,
-    POSITION_TYPE_BUY, POSITION_TYPE_SELL,
-    TICK_FLAG_BID, TICK_FLAG_ASK
-)
-```
-
 ### Configuration
 
 ```python

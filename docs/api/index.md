@@ -7,15 +7,12 @@ This section contains the complete API documentation for pdmt5.
 The pdmt5 package consists of the following modules:
 
 ### [Mt5Client](mt5.md)
-Base client class for MetaTrader 5 operations with connection management and low-level API access.
+Base client class for MetaTrader 5 operations with connection management, low-level API access, and error handling (`Mt5RuntimeError`).
 
-### [Exception](exception.md)
-Custom exception handling for MetaTrader 5 runtime errors.
-
-### [DataFrame](dataframe.md)
+### [Mt5DataClient & Mt5Config](dataframe.md)
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
-### [Report](report.md)
+### [Mt5ReportClient](report.md)
 Reporting operations and data export functionality for MetaTrader 5 data.
 
 ## Architecture Overview
@@ -41,6 +38,7 @@ All modules follow these conventions:
 ```python
 from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient
 import MetaTrader5 as mt5
+from datetime import datetime
 
 # Low-level API access with Mt5Client
 with Mt5Client(mt5=mt5) as client:
@@ -55,9 +53,9 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
 # Enhanced functionality with Mt5ReportClient
-with Mt5ReportClient(mt5=mt5, config=config) as printer:
-    printer.print_rates("EURUSD", timeframe="H1", count=10)
-    printer.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
+with Mt5ReportClient(mt5=mt5, config=config) as reporter:
+    reporter.print_rates("EURUSD", timeframe="H1", count=10)
+    reporter.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
 ```
 
 ## Examples
