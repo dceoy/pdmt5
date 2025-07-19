@@ -55,11 +55,13 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
 # Enhanced functionality with Mt5ReportClient for data analysis and export
 with Mt5ReportClient(mt5=mt5, config=config) as reporter:
     # Display formatted data
-    reporter.print_df(rates_df, include_index=True)
-    reporter.print_json(account._asdict() if hasattr(account, '_asdict') else account)
+    Mt5ReportClient.print_df(rates_df, include_index=True)
+    Mt5ReportClient.print_json(account._asdict() if hasattr(account, '_asdict') else account)
     
-    # Export data to various formats
-    reporter.export_to_sqlite("trading_data.db", "rates", rates_df)
+    # Print with optional SQLite export
+    reporter.print_rates("EURUSD", mt5.TIMEFRAME_H1, 100,
+                        sqlite3_file_path="trading_data.db", 
+                        sqlite3_table="eurusd_rates")
 ```
 
 ## Examples

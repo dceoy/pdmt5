@@ -18,9 +18,8 @@ Enhanced data client that inherits from `Mt5DataClient` and adds presentation an
 ## Features
 
 - **Pretty Printing**: Formatted console output for DataFrames and JSON data
-- **CSV Export**: Export any DataFrame to CSV format
 - **SQLite Export**: Export data to SQLite database with deduplication
-- **Specialized Print Methods**: Tailored output for different data types
+- **Print Methods**: Comprehensive printing for market data, trading info, and analysis
 - **Inheritance**: All `Mt5DataClient` methods are available
 
 ## Usage Examples
@@ -35,11 +34,14 @@ config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
 client = Mt5ReportClient(mt5=mt5, config=config)
 
 with client:
-    # Pretty print current positions
+    # Print current positions
     client.print_positions()
     
-    # Print account information as JSON
-    client.print_account_info()
+    # Print MetaTrader 5 information
+    client.print_mt5_info()
+    
+    # Print symbols
+    client.print_symbols()
 ```
 
 ### Printing Market Data
@@ -47,149 +49,169 @@ with client:
 ```python
 with client:
     # Print OHLCV rates
-    client.print_rates("EURUSD", timeframe="H1", count=10)
+    client.print_rates("EURUSD", timeframe=mt5.TIMEFRAME_H1, count=10)
     
     # Print tick data
     client.print_ticks("EURUSD", count=20)
     
     # Print symbol information
     client.print_symbol_info("EURUSD")
-```
-
-### Export to CSV
-
-```python
-with client:
-    # Export rates to CSV
-    client.export_rates_to_csv(
-        symbol="EURUSD",
-        file_path="data/eurusd_rates.csv",
-        timeframe="D1",
-        count=365
-    )
     
-    # Export positions to CSV
-    positions_df = client.positions_get()
-    client.export_to_csv(positions_df, "data/positions.csv")
+    # Print market book
+    client.print_market_book("EURUSD")
 ```
 
 ### Export to SQLite
 
 ```python
 with client:
-    # Export deals to SQLite with deduplication
-    client.export_deals_to_sqlite(
-        db_path="data/trading.db",
-        table_name="deals",
+    # Print and export rates to SQLite
+    client.print_rates(
+        symbol="EURUSD",
+        timeframe=mt5.TIMEFRAME_D1,
+        count=365,
+        sqlite3_file_path="data/trading.db",
+        sqlite3_table="eurusd_rates"
+    )
+    
+    # Print symbols with SQLite export
+    client.print_symbols(
+        sqlite3_file_path="data/market.db",
+        sqlite3_table="symbols"
+    )
+```
+
+### Trading and Position Data
+
+```python
+with client:
+    # Print current orders
+    client.print_orders()
+    
+    # Print margin requirements for a symbol
+    client.print_margins("EURUSD")
+    
+    # Print historical orders
+    client.print_history_orders(
         date_from=datetime(2024, 1, 1),
         date_to=datetime(2024, 12, 31)
     )
     
-    # Export any DataFrame to SQLite
-    symbols_df = client.symbols_get()
-    client.export_to_sqlite(
-        dataframe=symbols_df,
-        db_path="data/market.db",
-        table_name="symbols",
-        if_exists="replace"
+    # Print historical deals
+    client.print_history_deals(
+        date_from=datetime(2024, 1, 1),
+        date_to=datetime(2024, 12, 31)
     )
 ```
 
-### Specialized Print Methods
+### DataFrame and JSON Printing
 
 ```python
 with client:
-    # Print margin requirements
-    client.print_order_calc_margin(
-        action="BUY",
-        symbol="EURUSD",
-        volume=1.0
-    )
+    # Get some data
+    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
+    account_info = client.account_info()
     
-    # Print profit calculation
-    client.print_order_calc_profit(
-        action="BUY",
-        symbol="EURUSD",
-        volume=1.0,
-        price_open=1.1000,
-        price_close=1.1050
-    )
+    # Print DataFrame with custom formatting
+    Mt5ReportClient.print_df(rates_df, include_index=True)
     
-    # Print terminal information
-    client.print_terminal_info()
+    # Print data as formatted JSON
+    Mt5ReportClient.print_json(account_info._asdict() if hasattr(account_info, '_asdict') else account_info)
 ```
 
-### Pretty Printing Options
+### SQLite Export with Deduplication
 
 ```python
 with client:
-    # Print with custom formatting
-    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_M5, datetime.now(), 100)
+    # The print methods include optional SQLite export
+    # Data is automatically deduplicated based on DataFrame index
     
-    # Basic pretty print
-    client.pretty_print_dataframe(rates_df)
+    # Export ticks with deduplication
+    client.print_ticks(
+        symbol="EURUSD",
+        count=1000,
+        sqlite3_file_path="trading_data.db",
+        sqlite3_table="eurusd_ticks"
+    )
     
-    # Print as JSON
-    client.pretty_print_json({"symbol": "EURUSD", "timeframe": "M5", "count": 100})
+    # Export rates with deduplication  
+    client.print_rates(
+        symbol="EURUSD",
+        timeframe=mt5.TIMEFRAME_H1,
+        count=500,
+        sqlite3_file_path="trading_data.db", 
+        sqlite3_table="eurusd_h1_rates"
+    )
 ```
 
 ## Print Methods Reference
 
 ### Market Data
-- `print_rates()` - Print OHLCV rates
-- `print_ticks()` - Print tick data
-- `print_symbol_info()` - Print symbol information
-- `print_symbol_info_tick()` - Print current tick
+- `print_rates(symbol, timeframe, count, sqlite3_file_path=None, sqlite3_table=None)` - Print OHLCV rates with optional SQLite export
+- `print_ticks(symbol, count, sqlite3_file_path=None, sqlite3_table=None)` - Print tick data with optional SQLite export
+- `print_symbol_info(symbol)` - Print symbol information
+- `print_market_book(symbol)` - Print market depth/book data
 
-### Account & Trading
-- `print_account_info()` - Print account details
+### Symbols and Market
+- `print_symbols(sqlite3_file_path=None, sqlite3_table=None)` - Print symbol list with optional SQLite export
+- `print_mt5_info()` - Print MetaTrader 5 version and terminal information
+
+### Trading and Positions
 - `print_positions()` - Print open positions
 - `print_orders()` - Print pending orders
-- `print_deals()` - Print historical deals
-- `print_orders_history()` - Print order history
+- `print_margins(symbol)` - Print margin requirements for a symbol
+- `print_history_orders(date_from, date_to)` - Print historical orders
+- `print_history_deals(date_from, date_to)` - Print historical deals
 
-### Calculations
-- `print_order_calc_margin()` - Print margin requirements
-- `print_order_calc_profit()` - Print profit calculations
-- `print_order_check()` - Print order validation results
+### Static Utility Methods
+- `print_df(df, include_index=True, display_max_columns=500, display_width=1500)` - Print DataFrame with custom formatting
+- `print_json(data, indent=2)` - Print data as formatted JSON
 
-### Terminal
-- `print_terminal_info()` - Print MT5 terminal information
-- `print_version()` - Print MT5 version
+## SQLite Export Features
 
-## Export Methods Reference
+All print methods that output DataFrames support optional SQLite export through `sqlite3_file_path` and `sqlite3_table` parameters. The SQLite export includes:
 
-### CSV Export
-- `export_to_csv()` - Export any DataFrame to CSV
-- `export_rates_to_csv()` - Export OHLCV rates to CSV
+- **Automatic Deduplication**: Uses `drop_duplicates_in_sqlite3()` to prevent duplicate records
+- **Table Creation**: Automatically creates tables if they don't exist
+- **Index-based Deduplication**: Removes duplicates based on DataFrame index values
 
-### SQLite Export
-- `export_to_sqlite()` - Export any DataFrame to SQLite
-- `export_deals_to_sqlite()` - Export deals with deduplication
+## Internal SQLite Methods
 
-## Deduplication Feature
+The following internal methods handle SQLite operations:
 
-The SQLite export includes automatic deduplication based on the DataFrame index:
+- `drop_duplicates_in_sqlite3(cursor, table)` - Remove duplicate records based on index
+- `write_df_to_sqlite3(df, sqlite3_file_path, table)` - Write DataFrame to SQLite with deduplication
+
+Example of incremental data collection:
 
 ```python
-# This will only insert new deals not already in the database
-client.export_deals_to_sqlite(
-    db_path="trading.db",
-    table_name="deals",
-    date_from=datetime.now() - timedelta(days=7)
+# This will only insert new ticks not already in the database
+client.print_ticks(
+    symbol="EURUSD",
+    count=1000,
+    sqlite3_file_path="trading.db",
+    sqlite3_table="eurusd_ticks"
+)
+
+# Run again later - only new ticks will be added
+client.print_ticks(
+    symbol="EURUSD", 
+    count=1000,
+    sqlite3_file_path="trading.db",
+    sqlite3_table="eurusd_ticks"
 )
 ```
 
 ## Error Handling
 
-All print and export methods handle errors gracefully:
+All print methods handle errors gracefully:
 
 ```python
 from pdmt5.mt5 import Mt5RuntimeError
 from datetime import datetime
 
 try:
-    client.print_rates("INVALID_SYMBOL", timeframe="H1")
+    client.print_rates("INVALID_SYMBOL", timeframe=mt5.TIMEFRAME_H1, count=100)
 except Mt5RuntimeError as e:
     print(f"Failed to print rates: {e}")
 ```
@@ -197,7 +219,8 @@ except Mt5RuntimeError as e:
 ## Best Practices
 
 1. **Use context manager** for automatic connection handling
-2. **Check file paths** before exporting to ensure directory exists
+2. **Create directories** before SQLite export to ensure path exists
 3. **Use deduplication** for incremental SQLite updates
-4. **Handle large datasets** carefully - consider using date ranges
-5. **Format timestamps** appropriately for your use case
+4. **Handle large datasets** carefully - use appropriate count limits
+5. **Use static methods** for DataFrame and JSON formatting when data is already available
+6. **Specify timeframes** using MetaTrader 5 constants (e.g., `mt5.TIMEFRAME_H1`)
