@@ -38,7 +38,7 @@ class Mt5DataClient(Mt5Client):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     config: Mt5Config = Field(
-        default_factory=lambda: Mt5Config(),  # type: ignore[reportCallIssue] # noqa: PLW0108
+        default_factory=Mt5Config,
         description="MetaTrader5 connection configuration",
     )
     retry_count: int = Field(

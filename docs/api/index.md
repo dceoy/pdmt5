@@ -46,16 +46,22 @@ with Mt5Client(mt5=mt5) as client:
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Pandas-friendly interface with Mt5DataClient
+# Pandas-friendly interface with Mt5DataClient and configuration
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
 with Mt5DataClient(mt5=mt5, config=config) as client:
     symbols_df = client.symbols_get()
     rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Enhanced functionality with Mt5ReportClient
+# Enhanced functionality with Mt5ReportClient for data analysis and export
 with Mt5ReportClient(mt5=mt5, config=config) as reporter:
-    reporter.print_rates("EURUSD", timeframe="H1", count=10)
-    reporter.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
+    # Display formatted data
+    Mt5ReportClient.print_df(rates_df, include_index=True)
+    Mt5ReportClient.print_json(account._asdict() if hasattr(account, '_asdict') else account)
+    
+    # Print with optional SQLite export
+    reporter.print_rates("EURUSD", mt5.TIMEFRAME_H1, 100,
+                        sqlite3_file_path="trading_data.db", 
+                        sqlite3_table="eurusd_rates")
 ```
 
 ## Examples
