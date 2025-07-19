@@ -55,6 +55,7 @@ nav:
   - Home: index.md
   - API Reference:
     - Overview: api/index.md
+    - Mt5Client: api/mt5.md
     - Exception: api/exception.md
     - DataFrame: api/dataframe.md
     - ETL: api/etl.md

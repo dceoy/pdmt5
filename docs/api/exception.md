@@ -1,6 +1,6 @@
 # Exception
 
-::: pdmt5.exception
+::: pdmt5.mt5.Mt5RuntimeError
 
 ## Overview
 
@@ -9,7 +9,7 @@ The exception module provides custom exception handling for MetaTrader 5 runtime
 ## Classes
 
 ### Mt5RuntimeError
-::: pdmt5.exception.Mt5RuntimeError
+::: pdmt5.mt5.Mt5RuntimeError
     options:
       show_bases: false
 
@@ -20,7 +20,8 @@ Custom runtime exception for MetaTrader 5 specific errors. This exception is rai
 ### Basic Exception Handling
 
 ```python
-from pdmt5 import Mt5DataClient, Mt5Config, Mt5RuntimeError
+from pdmt5 import Mt5DataClient, Mt5Config
+from pdmt5.mt5 import Mt5RuntimeError
 import MetaTrader5 as mt5
 
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")

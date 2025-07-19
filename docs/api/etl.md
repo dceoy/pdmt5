@@ -185,6 +185,8 @@ printer.export_deals_to_sqlite(
 All print and export methods handle errors gracefully:
 
 ```python
+from pdmt5.mt5 import Mt5RuntimeError
+
 try:
     printer.print_rates("INVALID_SYMBOL", timeframe="H1")
 except Mt5RuntimeError as e:

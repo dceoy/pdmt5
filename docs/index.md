@@ -22,20 +22,26 @@ pip install pdmt5
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Config, Mt5DataClient, Mt5EtlClient
+from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5EtlClient
+import MetaTrader5 as mt5
 
 # Configure connection
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
 
-# Use the data client
-with Mt5DataClient(config) as client:
-    # Get market data
-    symbols = client.fetch_symbols()
-    rates = client.fetch_rates("EURUSD", granularity="H1", count=100)
+# Low-level API access
+with Mt5Client(mt5=mt5) as client:
+    client.initialize()
+    rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Or use the printer for formatted output
-with Mt5EtlClient(config) as printer:
-    printer.print_rates("EURUSD", granularity="D1", count=10)
+# Pandas-friendly interface
+with Mt5DataClient(mt5=mt5, config=config) as client:
+    symbols_df = client.symbols_get()
+    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
+
+# Enhanced functionality with printing and export
+with Mt5EtlClient(mt5=mt5, config=config) as printer:
+    printer.print_rates("EURUSD", timeframe="H1", count=10)
+    printer.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
 ```
 
 ## Requirements
@@ -48,8 +54,9 @@ with Mt5EtlClient(config) as printer:
 
 Browse the API documentation to learn about available modules and functions:
 
+- [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access
 - [Exception](api/exception.md) - Custom exception handling
-- [DataFrame](api/dataframe.md) - Core data client and configuration
+- [DataFrame](api/dataframe.md) - Pandas-friendly data client and configuration
 - [ETL](api/etl.md) - ETL operations and data export functionality
 
 ## Development

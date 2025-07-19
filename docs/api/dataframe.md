@@ -4,7 +4,7 @@
 
 ## Overview
 
-The dataframe module provides the core functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, error handling, and comprehensive data conversion utilities.
+The dataframe module extends the base Mt5Client with pandas-friendly functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, automatic data conversion, and comprehensive validation utilities.
 
 ## Classes
 
@@ -20,7 +20,7 @@ Configuration class for MetaTrader 5 connection parameters using pydantic for va
     options:
       show_bases: false
 
-Main client class that provides a pandas-friendly interface to MetaTrader 5 functions.
+Extended client class that inherits from `Mt5Client` and provides a pandas-friendly interface to MetaTrader 5 functions with automatic DataFrame conversion.
 
 
 ## Usage Examples
@@ -132,7 +132,7 @@ The Mt5DataClient automatically handles:
 All methods raise `Mt5RuntimeError` exceptions with detailed error information when operations fail:
 
 ```python
-from pdmt5 import Mt5RuntimeError
+from pdmt5.mt5 import Mt5RuntimeError
 
 try:
     rates_df = client.copy_rates_from("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
