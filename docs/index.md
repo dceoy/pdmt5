@@ -30,8 +30,7 @@ from datetime import datetime
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
 
 # Low-level API access
-with Mt5Client(mt5=mt5) as client:
-    client.initialize()
+with Mt5Client(mt5=mt5, config=config) as client:
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
 # Pandas-friendly interface

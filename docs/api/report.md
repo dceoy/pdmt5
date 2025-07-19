@@ -32,36 +32,36 @@ from pdmt5 import Mt5Config, Mt5ReportClient
 import MetaTrader5 as mt5
 
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
-printer = Mt5ReportClient(mt5=mt5, config=config)
+client = Mt5ReportClient(mt5=mt5, config=config)
 
-with printer:
+with client:
     # Pretty print current positions
-    printer.print_positions()
+    client.print_positions()
     
     # Print account information as JSON
-    printer.print_account_info()
+    client.print_account_info()
 ```
 
 ### Printing Market Data
 
 ```python
-with printer:
+with client:
     # Print OHLCV rates
-    printer.print_rates("EURUSD", timeframe="H1", count=10)
+    client.print_rates("EURUSD", timeframe="H1", count=10)
     
     # Print tick data
-    printer.print_ticks("EURUSD", count=20)
+    client.print_ticks("EURUSD", count=20)
     
     # Print symbol information
-    printer.print_symbol_info("EURUSD")
+    client.print_symbol_info("EURUSD")
 ```
 
 ### Export to CSV
 
 ```python
-with printer:
+with client:
     # Export rates to CSV
-    printer.export_rates_to_csv(
+    client.export_rates_to_csv(
         symbol="EURUSD",
         file_path="data/eurusd_rates.csv",
         timeframe="D1",
@@ -69,16 +69,16 @@ with printer:
     )
     
     # Export positions to CSV
-    positions_df = printer.positions_get()
-    printer.export_to_csv(positions_df, "data/positions.csv")
+    positions_df = client.positions_get()
+    client.export_to_csv(positions_df, "data/positions.csv")
 ```
 
 ### Export to SQLite
 
 ```python
-with printer:
+with client:
     # Export deals to SQLite with deduplication
-    printer.export_deals_to_sqlite(
+    client.export_deals_to_sqlite(
         db_path="data/trading.db",
         table_name="deals",
         date_from=datetime(2024, 1, 1),
@@ -86,8 +86,8 @@ with printer:
     )
     
     # Export any DataFrame to SQLite
-    symbols_df = printer.symbols_get()
-    printer.export_to_sqlite(
+    symbols_df = client.symbols_get()
+    client.export_to_sqlite(
         dataframe=symbols_df,
         db_path="data/market.db",
         table_name="symbols",
@@ -98,16 +98,16 @@ with printer:
 ### Specialized Print Methods
 
 ```python
-with printer:
+with client:
     # Print margin requirements
-    printer.print_order_calc_margin(
+    client.print_order_calc_margin(
         action="BUY",
         symbol="EURUSD",
         volume=1.0
     )
     
     # Print profit calculation
-    printer.print_order_calc_profit(
+    client.print_order_calc_profit(
         action="BUY",
         symbol="EURUSD",
         volume=1.0,
@@ -116,21 +116,21 @@ with printer:
     )
     
     # Print terminal information
-    printer.print_terminal_info()
+    client.print_terminal_info()
 ```
 
 ### Pretty Printing Options
 
 ```python
-with printer:
+with client:
     # Print with custom formatting
-    rates_df = printer.copy_rates_from("EURUSD", mt5.TIMEFRAME_M5, datetime.now(), 100)
+    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_M5, datetime.now(), 100)
     
     # Basic pretty print
-    printer.pretty_print_dataframe(rates_df)
+    client.pretty_print_dataframe(rates_df)
     
     # Print as JSON
-    printer.pretty_print_json({"symbol": "EURUSD", "timeframe": "M5", "count": 100})
+    client.pretty_print_json({"symbol": "EURUSD", "timeframe": "M5", "count": 100})
 ```
 
 ## Print Methods Reference
@@ -173,7 +173,7 @@ The SQLite export includes automatic deduplication based on the DataFrame index:
 
 ```python
 # This will only insert new deals not already in the database
-printer.export_deals_to_sqlite(
+client.export_deals_to_sqlite(
     db_path="trading.db",
     table_name="deals",
     date_from=datetime.now() - timedelta(days=7)
@@ -186,9 +186,10 @@ All print and export methods handle errors gracefully:
 
 ```python
 from pdmt5.mt5 import Mt5RuntimeError
+from datetime import datetime
 
 try:
-    printer.print_rates("INVALID_SYMBOL", timeframe="H1")
+    client.print_rates("INVALID_SYMBOL", timeframe="H1")
 except Mt5RuntimeError as e:
     print(f"Failed to print rates: {e}")
 ```

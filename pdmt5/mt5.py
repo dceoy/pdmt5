@@ -17,7 +17,11 @@ if TYPE_CHECKING:
 
 
 class Mt5RuntimeError(RuntimeError):
-    """MetaTrader5 specific error."""
+    """MetaTrader5 specific runtime error.
+
+    Raised when MetaTrader5 operations fail or when the client
+    is used incorrectly (e.g., calling methods before initialization).
+    """
 
 
 class Mt5Client(BaseModel):

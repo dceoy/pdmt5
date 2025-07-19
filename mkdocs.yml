@@ -55,7 +55,7 @@ nav:
   - Home: index.md
   - API Reference:
     - Overview: api/index.md
-    - Metatrader5: api/mt5.md
+    - MetaTrader5: api/mt5.md
     - DataFrame: api/dataframe.md
     - Report: api/report.md
 

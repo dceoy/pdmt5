@@ -418,8 +418,6 @@ class Mt5ReportClient(Mt5DataClient):
             date_to: End date for history search (defaults to now).
             group: Symbol group filter (optional).
             symbol: Symbol filter (optional).
-            csv_file_path: Path for CSV export (optional).
-            sqlite3_file_path: Path for SQLite export (optional).
         """
         self.logger.info(
             "hours: %s, date_to: %s, group: %s, symbol: %s",
