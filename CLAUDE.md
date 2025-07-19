@@ -52,7 +52,7 @@ uv run mkdocs gh-deploy
 - **Purpose**: Pandas-based data handler for MetaTrader 5 trading platform
 - **Target Platform**: Windows only (MetaTrader5 API requirement)
 - **Domain**: Financial/trading data analysis
-- **Status**: Early development (v0.0.2, Beta)
+- **Status**: Early development (Beta)
 
 ### Key Dependencies
 
