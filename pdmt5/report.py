@@ -30,7 +30,15 @@ class Mt5ReportClient(Mt5DataClient):
             data: Data to serialize and print.
             indent: JSON indentation level.
         """
-        print(json.dumps(data, indent=indent))  # noqa: T201
+        print(  # noqa: T201
+            json.dumps(
+                data,
+                indent=indent,
+                default=lambda o: (
+                    int(o.timestamp()) if isinstance(o, pd.Timestamp) else o
+                ),
+            ),
+        )
 
     @staticmethod
     def print_df(

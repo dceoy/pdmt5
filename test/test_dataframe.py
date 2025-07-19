@@ -2121,7 +2121,7 @@ class TestMt5DataClientRetryLogic:
         assert dict_result["ask"] == 1.13210
         assert dict_result["last"] == 1.13205
         assert dict_result["volume"] == 100
-        assert dict_result["time"] == 1640995200
+        assert dict_result["time"] == pd.Timestamp(1640995200, unit="s")
         assert dict_result["flags"] == 134
 
     def test_inheritance_behavior(self, mock_mt5_import: ModuleType | None) -> None:
