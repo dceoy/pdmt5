@@ -6,22 +6,22 @@ This section contains the complete API documentation for pdmt5.
 
 The pdmt5 package consists of the following modules:
 
-### [Exception](exception.md)
-Custom exception handling for MetaTrader 5 runtime errors.
+### [Mt5Client](mt5.md)
+Base client class for MetaTrader 5 operations with connection management, low-level API access, and error handling (`Mt5RuntimeError`).
 
-### [Manipulator](manipulator.md)
+### [Mt5DataClient & Mt5Config](dataframe.md)
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
-### [Printer](printer.md)
-Pretty printing and data export functionality for MetaTrader 5 data.
+### [Mt5ReportClient](report.md)
+Reporting operations and data export functionality for MetaTrader 5 data.
 
 ## Architecture Overview
 
 The package follows a layered architecture:
 
-1. **Exception Layer** (`exception.py`): Defines custom exceptions for MT5-specific errors
-2. **Core Layer** (`manipulator.py`): Provides configuration (`Mt5Config`) and the base `Mt5DataClient` class with all MT5 interactions
-3. **Presentation Layer** (`printer.py`): Extends `Mt5DataClient` with formatting and export capabilities
+1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
+2. **Core Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
+3. **Presentation Layer** (`report.py`): Extends `Mt5DataClient` with reporting operations and export capabilities (`Mt5ReportClient`)
 
 ## Usage Guidelines
 
@@ -36,17 +36,26 @@ All modules follow these conventions:
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Config, Mt5DataClient, Mt5DataPrinter
+from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient
+import MetaTrader5 as mt5
+from datetime import datetime
 
-# Basic usage with Mt5DataClient
+# Low-level API access with Mt5Client
+with Mt5Client(mt5=mt5) as client:
+    client.initialize()
+    account = client.account_info()
+    rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
+
+# Pandas-friendly interface with Mt5DataClient
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
-with Mt5DataClient(config) as client:
-    symbols = client.fetch_symbols()
-    rates = client.fetch_rates("EURUSD", timeframe="H1", count=100)
+with Mt5DataClient(mt5=mt5, config=config) as client:
+    symbols_df = client.symbols_get()
+    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Enhanced functionality with Mt5DataPrinter
-with Mt5DataPrinter(config) as printer:
-    printer.print_rates("EURUSD", timeframe="D1", count=10)
+# Enhanced functionality with Mt5ReportClient
+with Mt5ReportClient(mt5=mt5, config=config) as reporter:
+    reporter.print_rates("EURUSD", timeframe="H1", count=10)
+    reporter.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
 ```
 
 ## Examples

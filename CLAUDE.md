@@ -129,9 +129,9 @@ uv run mkdocs gh-deploy
 
 - `pdmt5/`: Main package directory
   - `__init__.py`: Package initialization and exports
-  - `exception.py`: Custom exception handling (`Mt5RuntimeError`)
-  - `manipulator.py`: Core data client (`Mt5Config`, `Mt5DataClient`)
-  - `printer.py`: Pretty printing and export (`Mt5DataPrinter`)
+  - `mt5.py`: MT5 terminal client (`Mt5Client`, `Mt5RuntimeError`)
+  - `dataframe.py`: MT5 data client (`Mt5Config`, `Mt5DataClient`)
+  - `report.py`: Data reporting and printing (`Mt5ReportClient`)
 - `test/`: Test directory (pytest-based)
 - `docs/`: MkDocs documentation source files
 - Modern Python packaging with `pyproject.toml`
@@ -153,56 +153,24 @@ uv run mkdocs gh-deploy
 
 ## Documentation with MkDocs
 
-### Overview
+Uses MkDocs with Material theme for API documentation built from Google-style docstrings.
 
-The project uses MkDocs with the Material theme for generating API documentation. The documentation is automatically built from docstrings and markdown files.
+### Structure
 
-### Configuration
+- `docs/index.md`: Main documentation
+- `docs/api/`: API reference (exception, dataframe, printer modules)
 
-- **Theme**: Material with dark/light mode toggle
-- **Plugin**: mkdocstrings for Python API documentation
-- **Docstring Style**: Google-style docstrings
-- **Features**: Code highlighting, navigation tabs, search functionality
+### Workflow
 
-### Documentation Structure
-
-```
-docs/
-├── index.md              # Main documentation page
-└── api/
-    ├── index.md          # API overview
-    ├── exception.md      # Exception handling documentation
-    ├── manipulator.md    # Core data client documentation
-    └── printer.md        # Pretty printing and export documentation
-```
-
-### Navigation
-
-The documentation includes:
-- **Home**: Project overview and getting started
-- **API Reference**: Comprehensive API documentation
-  - Overview of all modules
-  - Exception handling (`Mt5RuntimeError`)
-  - Core data client functionality (`Mt5DataClient`)
-  - Pretty printing and export functionality (`Mt5DataPrinter`)
-
-### Development Workflow
-
-1. **Writing Documentation**: Add Google-style docstrings to all functions and classes
-2. **Local Testing**: Use `uv run mkdocs serve` for live preview
-3. **Building**: Use `uv run mkdocs build` to generate static site
-4. **Deployment**: Use `uv run mkdocs gh-deploy` for GitHub Pages
-
-### Docstring Guidelines
-
-- Use Google-style docstrings consistently
-- Include type hints in function signatures
-- Document all parameters, returns, and exceptions
-- Provide usage examples for complex functions
+1. Add Google-style docstrings to functions/classes
+2. Local preview: `uv run mkdocs serve`
+3. Build: `uv run mkdocs build`
+4. Deploy: `uv run mkdocs gh-deploy`
 
 ## Web Search Instructions
 
-For tasks requiring web search, always use `gemini` command instead of the built-in web search tool.
+For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tool.
+Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
 
 ### Usage
 

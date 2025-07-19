@@ -55,9 +55,9 @@ nav:
   - Home: index.md
   - API Reference:
     - Overview: api/index.md
-    - Exception: api/exception.md
-    - Manipulator: api/manipulator.md
-    - Printer: api/printer.md
+    - MetaTrader5: api/mt5.md
+    - DataFrame: api/dataframe.md
+    - Report: api/report.md
 
 markdown_extensions:
   - admonition
