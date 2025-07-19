@@ -598,6 +598,26 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.assert_called_once()
         assert isinstance(df_result, pd.DataFrame)
 
+    def test_terminal_info_as_df(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test terminal_info_as_df method."""
+        assert mock_mt5_import is not None
+
+        class MockTerminalInfo:
+            def _asdict(self) -> dict[str, Any]:
+                return {"name": "MetaTrader 5", "version": 123}
+
+        mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+        df_result = client.terminal_info_as_df()
+
+        mock_mt5_import.initialize.assert_called_once()
+        assert isinstance(df_result, pd.DataFrame)
+        assert len(df_result) == 1
+        assert "name" in df_result.columns
+        assert "version" in df_result.columns
+
     def test_orders_get_with_data(self, mock_mt5_import: ModuleType | None) -> None:
         """Test orders_get method with data."""
         assert mock_mt5_import is not None
@@ -2121,7 +2141,7 @@ class TestMt5DataClientRetryLogic:
         assert dict_result["ask"] == 1.13210
         assert dict_result["last"] == 1.13205
         assert dict_result["volume"] == 100
-        assert dict_result["time"] == 1640995200
+        assert dict_result["time"] == pd.Timestamp(1640995200, unit="s")
         assert dict_result["flags"] == 134
 
     def test_inheritance_behavior(self, mock_mt5_import: ModuleType | None) -> None:
@@ -2396,3 +2416,223 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.initialize.assert_not_called()
         # The method should still return True (or whatever the expected behavior is)
         assert client._is_initialized is True
+
+
+class TestMt5DataClientCoverageMissing:
+    """Test class for missing coverage methods."""
+
+    def test_version_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test version_as_df method."""
+        mock_mt5_import.version.return_value = (123, 456, "build")
+        mock_mt5_import.initialize.return_value = True
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        result = client.version_as_df()
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "mt5_terminal_version" in result.columns
+        assert "build" in result.columns
+
+    def test_last_error_as_dict(self, mock_mt5_import: ModuleType) -> None:
+        """Test last_error_as_dict method."""
+        mock_mt5_import.last_error.return_value = (123, "Test error")
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        result = client.last_error_as_dict()
+
+        assert isinstance(result, dict)
+        assert result["error_code"] == 123
+        assert result["error_description"] == "Test error"
+
+    def test_last_error_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test last_error_as_df method."""
+        mock_mt5_import.last_error.return_value = (456, "Another error")
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        result = client.last_error_as_df()
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "error_code" in result.columns
+        assert "error_description" in result.columns
+        assert result.iloc[0]["error_code"] == 456
+        assert result.iloc[0]["error_description"] == "Another error"
+
+    def test_symbol_info_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test symbol_info_as_df method."""
+
+        class MockSymbolInfo(NamedTuple):
+            symbol: str
+            bid: float
+            ask: float
+
+        mock_symbol_info = MockSymbolInfo(symbol="EURUSD", bid=1.1000, ask=1.1001)
+        mock_mt5_import.symbol_info.return_value = mock_symbol_info
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        result = client.symbol_info_as_df("EURUSD")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "symbol" in result.columns
+        assert "bid" in result.columns
+        assert "ask" in result.columns
+
+    def test_symbol_info_tick_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test symbol_info_tick_as_df method."""
+
+        class MockTick(NamedTuple):
+            time: int
+            bid: float
+            ask: float
+
+        mock_tick = MockTick(time=1640995200, bid=1.1000, ask=1.1001)
+        mock_mt5_import.symbol_info_tick.return_value = mock_tick
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        result = client.symbol_info_tick_as_df("EURUSD")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "time" in result.columns
+        assert "bid" in result.columns
+        assert "ask" in result.columns
+
+    def test_market_book_get_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test market_book_get_as_df method."""
+
+        class MockBookInfo(NamedTuple):
+            type: int
+            price: float
+            volume: float
+
+        mock_book_data = [
+            MockBookInfo(type=1, price=1.1000, volume=100.0),
+            MockBookInfo(type=2, price=1.1001, volume=200.0),
+        ]
+        mock_mt5_import.market_book_get.return_value = mock_book_data
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        result = client.market_book_get_as_df("EURUSD")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 2
+        assert "type" in result.columns
+        assert "volume" in result.columns
+        # Price is used as index in market book data
+        assert result.index.name == "price"
+
+    def test_order_check_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test order_check_as_df method."""
+
+        class MockRequest(NamedTuple):
+            action: int
+            symbol: str
+
+        class MockOrderCheck(NamedTuple):
+            retcode: int
+            margin: float
+            profit: float
+            request: MockRequest
+
+        mock_request = MockRequest(action=1, symbol="EURUSD")
+        mock_order_check = MockOrderCheck(
+            retcode=10009, margin=100.0, profit=50.0, request=mock_request
+        )
+        mock_mt5_import.order_check.return_value = mock_order_check
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
+        result = client.order_check_as_df(request)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "retcode" in result.columns
+        assert "margin" in result.columns
+        assert "profit" in result.columns
+
+    def test_order_send_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test order_send_as_df method."""
+
+        class MockRequest(NamedTuple):
+            action: int
+            symbol: str
+
+        class MockOrderSend(NamedTuple):
+            retcode: int
+            deal: int
+            order: int
+            request: MockRequest
+
+        mock_request = MockRequest(action=1, symbol="EURUSD")
+        mock_order_send = MockOrderSend(
+            retcode=10009, deal=12345, order=67890, request=mock_request
+        )
+        mock_mt5_import.order_send.return_value = mock_order_send
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
+        result = client.order_send_as_df(request)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 1
+        assert "retcode" in result.columns
+        assert "deal" in result.columns
+        assert "order" in result.columns
+
+    def test_flatten_dict_to_one_level_simple(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test _flatten_dict_to_one_level with simple dict."""
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        input_dict = {"a": 1, "b": 2, "c": 3}
+        result = client._flatten_dict_to_one_level(input_dict)
+
+        assert result == {"a": 1, "b": 2, "c": 3}
+
+    def test_flatten_dict_to_one_level_nested(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test _flatten_dict_to_one_level with nested dict."""
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        input_dict = {
+            "a": 1,
+            "nested": {"x": 10, "y": 20},
+            "b": 2,
+        }
+        result = client._flatten_dict_to_one_level(input_dict)
+
+        assert result == {"a": 1, "nested_x": 10, "nested_y": 20, "b": 2}
+
+    def test_flatten_dict_to_one_level_custom_separator(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test _flatten_dict_to_one_level with custom separator."""
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        input_dict = {
+            "level1": {"level2": {"level3": "value"}},
+            "simple": "value2",
+        }
+        result = client._flatten_dict_to_one_level(input_dict, sep="_")
+
+        assert result == {"level1_level2": {"level3": "value"}, "simple": "value2"}

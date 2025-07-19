@@ -311,25 +311,6 @@ class Mt5Client(BaseModel):
         )
         return response
 
-    def market_book_release(self, symbol: str) -> bool:
-        """Cancels subscription of the terminal to the Market Depth change events for a specified symbol.
-
-        Args:
-            symbol: Symbol name.
-
-        Returns:
-            True if successful, False otherwise.
-        """  # noqa: E501
-        self._ensure_initialized()
-        self.logger.info("Releasing market book for symbol: %s", symbol)
-        response = self.mt5.market_book_release(symbol)
-        self._validate_metatrader5_response(
-            response=response,
-            operation="market_book_release",
-            context=f"symbol={symbol}",
-        )
-        return response
-
     def market_book_get(self, symbol: str) -> tuple[Any, ...]:
         """Return a tuple from BookInfo featuring Market Depth entries for the specified symbol.
 
@@ -345,6 +326,25 @@ class Mt5Client(BaseModel):
         self._validate_metatrader5_response(
             response=response,
             operation="market_book_get",
+            context=f"symbol={symbol}",
+        )
+        return response
+
+    def market_book_release(self, symbol: str) -> bool:
+        """Cancels subscription of the terminal to the Market Depth change events for a specified symbol.
+
+        Args:
+            symbol: Symbol name.
+
+        Returns:
+            True if successful, False otherwise.
+        """  # noqa: E501
+        self._ensure_initialized()
+        self.logger.info("Releasing market book for symbol: %s", symbol)
+        response = self.mt5.market_book_release(symbol)
+        self._validate_metatrader5_response(
+            response=response,
+            operation="market_book_release",
             context=f"symbol={symbol}",
         )
         return response
