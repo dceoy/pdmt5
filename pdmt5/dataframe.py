@@ -118,7 +118,7 @@ class Mt5DataClient(Mt5Client):
         """
         return self.account_info()._asdict()  # pyright: ignore[reportOptionalMemberAccess]
 
-    def account_info_as_dataframe(self) -> pd.DataFrame:
+    def account_info_as_df(self) -> pd.DataFrame:
         """Get info on the current account as a DataFrame.
 
         Returns:
@@ -134,7 +134,7 @@ class Mt5DataClient(Mt5Client):
         """
         return self.terminal_info()._asdict()  # pyright: ignore[reportOptionalMemberAccess]
 
-    def terminal_info_as_dataframe(self) -> pd.DataFrame:
+    def terminal_info_as_df(self) -> pd.DataFrame:
         """Get the connected terminal status and settings as a DataFrame.
 
         Returns:

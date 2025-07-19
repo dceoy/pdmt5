@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -15,9 +15,9 @@ from .dataframe import Mt5DataClient
 class Mt5EtlClient(Mt5DataClient):
     """MetaTrader5 data client with ETL capabilities.
 
-    This class extends Mt5DataClient to provide methods for pretty-printing
-    DataFrames and other data structures with consistent DataFrame-based operations.
-    """
+    This class extends Mt5DataClient to provide methods for extracting, transforming, and loading.
+    It includes methods for printing data in various formats, exporting to CSV and SQLite,
+    """  # noqa: E501
 
     @staticmethod
     def print_json(
@@ -35,6 +35,7 @@ class Mt5EtlClient(Mt5DataClient):
     @staticmethod
     def print_df(
         df: pd.DataFrame,
+        include_index: bool = True,
         display_max_columns: int = 500,
         display_width: int = 1500,
     ) -> None:
@@ -42,25 +43,28 @@ class Mt5EtlClient(Mt5DataClient):
 
         Args:
             df: DataFrame to display and export.
+            include_index: Whether to include DataFrame index in output.
             display_max_columns: Maximum columns to display.
             display_width: Display width in characters.
         """
         pd.set_option("display.max_columns", display_max_columns)
         pd.set_option("display.width", display_width)
         pd.set_option("display.max_rows", df.shape[0])
-        print(df.reset_index().to_string(index=False))  # noqa: T201
+        print(df.reset_index().to_string(index=include_index))  # noqa: T201
 
     @staticmethod
     def drop_duplicates_in_sqlite3(
-        cursor: sqlite3.Cursor, table: str, ids: list[str]
+        cursor: sqlite3.Cursor,
+        table: str,
+        ids: list[str],
     ) -> None:
-        """Remove duplicate rows from SQLite table.
+        """Remove duplicate rows from SQLite3 table.
 
         Removes duplicate rows based on specified ID columns, keeping
         only the first occurrence (minimum ROWID).
 
         Args:
-            cursor: SQLite database cursor.
+            cursor: SQLite3 cursor for executing SQL commands.
             table: Table name to deduplicate.
             ids: Column names to use for duplicate detection.
         """
@@ -72,193 +76,303 @@ class Mt5EtlClient(Mt5DataClient):
             {"table": table, "ids_str": ", ".join(f'"{i}"' for i in ids)},
         )
 
-    def export_df(
+    def write_df_to_sqlite3(
         self,
         df: pd.DataFrame,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-        sqlite3_table: str | None = None,
+        sqlite3_file_path: str,
+        table: str,
+        if_exists: Literal["fail", "replace", "append"] = "append",
+        index: bool = True,
+        drop_duplicates: bool = True,
     ) -> None:
-        """Export DataFrame to CSV or SQLite3 database.
+        """Write data frame records to SQLite3 table.
 
         Args:
-            df: DataFrame to display and export.
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite database (requires sqlite3_table).
-            sqlite3_table: Table name for SQLite export.
+            df: DataFrame to write.
+            sqlite3_file_path: Path to SQLite3 database file.
+            table: Table name to write DataFrame to.
+            if_exists: Action if table already exists ('fail', 'replace', 'append').
+            index: Whether to write DataFrame index as a column.
+            drop_duplicates: Whether to remove duplicate rows after writing.
+        """
+        self.logger.info(
+            "Writing data frame records to the SQLite3 table: %s => %s",
+            table,
+            sqlite3_file_path,
+        )
+        with sqlite3.connect(sqlite3_file_path) as c:
+            df.to_sql(table, c, if_exists=if_exists, index=index)
+            if drop_duplicates:
+                self.logger.info("Dropping duplicates in the SQLite3 table: %s", table)
+                self.drop_duplicates_in_sqlite3(
+                    cursor=c.cursor(),
+                    table=table,
+                    ids=[str(name) for name in df.index.names],
+                )
+
+    def write_df_to_csv(
+        self,
+        df: pd.DataFrame,
+        csv_file_path: str,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:
+        """Write DataFrame to CSV file.
+
+        Args:
+            df: DataFrame to write.
+            csv_file_path: Path to the CSV file.
+            **kwargs: Additional parameters for pandas.DataFrame.to_csv().
+        """
+        self.logger.info("Writing data frame records to CSV file: %s", csv_file_path)
+        df.to_csv(csv_file_path, **kwargs)
+
+    def _log_df_info(self, df: pd.DataFrame) -> None:
+        """Log DataFrame shape and dtypes.
+
+        Args:
+            df: DataFrame to log.
         """
         self.logger.debug("df.shape: %s", df.shape)
         self.logger.debug("df.dtypes: %s", df.dtypes)
         self.logger.debug("df: %s", df)
-        if csv_path:
-            self.logger.info("Write CSV data: %s", csv_path)
-            df.to_csv(csv_path)
-        elif sqlite3_path and sqlite3_table:
-            self.logger.info(
-                "Save data with SQLite3: %s => %s", sqlite3_table, sqlite3_path
-            )
-            with sqlite3.connect(sqlite3_path) as c:
-                df.to_sql(sqlite3_table, c, if_exists="append")
-                self.drop_duplicates_in_sqlite3(
-                    cursor=c.cursor(),
-                    table=sqlite3_table,
-                    ids=[str(name) for name in df.index.names],
-                )
 
-    def print_deals(
+    def _print_and_write_df(
         self,
-        hours: float,
-        date_to: str | None = None,
-        group: str | None = None,
-        symbol: str | None = None,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
+        df: pd.DataFrame,
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+        sqlite3_table: str | None = None,
     ) -> None:
-        """Print trading deals from history as DataFrame.
-
-        Retrieves and displays historical trading deals within a specified
-        time window, optionally filtered by symbol group.
+        """Print DataFrame and optionally write to CSV and SQLite.
 
         Args:
-            hours: Number of hours to look back from end date.
-            date_to: End date for history search (defaults to now).
-            group: Symbol group filter (optional).
-            symbol: Symbol filter (optional).
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
+            df: DataFrame to print and export.
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
+            sqlite3_table: Table name for SQLite export (optional).
+        """
+        self._log_df_info(df=df)
+        self.print_df(df=df)
+        if csv_file_path:
+            self.write_df_to_csv(df=df, csv_file_path=csv_file_path)
+        if sqlite3_file_path and sqlite3_table:
+            self.write_df_to_sqlite3(
+                df=df,
+                sqlite3_file_path=sqlite3_file_path,
+                table=sqlite3_table,
+            )
+
+    def print_mt5_info(self) -> None:
+        """Print MetaTrader 5 terminal and account information as JSON."""
+        self.logger.info("MetaTrader5.__version__: %s", self.mt5.__version__)
+        self.logger.info("MetaTrader5.__author__: %s", self.mt5.__author__)
+        version_info = self.version_as_dict()
+        self.logger.debug("version_info: %s", version_info)
+        terminal_info = self.terminal_info_as_dict()
+        self.logger.debug("terminal_info: %s", terminal_info)
+        account_info = self.account_info_as_dict()
+        self.logger.debug("account_info: %s", account_info)
+        symbols_total = self.symbols_total()
+        self.logger.debug("symbols_total: %s", symbols_total)
+        self.print_json(
+            data={
+                "MetaTrader5": {
+                    "version": self.mt5.__version__,
+                    "author": self.mt5.__author__,
+                },
+                "terminal": {
+                    "version": version_info,
+                    "info": terminal_info,
+                },
+                "account": account_info,
+                "symbols_total": symbols_total,
+            },
+        )
+
+    def print_symbol_info(self, symbol: str) -> None:
+        """Print detailed information about a financial instrument."""
+        self.logger.info("symbol: %s", symbol)
+        symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        self.logger.debug("symbol_info: %s", symbol_info)
+        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+        self.logger.debug("symbol_info_tick: %s", symbol_info_tick)
+        self.print_json(
+            data={"symbol": symbol, "info": symbol_info, "tick": symbol_info_tick},
+        )
+
+    def print_symbols(
+        self,
+        group: str = "",
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+    ) -> None:
+        """Print available symbols as DataFrame.
+
+        Args:
+            group: Symbol group filter (e.g., "*USD*", "Forex*").
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
+        """
+        self.logger.info("group: %s", group)
+        self._print_and_write_df(
+            df=self.symbols_get_as_df(group=group),
+            csv_file_path=csv_file_path,
+            sqlite3_file_path=sqlite3_file_path,
+            sqlite3_table="symbols",
+        )
+
+    def print_account_info(
+        self,
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+    ) -> None:
+        """Print account information as DataFrame.
+
+        Args:
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
+        """
+        self.logger.info("Fetching account information")
+        self._print_and_write_df(
+            df=self.account_info_as_df(),
+            csv_file_path=csv_file_path,
+            sqlite3_file_path=sqlite3_file_path,
+            sqlite3_table="account_info",
+        )
+
+    def print_terminal_info(
+        self,
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+    ) -> None:
+        """Print terminal information as DataFrame.
+
+        Args:
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
+        """
+        self.logger.info("Fetching terminal information")
+        self._print_and_write_df(
+            df=self.terminal_info_as_df(),
+            csv_file_path=csv_file_path,
+            sqlite3_file_path=sqlite3_file_path,
+            sqlite3_table="terminal_info",
+        )
+
+    def print_rates(
+        self,
+        symbol: str,
+        granularity: str,
+        count: int,
+        start_pos: int = 0,
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+    ) -> None:
+        """Print OHLC rate data for a symbol as DataFrame.
+
+        Args:
+            symbol: Financial instrument symbol.
+            granularity: Time granularity (e.g., 'M1', 'H1', 'D1').
+            count: Number of bars to fetch.
+            start_pos: Starting position (0 = most recent).
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
         """
         self.logger.info(
-            "hours: %s, date_to: %s, group: %s, symbol: %s",
-            hours,
-            date_to,
-            group,
+            "symbol: %s, granularity: %s, count: %s, start_pos: %s",
             symbol,
+            granularity,
+            count,
+            start_pos,
         )
-        end_date = pd.to_datetime(date_to) if date_to else datetime.now(UTC)
-        start_date = end_date - timedelta(hours=float(hours))
-        self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
-
-        df_deals = self.history_deals_get_as_df(
-            date_from=start_date,
-            date_to=end_date,
-            group=group,
-            symbol=symbol,
-        )
-
-        if df_deals.empty:
-            self.logger.info("No deals found")
-            print("No deals found")  # noqa: T201
-            return
-
-        self.print_df(df=df_deals)
-        self.export_df(
-            df=df_deals,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="deals",
+        timeframe = getattr(self.mt5, f"TIMEFRAME_{granularity}")
+        self.logger.info("TIMEFRAME_%s: %s", granularity, timeframe)
+        self._print_and_write_df(
+            df=self.copy_rates_from_pos_as_df(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_pos=start_pos,
+                count=count,
+            ),
+            csv_file_path=csv_file_path,
+            sqlite3_file_path=sqlite3_file_path,
+            sqlite3_table=f"rate_{symbol}",
         )
 
-    def print_orders(
+    def print_ticks(
         self,
-        symbol: str | None = None,
-        group: str | None = None,
-        ticket: int | None = None,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
+        symbol: str,
+        seconds: float,
+        date_to: str | None = None,
+        csv_file_path: str | None = None,
+        sqlite3_file_path: str | None = None,
+        count: int = 10000,
     ) -> None:
-        """Print current active orders as DataFrame.
-
-        Retrieves and displays all currently active pending orders.
+        """Print tick data for a symbol as DataFrame.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional order ticket filter.
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
+            symbol: Financial instrument symbol.
+            seconds: Number of seconds of tick data to fetch.
+            date_to: End date for data (defaults to latest tick time).
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
+            count: Number of ticks to fetch (default is 10000).
         """
-        self.logger.info("symbol: %s, group: %s, ticket: %s", symbol, group, ticket)
-
-        df_orders = self.orders_get_as_df(
-            symbol=symbol,
-            group=group,
-            ticket=ticket,
+        self.logger.info(
+            "symbol: %s, seconds: %s, date_to: %s",
+            symbol,
+            seconds,
+            date_to,
         )
-
-        if df_orders.empty:
-            self.logger.info("No orders found")
-            print("No orders found")  # noqa: T201
-            return
-
-        self.print_df(df=df_orders)
-        self.export_df(
-            df=df_orders,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="orders",
-        )
-
-    def print_positions(
-        self,
-        symbol: str | None = None,
-        group: str | None = None,
-        ticket: int | None = None,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print current open positions as DataFrame.
-
-        Retrieves and displays all currently open trading positions.
-
-        Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional position ticket filter.
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
-        """
-        self.logger.info("symbol: %s, group: %s, ticket: %s", symbol, group, ticket)
-
-        df_positions = self.positions_get_as_df(
-            symbol=symbol,
-            group=group,
-            ticket=ticket,
-        )
-
-        if df_positions.empty:
-            self.logger.info("No positions found")
-            print("No positions found")  # noqa: T201
-            return
-
-        self.print_df(df=df_positions)
-        self.export_df(
-            df=df_positions,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="positions",
+        if date_to:
+            end_date = pd.to_datetime(date_to)
+            start_date = end_date - timedelta(seconds=seconds)
+            self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
+            df_tick = self.copy_ticks_range_as_df(
+                symbol=symbol,
+                date_from=start_date,
+                date_to=end_date,
+                flags=self.mt5.COPY_TICKS_ALL,
+            )
+        else:
+            symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+            last_tick_time = pd.to_datetime(symbol_info_tick["time"], unit="s")
+            start_date = last_tick_time - timedelta(seconds=seconds)
+            self.logger.info(
+                "start_date: %s, last_tick_time: %s",
+                start_date,
+                last_tick_time,
+            )
+            df_tick = self.copy_ticks_from_as_df(
+                symbol=symbol,
+                date_from=start_date,
+                count=count,
+                flags=self.mt5.COPY_TICKS_ALL,
+            )
+        self._print_and_write_df(
+            df=df_tick,
+            csv_file_path=csv_file_path,
+            sqlite3_file_path=sqlite3_file_path,
+            sqlite3_table=f"tick_{symbol}",
         )
 
     def print_margins(self, symbol: str) -> None:
         """Print margin requirements for a symbol.
-
-        Calculates and displays minimum margin requirements for buy and sell
-        orders of the specified financial instrument.
 
         Args:
             symbol: Financial instrument symbol (e.g., 'EURUSD').
         """
         self.logger.info("symbol: %s", symbol)
         account_info = self.account_info_as_dict()
+        self.logger.debug("account_info: %s", account_info)
         symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        self.logger.debug("symbol_info: %s", symbol_info)
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-
-        account_currency = account_info["currency"]
-        volume_min = symbol_info["volume_min"]
-
-        self.logger.info("account_currency: %s", account_currency)
-        self.logger.info("volume_min: %s", volume_min)
         self.logger.debug("symbol_info_tick: %s", symbol_info_tick)
-
+        account_currency = account_info["currency"]
+        self.logger.info("account_currency: %s", account_currency)
+        volume_min = symbol_info["volume_min"]
+        self.logger.info("volume_min: %s", volume_min)
         ask_margin = self.order_calc_margin(
             self.mt5.ORDER_TYPE_BUY, symbol, volume_min, symbol_info_tick["ask"]
         )
@@ -274,205 +388,48 @@ class Mt5EtlClient(Mt5DataClient):
             "margin": {"ask": ask_margin, "bid": bid_margin},
         })
 
-    def print_ticks(
-        self,
-        symbol: str,
-        seconds: float,
-        date_to: str | None = None,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print tick data for a symbol as DataFrame.
+    def print_positions(self) -> None:
+        """Print open positions for a symbol."""
+        self.print_json(data=self.positions_get_as_df().to_dict(orient="records"))
 
-        Retrieves and displays tick-level price data for the specified symbol
-        within a time window. Optionally exports data to CSV or SQLite.
+    def print_orders(self) -> None:
+        """Print active orders for a symbol."""
+        self.print_json(data=self.orders_get_as_df().to_dict(orient="records"))
+
+    def print_history_deals(
+        self,
+        hours: float,
+        date_to: str | None = None,
+        group: str | None = None,
+        symbol: str | None = None,
+    ) -> None:
+        """Print trading deals from history as DataFrame.
 
         Args:
-            symbol: Financial instrument symbol.
-            seconds: Number of seconds of tick data to fetch.
-            date_to: End date for data (defaults to latest tick time).
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
+            hours: Number of hours to look back from end date.
+            date_to: End date for history search (defaults to now).
+            group: Symbol group filter (optional).
+            symbol: Symbol filter (optional).
+            csv_file_path: Path for CSV export (optional).
+            sqlite3_file_path: Path for SQLite export (optional).
         """
         self.logger.info(
-            "symbol: %s, seconds: %s, date_to: %s, csv_path: %s",
-            symbol,
-            seconds,
+            "hours: %s, date_to: %s, group: %s, symbol: %s",
+            hours,
             date_to,
-            csv_path,
+            group,
+            symbol,
         )
-
-        if date_to:
-            end_date = pd.to_datetime(date_to)
-            start_date = end_date - timedelta(seconds=seconds)
-            df_tick = self.copy_ticks_range_as_df(
-                symbol=symbol,
+        end_date = pd.to_datetime(date_to) if date_to else datetime.now(UTC)
+        start_date = end_date - timedelta(hours=float(hours))
+        self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
+        self.print_json(
+            data=self.history_deals_get_as_df(
                 date_from=start_date,
                 date_to=end_date,
-                flags=self.mt5.COPY_TICKS_ALL,
-            )
-        else:
-            symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-            last_tick_time = pd.to_datetime(symbol_info_tick["time"], unit="s")
-            start_date = last_tick_time - timedelta(seconds=seconds)
-            df_tick = self.copy_ticks_from_as_df(
+                group=group,
                 symbol=symbol,
-                date_from=start_date,
-                count=10000,
-                flags=self.mt5.COPY_TICKS_ALL,
-            )
-
-        if df_tick.empty:
-            self.logger.info("No tick data found")
-            print("No tick data found")  # noqa: T201
-            return
-
-        self.print_df(df=df_tick)
-        self.export_df(
-            df=df_tick,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table=f"tick_{symbol}",
-        )
-
-    def print_rates(
-        self,
-        symbol: str,
-        granularity: str,
-        count: int,
-        start_pos: int = 0,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print OHLC rate data for a symbol as DataFrame.
-
-        Retrieves and displays candlestick (OHLC) data for the specified symbol
-        at a given time granularity. Optionally exports data to CSV or SQLite.
-
-        Args:
-            symbol: Financial instrument symbol.
-            granularity: Time granularity (e.g., 'M1', 'H1', 'D1').
-            count: Number of bars to fetch.
-            start_pos: Starting position (0 = most recent).
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
-        """
-        self.logger.info(
-            "symbol: %s, granularity: %s, count: %s, start_pos: %s, csv_path: %s",
-            symbol,
-            granularity,
-            count,
-            start_pos,
-            csv_path,
-        )
-
-        timeframe = getattr(self.mt5, f"TIMEFRAME_{granularity}")
-        self.logger.info("TIMEFRAME_%s: %s", granularity, timeframe)
-
-        df_rate = self.copy_rates_from_pos_as_df(
-            symbol=symbol,
-            timeframe=timeframe,
-            start_pos=start_pos,
-            count=count,
-        )
-
-        if df_rate.empty:
-            self.logger.info("No rate data found")
-            print("No rate data found")  # noqa: T201
-            return
-
-        self.print_df(df=df_rate)
-        self.export_df(
-            df=df_rate,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table=f"rate_{symbol}",
-        )
-
-    def print_symbol_info(self, symbol: str) -> None:
-        """Print detailed information about a financial instrument.
-
-        Retrieves and displays symbol specifications and current tick data
-        for the specified financial instrument.
-
-        Args:
-            symbol: Financial instrument symbol.
-        """
-        self.logger.info("symbol: %s", symbol)
-        symbol_info = self.symbol_info_as_dict(symbol=symbol)
-        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        self.logger.debug("symbol_info: %s", symbol_info)
-        self.logger.debug("symbol_info_tick: %s", symbol_info_tick)
-        self.print_json({
-            "symbol": symbol,
-            "info": symbol_info,
-            "tick": symbol_info_tick,
-        })
-
-    def print_mt5_info(self) -> None:
-        """Print MetaTrader 5 terminal and account information as JSON.
-
-        Displays MetaTrader 5 version, terminal status and settings,
-        trading account information, and available instrument count.
-        """
-        self.logger.info("MetaTrader5.__version__: %s", self.mt5.__version__)
-        self.logger.info("MetaTrader5.__author__: %s", self.mt5.__author__)
-
-        version_info = self.version_as_dict()
-        terminal_info = self.terminal_info_as_dict()
-        account_info = self.account_info_as_dict()
-        symbols_total = self.symbols_total()
-
-        self.logger.debug("version_info: %s", version_info)
-        self.logger.debug("terminal_info: %s", terminal_info)
-        self.logger.debug("account_info: %s", account_info)
-
-        info_data = {
-            "MetaTrader5": {
-                "version": self.mt5.__version__,
-                "author": self.mt5.__author__,
-            },
-            "terminal": {
-                "version": version_info,
-                "info": terminal_info,
-            },
-            "account": account_info,
-            "symbols_total": symbols_total,
-        }
-
-        self.print_json(info_data)
-
-    def print_symbols(
-        self,
-        group: str = "",
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print available symbols as DataFrame.
-
-        Retrieves and displays all available financial instruments,
-        optionally filtered by group.
-
-        Args:
-            group: Symbol group filter (e.g., "*USD*", "Forex*").
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
-        """
-        self.logger.info("group: %s", group)
-
-        df_symbols = self.symbols_get_as_df(group=group)
-
-        if df_symbols.empty:
-            self.logger.info("No symbols found")
-            print("No symbols found")  # noqa: T201
-            return
-
-        self.print_df(df=df_symbols)
-        self.export_df(
-            df=df_symbols,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="symbols",
+            ).to_dict(orient="records"),
         )
 
     def print_history_orders(
@@ -484,12 +441,8 @@ class Mt5EtlClient(Mt5DataClient):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
     ) -> None:
         """Print historical orders as DataFrame.
-
-        Retrieves and displays historical orders with optional filters.
 
         Args:
             hours: Number of hours to look back from end date.
@@ -499,8 +452,6 @@ class Mt5EtlClient(Mt5DataClient):
             symbol: Optional symbol filter.
             ticket: Get orders by ticket.
             position: Get orders by position.
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
         """
         self.logger.info(
             "hours: %s, date_from: %s, date_to: %s, group: %s, symbol: %s, "
@@ -513,82 +464,20 @@ class Mt5EtlClient(Mt5DataClient):
             ticket,
             position,
         )
-
         if hours is not None:
             end_date = pd.to_datetime(date_to) if date_to else datetime.now(UTC)
             start_date = end_date - timedelta(hours=hours)
         else:
             start_date = pd.to_datetime(date_from) if date_from else None
             end_date = pd.to_datetime(date_to) if date_to else None
-
-        df_orders = self.history_orders_get_as_df(
-            date_from=start_date,
-            date_to=end_date,
-            group=group,
-            symbol=symbol,
-            ticket=ticket,
-            position=position,
-        )
-
-        if df_orders.empty:
-            self.logger.info("No historical orders found")
-            print("No historical orders found")  # noqa: T201
-            return
-
-        self.print_df(df=df_orders)
-        self.export_df(
-            df=df_orders,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="history_orders",
-        )
-
-    def print_account_info(
-        self,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print account information as DataFrame.
-
-        Retrieves and displays current account information.
-
-        Args:
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
-        """
-        self.logger.info("Fetching account information")
-
-        df_account = self.account_info_as_dataframe()
-
-        self.print_df(df=df_account)
-        self.export_df(
-            df=df_account,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="account_info",
-        )
-
-    def print_terminal_info(
-        self,
-        csv_path: str | None = None,
-        sqlite3_path: str | None = None,
-    ) -> None:
-        """Print terminal information as DataFrame.
-
-        Retrieves and displays terminal status and settings.
-
-        Args:
-            csv_path: Path for CSV export (optional).
-            sqlite3_path: Path for SQLite export (optional).
-        """
-        self.logger.info("Fetching terminal information")
-
-        df_terminal = self.terminal_info_as_dataframe()
-
-        self.print_df(df=df_terminal)
-        self.export_df(
-            df=df_terminal,
-            csv_path=csv_path,
-            sqlite3_path=sqlite3_path,
-            sqlite3_table="terminal_info",
+        self.logger.info("start_date: %s, end_date: %s", start_date, end_date)
+        self.print_json(
+            data=self.history_orders_get_as_df(
+                date_from=start_date,
+                date_to=end_date,
+                group=group,
+                symbol=symbol,
+                ticket=ticket,
+                position=position,
+            ).to_dict(orient="records"),
         )

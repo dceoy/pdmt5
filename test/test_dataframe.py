@@ -590,7 +590,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         # Initialize the client first
         client.initialize()
-        df_result = client.account_info_as_dataframe()
+        df_result = client.account_info_as_df()
 
         assert client._is_initialized is True
         mock_mt5_import.initialize.assert_called_once()
@@ -1927,8 +1927,8 @@ class TestMt5DataClientRetryLogic:
         assert hasattr(client, "history_deals_get")
 
         # Test that Mt5DataClient has its own methods
-        assert hasattr(client, "account_info_as_dataframe")
-        assert hasattr(client, "terminal_info_as_dataframe")
+        assert hasattr(client, "account_info_as_df")
+        assert hasattr(client, "terminal_info_as_df")
         assert hasattr(client, "copy_rates_from_as_df")
         assert hasattr(client, "copy_rates_from_pos_as_df")
         assert hasattr(client, "copy_rates_range_as_df")
