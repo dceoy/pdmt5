@@ -15,9 +15,9 @@ from .dataframe import Mt5DataClient
 class Mt5ReportClient(Mt5DataClient):
     """MetaTrader5 data client with reporting capabilities.
 
-    This class extends Mt5DataClient to provide methods for generating reports and exporting data.
-    It includes methods for printing data in various formats, exporting to CSV and SQLite,
-    """  # noqa: E501
+    This class extends Mt5DataClient to provide methods for
+    printing and exporting MetaTrader 5 data.
+    """
 
     @staticmethod
     def print_json(
