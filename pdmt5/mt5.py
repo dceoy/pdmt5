@@ -209,7 +209,7 @@ class Mt5Client(BaseModel):
         self.logger.info("Retrieving total number of symbols.")
         return self.mt5.symbols_total()
 
-    def symbols_get(self, group: str | None = None) -> tuple[Any, ...] | None:
+    def symbols_get(self, group: str | None = None) -> tuple[Any, ...]:
         """Get all financial instruments from the terminal.
 
         Args:
@@ -330,7 +330,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
-    def market_book_get(self, symbol: str) -> tuple[Any, ...] | None:
+    def market_book_get(self, symbol: str) -> tuple[Any, ...]:
         """Return a tuple from BookInfo featuring Market Depth entries for the specified symbol.
 
         Args:
@@ -551,7 +551,7 @@ class Mt5Client(BaseModel):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-    ) -> tuple[Any, ...] | None:
+    ) -> tuple[Any, ...]:
         """Get active orders with the ability to filter by symbol or ticket.
 
         Args:
@@ -592,7 +592,7 @@ class Mt5Client(BaseModel):
         symbol: str,
         volume: float,
         price: float,
-    ) -> float | None:
+    ) -> float:
         """Return margin in the account currency to perform a specified trading operation.
 
         Args:
@@ -627,7 +627,7 @@ class Mt5Client(BaseModel):
         volume: float,
         price_open: float,
         price_close: float,
-    ) -> float | None:
+    ) -> float:
         """Return profit in the account currency for a specified trading operation.
 
         Args:
@@ -718,7 +718,7 @@ class Mt5Client(BaseModel):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-    ) -> tuple[Any, ...] | None:
+    ) -> tuple[Any, ...]:
         """Get open positions with the ability to filter by symbol or ticket.
 
         Args:
@@ -782,7 +782,7 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-    ) -> tuple[Any, ...] | None:
+    ) -> tuple[Any, ...]:
         """Get orders from trading history with the ability to filter by ticket or position.
 
         Args:
@@ -857,7 +857,7 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-    ) -> tuple[Any, ...] | None:
+    ) -> tuple[Any, ...]:
         """Get deals from trading history within the specified interval with the ability to filter by ticket or position.
 
         Args:
