@@ -2,6 +2,137 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Commands
+
+### Development Setup
+
+```bash
+# Install dependencies with uv (modern Python package manager)
+uv sync
+```
+
+### Code Quality
+
+```bash
+# Run all linting and formatting
+uv run ruff check --fix .
+uv run ruff format .
+
+# Type checking
+uv run pyright .
+```
+
+### Testing
+
+```bash
+# Run unit tests with pytest
+uv run pytest test/ -v
+
+# Type checking with pyright
+uv run pyright .
+```
+
+### Documentation
+
+```bash
+# Build documentation with MkDocs
+uv run mkdocs build
+
+# Serve documentation locally with live reload
+uv run mkdocs serve
+
+# Deploy documentation to GitHub Pages
+uv run mkdocs gh-deploy
+```
+
+## Architecture
+
+### Project Overview
+
+- **Purpose**: Pandas-based data handler for MetaTrader 5 trading platform
+- **Target Platform**: Windows only (MetaTrader5 API requirement)
+- **Domain**: Financial/trading data analysis
+- **Status**: Early development (v0.0.2, Beta)
+
+### Key Dependencies
+
+- **MetaTrader5**: Windows-only trading platform API for market data
+- **pandas**: Core data manipulation and analysis
+- **pydantic**: Data validation and serialization for financial data models
+
+### Package Structure
+
+- `pdmt5/`: Main package directory
+  - `__init__.py`: Package initialization and exports (Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient, Mt5RuntimeError)
+  - `mt5.py`: MT5 terminal client with context manager support (`Mt5Client`, `Mt5RuntimeError`)
+  - `dataframe.py`: MT5 data client with pandas DataFrame conversion (`Mt5Config`, `Mt5DataClient`)
+  - `report.py`: Data reporting with JSON/DataFrame printing and SQLite export (`Mt5ReportClient`)
+- `test/`: Comprehensive test suite (pytest-based)
+  - `test_init.py`, `test_mt5.py`, `test_dataframe.py`, `test_report.py`
+- `docs/`: MkDocs documentation with API reference
+  - `docs/api/`: Auto-generated API documentation for all modules
+- Modern Python packaging with `pyproject.toml` and uv dependency management
+
+### Development Tools Configuration
+
+- **Ruff**: Comprehensive linting with 40+ rule categories enabled
+- **Pyright**: Strict type checking mode
+- **pytest**: Testing with coverage reporting (50% minimum)
+- **Google-style docstrings**: Documentation convention
+- **Line length**: 88 characters
+
+### Quality Standards
+
+- Type hints required (pyright strict mode)
+- Comprehensive linting with 35+ rule categories (ruff)
+- Test coverage tracking with 90% minimum (branch coverage enabled)
+- Professional financial software standards
+- Pydantic models for data validation and configuration
+- Context manager support for resource management
+
+## Documentation with MkDocs
+
+Uses MkDocs with Material theme for API documentation built from Google-style docstrings.
+
+### Structure
+
+- `docs/index.md`: Main documentation
+- `docs/api/`: Auto-generated API reference
+  - `mt5.md`: Mt5Client and Mt5RuntimeError
+  - `dataframe.md`: Mt5Config and Mt5DataClient
+  - `report.md`: Mt5ReportClient with reporting features
+
+### Workflow
+
+1. Add Google-style docstrings to functions/classes
+2. Local preview: `uv run mkdocs serve`
+3. Build: `uv run mkdocs build`
+4. Deploy: `uv run mkdocs gh-deploy`
+
+## Web Search Instructions
+
+For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tool.
+Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
+
+### Usage
+
+```sh
+# Basic search query
+gemini --sandbox --prompt "WebSearch: <query>"
+
+# Example: Search for latest news
+gemini --sandbox --prompt "WebSearch: What are the latest developments in AI?"
+```
+
+### Policy
+
+When users request information that requires web search:
+
+1. Use `gemini --sandbox --prompt` command via terminal
+2. Parse and present the Gemini response appropriately
+
+This ensures consistent and reliable web search results through the Gemini API.
+
 ## Code Design Principles
 
 Follow Robert C. Martin's SOLID and Clean Code principles:
@@ -66,127 +197,3 @@ Follow Martin Fowler's Refactoring, Kent Beck's Tidy Code, and t_wada's TDD prin
 - Human-readable code first
 
 > "Make the change easy, then make the easy change." - Kent Beck
-
-## Commands
-
-### Development Setup
-
-```bash
-# Install dependencies with uv (modern Python package manager)
-uv sync
-```
-
-### Code Quality
-
-```bash
-# Run all linting and formatting
-uv run ruff check --fix .
-uv run ruff format .
-
-# Type checking
-uv run pyright .
-```
-
-### Testing
-
-```bash
-# Run unit tests with pytest
-uv run pytest test/ -v
-
-# Type checking with pyright
-uv run pyright .
-```
-
-### Documentation
-
-```bash
-# Build documentation with MkDocs
-uv run mkdocs build
-
-# Serve documentation locally with live reload
-uv run mkdocs serve
-
-# Deploy documentation to GitHub Pages
-uv run mkdocs gh-deploy
-```
-
-## Architecture
-
-### Project Overview
-
-- **Purpose**: Pandas-based data handler for MetaTrader 5 trading platform
-- **Target Platform**: Windows only (MetaTrader5 API requirement)
-- **Domain**: Financial/trading data analysis
-- **Status**: Early development (v0.0.1, Beta)
-
-### Key Dependencies
-
-- **MetaTrader5**: Windows-only trading platform API for market data
-- **pandas**: Core data manipulation and analysis
-- **pydantic**: Data validation and serialization for financial data models
-
-### Package Structure
-
-- `pdmt5/`: Main package directory
-  - `__init__.py`: Package initialization and exports
-  - `mt5.py`: MT5 terminal client (`Mt5Client`, `Mt5RuntimeError`)
-  - `dataframe.py`: MT5 data client (`Mt5Config`, `Mt5DataClient`)
-  - `report.py`: Data reporting and printing (`Mt5ReportClient`)
-- `test/`: Test directory (pytest-based)
-- `docs/`: MkDocs documentation source files
-- Modern Python packaging with `pyproject.toml`
-
-### Development Tools Configuration
-
-- **Ruff**: Comprehensive linting with 40+ rule categories enabled
-- **Pyright**: Strict type checking mode
-- **pytest**: Testing with coverage reporting (50% minimum)
-- **Google-style docstrings**: Documentation convention
-- **Line length**: 88 characters
-
-### Quality Standards
-
-- Type hints required (strict mode)
-- Comprehensive linting rules including security (bandit), pandas-specific rules
-- Test coverage tracking with branch coverage
-- Professional financial software standards
-
-## Documentation with MkDocs
-
-Uses MkDocs with Material theme for API documentation built from Google-style docstrings.
-
-### Structure
-
-- `docs/index.md`: Main documentation
-- `docs/api/`: API reference (exception, dataframe, printer modules)
-
-### Workflow
-
-1. Add Google-style docstrings to functions/classes
-2. Local preview: `uv run mkdocs serve`
-3. Build: `uv run mkdocs build`
-4. Deploy: `uv run mkdocs gh-deploy`
-
-## Web Search Instructions
-
-For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tool.
-Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
-
-### Usage
-
-```sh
-# Basic search query
-gemini --sandbox --prompt "WebSearch: <query>"
-
-# Example: Search for latest news
-gemini --sandbox --prompt "WebSearch: What are the latest developments in AI?"
-```
-
-### Policy
-
-When users request information that requires web search:
-
-1. Use `gemini --sandbox --prompt` command via terminal
-2. Parse and present the Gemini response appropriately
-
-This ensures consistent and reliable web search results through the Gemini API.
