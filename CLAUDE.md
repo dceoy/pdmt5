@@ -131,7 +131,7 @@ uv run mkdocs gh-deploy
   - `__init__.py`: Package initialization and exports
   - `mt5.py`: MT5 terminal client (`Mt5Client`, `Mt5RuntimeError`)
   - `dataframe.py`: MT5 data client (`Mt5Config`, `Mt5DataClient`)
-  - `etl.py`: ETL operations and data export (`Mt5EtlClient`)
+  - `report.py`: Data reporting and printing (`Mt5ReportClient`)
 - `test/`: Test directory (pytest-based)
 - `docs/`: MkDocs documentation source files
 - Modern Python packaging with `pyproject.toml`

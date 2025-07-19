@@ -1,4 +1,4 @@
-"""MetaTrader5 data client with pretty printing capabilities."""
+"""MetaTrader5 data client with reporting capabilities."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ import pandas as pd
 from .dataframe import Mt5DataClient
 
 
-class Mt5EtlClient(Mt5DataClient):
-    """MetaTrader5 data client with ETL capabilities.
+class Mt5ReportClient(Mt5DataClient):
+    """MetaTrader5 data client with reporting capabilities.
 
-    This class extends Mt5DataClient to provide methods for extracting, transforming, and loading.
+    This class extends Mt5DataClient to provide methods for generating reports and exporting data.
     It includes methods for printing data in various formats, exporting to CSV and SQLite,
     """  # noqa: E501
 

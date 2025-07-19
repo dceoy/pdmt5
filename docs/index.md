@@ -57,7 +57,7 @@ Browse the API documentation to learn about available modules and functions:
 - [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access
 - [Exception](api/exception.md) - Custom exception handling
 - [DataFrame](api/dataframe.md) - Pandas-friendly data client and configuration
-- [ETL](api/etl.md) - ETL operations and data export functionality
+- [Report](api/report.md) - Reporting operations and data export functionality
 
 ## Development
 

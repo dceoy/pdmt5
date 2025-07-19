@@ -15,8 +15,8 @@ Custom exception handling for MetaTrader 5 runtime errors.
 ### [DataFrame](dataframe.md)
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
-### [ETL](etl.md)
-ETL (Extract, Transform, Load) operations and data export functionality for MetaTrader 5 data.
+### [Report](report.md)
+Reporting operations and data export functionality for MetaTrader 5 data.
 
 ## Architecture Overview
 
@@ -24,7 +24,7 @@ The package follows a layered architecture:
 
 1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
 2. **Core Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
-3. **Presentation Layer** (`etl.py`): Extends `Mt5DataClient` with ETL operations and export capabilities (`Mt5EtlClient`)
+3. **Presentation Layer** (`report.py`): Extends `Mt5DataClient` with reporting operations and export capabilities (`Mt5ReportClient`)
 
 ## Usage Guidelines
 
@@ -39,7 +39,7 @@ All modules follow these conventions:
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5EtlClient
+from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient
 import MetaTrader5 as mt5
 
 # Low-level API access with Mt5Client
@@ -54,8 +54,8 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     symbols_df = client.symbols_get()
     rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Enhanced functionality with Mt5EtlClient
-with Mt5EtlClient(mt5=mt5, config=config) as printer:
+# Enhanced functionality with Mt5ReportClient
+with Mt5ReportClient(mt5=mt5, config=config) as printer:
     printer.print_rates("EURUSD", timeframe="H1", count=10)
     printer.export_rates_to_csv("EURUSD", "data.csv", timeframe="D1", count=100)
 ```

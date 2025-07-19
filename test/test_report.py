@@ -1,4 +1,4 @@
-"""Tests for pdmt5.etl module."""
+"""Tests for pdmt5.report module."""
 
 # pyright: reportPrivateUsage=false
 # pyright: reportAttributeAccessIssue=false
@@ -14,7 +14,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from pdmt5.dataframe import Mt5DataClient
-from pdmt5.etl import Mt5EtlClient
+from pdmt5.report import Mt5ReportClient
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
@@ -81,8 +81,8 @@ def mock_mt5_import(
         yield mock_mt5
 
 
-class TestMt5EtlClient:
-    """Tests for Mt5EtlClient class."""
+class TestMt5ReportClient:
+    """Tests for Mt5ReportClient class."""
 
     def test_print_json(
         self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]
@@ -90,7 +90,7 @@ class TestMt5EtlClient:
         """Test print_json method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         test_data = {"key": "value", "number": 123}
 
         client.print_json(test_data)
@@ -105,7 +105,7 @@ class TestMt5EtlClient:
         """Test print_df method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
 
         client.print_df(test_df)
@@ -120,7 +120,7 @@ class TestMt5EtlClient:
         """Test drop_duplicates_in_sqlite3 method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_cursor = mocker.MagicMock()
 
         client.drop_duplicates_in_sqlite3(mock_cursor, "test_table", ["id", "name"])
@@ -133,7 +133,7 @@ class TestMt5EtlClient:
         """Test write_df_to_csv method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
         csv_path = tmp_path / "test.csv"
 
@@ -150,7 +150,7 @@ class TestMt5EtlClient:
         """Test write_df_to_sqlite3 method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
         sqlite_path = tmp_path / "test.db"
 
@@ -178,7 +178,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 123, "symbol": "EURUSD", "profit": 10.0}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_get.return_value = [MockDeal()]
 
@@ -198,7 +198,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = [MockOrder()]
 
@@ -218,7 +218,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 789, "symbol": "USDJPY", "profit": 5.0}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = [MockPosition()]
 
@@ -253,7 +253,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"ask": 1.1234, "bid": 1.1230}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.account_info.return_value = MockAccountInfo()
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
@@ -280,7 +280,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"time": 1640995200}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -317,7 +317,7 @@ class TestMt5EtlClient:
         """Test print_ticks method with date_to parameter."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -352,7 +352,7 @@ class TestMt5EtlClient:
         """Test print_rates method."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
 
         # Mock required constants
@@ -400,7 +400,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"time": 1640995200, "bid": 1.1230, "ask": 1.1234, "volume": 1}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbol_info.return_value = MockSymbolInfo()
         mock_mt5_import.symbol_info_tick.return_value = MockSymbolInfoTick()
@@ -425,7 +425,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"login": 12345, "server": "Test-Server"}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.__version__ = "5.0.45"
         mock_mt5_import.__author__ = "MetaQuotes Ltd."
@@ -453,7 +453,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"name": "EURUSD", "bid": 1.1230, "ask": 1.1234}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbols_get.return_value = [MockSymbol()]
 
@@ -469,7 +469,7 @@ class TestMt5EtlClient:
         """Test print_symbols method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbols_get.return_value = ()
 
@@ -489,7 +489,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"ticket": 456, "symbol": "GBPUSD", "volume": 0.1}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_orders_get.return_value = [MockOrder()]
 
@@ -505,7 +505,7 @@ class TestMt5EtlClient:
         """Test print_history_orders method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_orders_get.return_value = ()
 
@@ -525,7 +525,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"login": 12345, "server": "Test-Server"}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.account_info.return_value = MockAccountInfo()
 
@@ -545,7 +545,7 @@ class TestMt5EtlClient:
             def _asdict(self) -> dict[str, Any]:
                 return {"company": "Test Company", "path": "/test/path"}
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.terminal_info.return_value = MockTerminalInfo()
 
@@ -561,7 +561,7 @@ class TestMt5EtlClient:
         """Test print_history_deals method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.history_deals_get.return_value = ()
 
@@ -577,7 +577,7 @@ class TestMt5EtlClient:
         """Test print_orders method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.orders_get.return_value = ()
 
@@ -593,7 +593,7 @@ class TestMt5EtlClient:
         """Test print_positions method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.positions_get.return_value = ()
 
@@ -609,7 +609,7 @@ class TestMt5EtlClient:
         """Test print_ticks method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.COPY_TICKS_ALL = 3
         tick_dtype = np.dtype([
@@ -632,7 +632,7 @@ class TestMt5EtlClient:
         """Test print_rates method with empty results."""
         assert mock_mt5_import is not None
 
-        client = Mt5EtlClient(mt5=mock_mt5_import)
+        client = Mt5ReportClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.TIMEFRAME_M1 = 1
         rate_dtype = np.dtype([

@@ -1,15 +1,15 @@
-# ETL
+# Report
 
-::: pdmt5.etl
+::: pdmt5.report
 
 ## Overview
 
-The etl module extends the core `Mt5DataClient` functionality with ETL (Extract, Transform, Load) operations and data export capabilities. It provides formatted console output and export functionality to CSV and SQLite formats.
+The report module extends the core `Mt5DataClient` functionality with reporting operations and data export capabilities. It provides formatted console output and export functionality to CSV and SQLite formats.
 
 ## Classes
 
-### Mt5EtlClient
-::: pdmt5.etl.Mt5EtlClient
+### Mt5ReportClient
+::: pdmt5.report.Mt5ReportClient
     options:
       show_bases: false
 
@@ -28,11 +28,11 @@ Enhanced data client that inherits from `Mt5DataClient` and adds presentation an
 ### Basic Usage
 
 ```python
-from pdmt5 import Mt5Config, Mt5EtlClient
+from pdmt5 import Mt5Config, Mt5ReportClient
 import MetaTrader5 as mt5
 
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
-printer = Mt5EtlClient(mt5=mt5, config=config)
+printer = Mt5ReportClient(mt5=mt5, config=config)
 
 with printer:
     # Pretty print current positions
