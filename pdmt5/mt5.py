@@ -911,26 +911,18 @@ class Mt5Client(BaseModel):
             response: The response object to validate.
             operation: Name of the operation being validated.
             context: Additional context about the operation.
-        """
-        if response is None:
-            self._handle_error(operation=operation, context=context)
-
-    def _handle_error(self, operation: str, context: str | None = None) -> None:
-        """Handle MetaTrader5 errors by raising appropriate exception.
-
-        Args:
-            operation: Name of the operation that failed.
-            context: Additional context about the operation.
 
         Raises:
             Mt5RuntimeError: With error details from MetaTrader5.
         """
-        error_code, error_description = self.last_error()
-        error_message = f"{operation} failed: {error_code} - {error_description}" + (
-            f" (context: {context})" if context else ""
-        )
-        self.logger.error(error_message)
-        raise Mt5RuntimeError(error_message)
+        if response is None:
+            error_code, error_description = self.last_error()
+            error_message = (
+                f"{operation} failed: {error_code} - {error_description}"
+                + (f" (context: {context})" if context else "")
+            )
+            self.logger.error(error_message)
+            raise Mt5RuntimeError(error_message)
 
     def _ensure_initialized(self) -> None:
         """Ensure MetaTrader5 is initialized.

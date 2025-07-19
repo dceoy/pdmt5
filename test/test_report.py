@@ -127,6 +127,34 @@ class TestMt5ReportClient:
 
         mock_cursor.execute.assert_called_once()
 
+    def test_drop_duplicates_in_sqlite3_invalid_table_name(
+        self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
+    ) -> None:
+        """Test drop_duplicates_in_sqlite3 with invalid table name."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_cursor = mocker.MagicMock()
+
+        with pytest.raises(ValueError, match="Invalid table name: 123invalid"):
+            client.drop_duplicates_in_sqlite3(mock_cursor, "123invalid", ["id", "name"])
+
+    def test_drop_duplicates_in_sqlite3_invalid_column_names(
+        self, mock_mt5_import: ModuleType | None, mocker: MockerFixture
+    ) -> None:
+        """Test drop_duplicates_in_sqlite3 with invalid column names."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        mock_cursor = mocker.MagicMock()
+
+        with pytest.raises(
+            ValueError, match="Invalid column names: 123invalid, 456bad"
+        ):
+            client.drop_duplicates_in_sqlite3(
+                mock_cursor, "valid_table", ["123invalid", "456bad", "good_col"]
+            )
+
     def test_write_df_to_csv(
         self, mock_mt5_import: ModuleType | None, tmp_path: Path
     ) -> None:
@@ -167,6 +195,52 @@ class TestMt5ReportClient:
         )
 
         mock_connect.assert_called_once_with(str(sqlite_path))
+
+    def test_write_df_to_sqlite3_without_drop_duplicates(
+        self,
+        mock_mt5_import: ModuleType | None,
+        tmp_path: Path,
+    ) -> None:
+        """Test write_df_to_sqlite3 method without drop_duplicates (covers line 113)."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        db_path = tmp_path / "test.db"
+
+        # Write without drop_duplicates to take the exit branch at line 113
+        client.write_df_to_sqlite3(
+            test_df,
+            sqlite3_file_path=str(db_path),
+            table="test_table",
+            drop_duplicates=False,
+        )
+
+        # Verify the file was created
+        assert db_path.exists()
+
+    def test_write_df_to_sqlite3_with_exception_in_drop_duplicates(
+        self,
+        mock_mt5_import: ModuleType | None,
+        tmp_path: Path,
+    ) -> None:
+        """Test write_df_to_sqlite3 when drop_duplicates raises exception."""
+        assert mock_mt5_import is not None
+
+        client = Mt5ReportClient(mt5=mock_mt5_import)
+        test_df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        test_df.index.names = ["123invalid"]  # Invalid index name
+
+        db_path = tmp_path / "test.db"
+
+        # The context manager should handle the exception
+        with pytest.raises(ValueError, match="Invalid column names: 123invalid"):
+            client.write_df_to_sqlite3(
+                test_df,
+                sqlite3_file_path=str(db_path),
+                table="test_table",
+                drop_duplicates=True,
+            )
 
     def test_print_history_deals(
         self, mock_mt5_import: ModuleType | None, capsys: pytest.CaptureFixture[str]

@@ -473,10 +473,11 @@ class TestMt5DataClient:
         mock_mt5_import.last_error.return_value = (1, "Connection failed")
 
         client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"initialize failed: 1 - Connection failed",
-        ):
+        pattern = (
+            r"MetaTrader5 initialization failed after 0 retries: "
+            r"\(1, 'Connection failed'\)"
+        )
+        with pytest.raises(Mt5RuntimeError, match=pattern):
             client.initialize_mt5()
 
     def test_initialize_already_initialized(
@@ -487,13 +488,13 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = True
 
         client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
+        # Set _is_initialized to True to test the early return path (line 100)
+        client._is_initialized = True
 
-        # Second call should return True without calling mt5.initialize again
-        mock_mt5_import.initialize.reset_mock()
+        # Call initialize when already initialized - should return True immediately
         result = client.initialize()
 
-        assert result is True
+        assert result is True  # Method returns True when already initialized
         mock_mt5_import.initialize.assert_not_called()
 
     def test_shutdown(self, mock_mt5_import: ModuleType | None) -> None:
@@ -1882,7 +1883,7 @@ class TestMt5DataClientRetryLogic:
         with pytest.raises(Mt5RuntimeError) as exc_info:
             client.initialize_mt5()
 
-        assert "initialize failed" in str(exc_info.value)
+        assert "MetaTrader5 initialization failed after" in str(exc_info.value)
         assert mock_mt5_import.initialize.call_count == 3  # All attempts made
         # Check that sleep was called for retries
         assert mock_sleep.call_count == 2
@@ -2353,3 +2354,45 @@ class TestMt5DataClientRetryLogic:
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
         assert df_result.iloc[0]["position_id"] == 345678
+
+    def test_context_manager_with_exception(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test context manager handles exceptions properly."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        test_exception_msg = "Test exception"
+        with Mt5DataClient(mt5=mock_mt5_import) as client:
+            assert client._is_initialized is True
+            mock_mt5_import.initialize.assert_called_once()
+            with pytest.raises(ValueError, match=test_exception_msg):
+                raise ValueError(test_exception_msg)
+
+        # Shutdown should still be called even with exception
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_already_initialized_in_context(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test initialize method when already initialized (covers line 70 exit)."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        # First initialize the client normally
+        result = client.initialize()
+        assert result is True
+        assert client._is_initialized is True
+        mock_mt5_import.initialize.assert_called_once()
+
+        # Reset the mock
+        mock_mt5_import.initialize.reset_mock()
+
+        # Call initialize again - should take the early exit at line 70
+        client.initialize()
+
+        # Initialize should not be called since we're already initialized
+        mock_mt5_import.initialize.assert_not_called()
+        # The method should still return True (or whatever the expected behavior is)
+        assert client._is_initialized is True

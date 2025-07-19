@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
-from .mt5 import Mt5Client
+from .mt5 import Mt5Client, Mt5RuntimeError
 
 
 class Mt5Config(BaseModel):
@@ -43,6 +43,7 @@ class Mt5DataClient(Mt5Client):
     )
     retry_count: int = Field(
         default=3,
+        ge=0,
         description="Number of retry attempts for connection initialization",
     )
 
@@ -66,36 +67,34 @@ class Mt5DataClient(Mt5Client):
             server: Server name (overrides config).
             timeout: Connection timeout (overrides config).
             portable: Use portable mode (overrides config).
+
+        Raises:
+            Mt5RuntimeError: If initialization fails after retries.
         """
-        if not self._is_initialized:
-            initialize_kwargs = {
-                "path": path or self.config.path,
-                "login": login or self.config.login,
-                "password": password or self.config.password,
-                "server": server or self.config.server,
-                "timeout": timeout or self.config.timeout,
-                "portable": portable if portable is not None else self.config.portable,
-            }
-            result: bool = False
-            for i in range(1 + max(0, self.retry_count)):
-                if i:
-                    self.logger.warning("Retry MetaTrader5.initialize()")
-                    time.sleep(i)
-                else:
-                    self.logger.info("Initialize MetaTrader5")
-                result = self.initialize(**initialize_kwargs)  # pyright: ignore[reportArgumentType]
-                if result:
-                    break
-            if not result:
-                self._handle_error(
-                    operation="initialize",
-                    context=", ".join(
-                        (f"{k}={v}" if k != "password" else f"{k}=***")
-                        for k, v in initialize_kwargs.items()
-                    ),
+        initialize_kwargs = {
+            "path": path or self.config.path,
+            "login": login or self.config.login,
+            "password": password or self.config.password,
+            "server": server or self.config.server,
+            "timeout": timeout or self.config.timeout,
+            "portable": portable if portable is not None else self.config.portable,
+        }
+        for i in range(1 + max(0, self.retry_count)):
+            if i:
+                self.logger.warning(
+                    "Retrying MetaTrader5 initialization (%d/%d)...",
+                    i,
+                    self.retry_count,
                 )
-            self._is_initialized = True
-            self.logger.info("MetaTrader5 connection initialized successfully")
+                time.sleep(i)
+            if self.initialize(**initialize_kwargs):  # pyright: ignore[reportArgumentType]
+                self.logger.info("MetaTrader5 initialization successful.")
+                return
+        error_message = (
+            f"MetaTrader5 initialization failed after {self.retry_count} retries:"
+            f" {self.last_error()}"
+        )
+        raise Mt5RuntimeError(error_message)
 
     def version_as_dict(self) -> dict[str, int | str]:
         """Return MetaTrader5 version information as a dictionary.
@@ -103,11 +102,11 @@ class Mt5DataClient(Mt5Client):
         Returns:
             Dictionary with MetaTrader5 version information.
         """
-        result = self.version()
+        response = self.version()
         return {
-            "mt5_terminal_version": result[0],
-            "build": result[1],
-            "build_release_date": result[2],
+            "mt5_terminal_version": response[0],
+            "build": response[1],
+            "build_release_date": response[2],
         }
 
     def account_info_as_dict(self) -> dict[str, Any]:
