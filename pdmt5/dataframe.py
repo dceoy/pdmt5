@@ -452,14 +452,13 @@ class Mt5DataClient(Mt5Client):
             self.market_book_get_as_dict(symbol=symbol, convert_time=False)
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def copy_rates_from_as_dict(
         self,
         symbol: str,
         timeframe: int,
         date_from: datetime,
         count: int,
-        convert_time: bool = True,  # noqa: ARG002
+        convert_time: bool = True,
     ) -> list[dict[str, Any]]:
         """Get bars for a specified date range as a list of dictionaries.
 
@@ -473,15 +472,14 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        self._validate_positive_count(count=count)
-        return pd.DataFrame(
-            self.copy_rates_from(
-                symbol=symbol,
-                timeframe=timeframe,
-                date_from=date_from,
-                count=count,
-            )
-        ).to_dict(orient="records")  # type: ignore[reportReturnType]
+        return self.copy_rates_from_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            date_from=date_from,
+            count=count,
+            convert_time=convert_time,
+            index_keys=None,
+        ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
@@ -507,24 +505,23 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with OHLCV data.
         """
+        self._validate_positive_count(count=count)
         return pd.DataFrame(
-            self.copy_rates_from_as_dict(
+            self.copy_rates_from(
                 symbol=symbol,
                 timeframe=timeframe,
                 date_from=date_from,
                 count=count,
-                convert_time=False,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def copy_rates_from_pos_as_dict(
         self,
         symbol: str,
         timeframe: int,
         start_pos: int,
         count: int,
-        convert_time: bool = True,  # noqa: ARG002
+        convert_time: bool = True,
     ) -> list[dict[str, Any]]:
         """Get bars from a specified position as a list of dictionaries.
 
@@ -538,16 +535,14 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        self._validate_positive_count(count=count)
-        self._validate_non_negative_position(position=start_pos)
-        return pd.DataFrame(
-            self.copy_rates_from_pos(
-                symbol=symbol,
-                timeframe=timeframe,
-                start_pos=start_pos,
-                count=count,
-            )
-        ).to_dict(orient="records")  # type: ignore[reportReturnType]
+        return self.copy_rates_from_pos_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_pos=start_pos,
+            count=count,
+            convert_time=convert_time,
+            index_keys=None,
+        ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
@@ -573,24 +568,24 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with OHLCV data.
         """
+        self._validate_positive_count(count=count)
+        self._validate_non_negative_position(position=start_pos)
         return pd.DataFrame(
-            self.copy_rates_from_pos_as_dict(
+            self.copy_rates_from_pos(
                 symbol=symbol,
                 timeframe=timeframe,
                 start_pos=start_pos,
                 count=count,
-                convert_time=False,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def copy_rates_range_as_dict(
         self,
         symbol: str,
         timeframe: int,
         date_from: datetime,
         date_to: datetime,
-        convert_time: bool = True,  # noqa: ARG002
+        convert_time: bool = True,
     ) -> list[dict[str, Any]]:
         """Get bars for a specified date range as a list of dictionaries.
 
@@ -604,15 +599,14 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        self._validate_date_range(date_from=date_from, date_to=date_to)
-        return pd.DataFrame(
-            self.copy_rates_range(
-                symbol=symbol,
-                timeframe=timeframe,
-                date_from=date_from,
-                date_to=date_to,
-            )
-        ).to_dict(orient="records")  # type: ignore[reportReturnType]
+        return self.copy_rates_range_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            date_from=date_from,
+            date_to=date_to,
+            convert_time=convert_time,
+            index_keys=None,
+        ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
@@ -638,24 +632,23 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with OHLCV data.
         """
+        self._validate_date_range(date_from=date_from, date_to=date_to)
         return pd.DataFrame(
-            self.copy_rates_range_as_dict(
+            self.copy_rates_range(
                 symbol=symbol,
                 timeframe=timeframe,
                 date_from=date_from,
                 date_to=date_to,
-                convert_time=False,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def copy_ticks_from_as_dict(
         self,
         symbol: str,
         date_from: datetime,
         count: int,
         flags: int,
-        convert_time: bool = True,  # noqa: ARG002
+        convert_time: bool = True,
     ) -> list[dict[str, Any]]:
         """Get ticks from a specified date as a list of dictionaries.
 
@@ -669,14 +662,13 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        self._validate_positive_count(count=count)
-        return pd.DataFrame(
-            self.copy_ticks_from(
-                symbol=symbol,
-                date_from=date_from,
-                count=count,
-                flags=flags,
-            )
+        return self.copy_ticks_from_as_df(
+            symbol=symbol,
+            date_from=date_from,
+            count=count,
+            flags=flags,
+            convert_time=convert_time,
+            index_keys=None,
         ).to_dict(orient="records")  # type: ignore[reportReturnType]
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -703,24 +695,23 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with tick data.
         """
+        self._validate_positive_count(count=count)
         return pd.DataFrame(
-            self.copy_ticks_from_as_dict(
+            self.copy_ticks_from(
                 symbol=symbol,
                 date_from=date_from,
                 count=count,
                 flags=flags,
-                convert_time=False,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def copy_ticks_range_as_dict(
         self,
         symbol: str,
         date_from: datetime,
         date_to: datetime,
         flags: int,
-        convert_time: bool = True,  # noqa: ARG002
+        convert_time: bool = True,
     ) -> list[dict[str, Any]]:
         """Get ticks for a specified date range as a list of dictionaries.
 
@@ -734,14 +725,13 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        self._validate_date_range(date_from=date_from, date_to=date_to)
-        return pd.DataFrame(
-            self.copy_ticks_range(
-                symbol=symbol,
-                date_from=date_from,
-                date_to=date_to,
-                flags=flags,
-            )
+        return self.copy_ticks_range_as_df(
+            symbol=symbol,
+            date_from=date_from,
+            date_to=date_to,
+            flags=flags,
+            convert_time=convert_time,
+            index_keys=None,
         ).to_dict(orient="records")  # type: ignore[reportReturnType]
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -768,13 +758,13 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with tick data.
         """
+        self._validate_date_range(date_from=date_from, date_to=date_to)
         return pd.DataFrame(
-            self.copy_ticks_range_as_dict(
+            self.copy_ticks_range(
                 symbol=symbol,
                 date_from=date_from,
                 date_to=date_to,
                 flags=flags,
-                convert_time=False,
             )
         )
 
