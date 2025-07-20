@@ -29,7 +29,7 @@ class Mt5TradingClient(Mt5DataClient):
     )
     dry_run: bool = Field(default=False, description="Enable dry run mode for testing.")
 
-    def close_open_positions(
+    def close_positions_by_symbols(
         self,
         symbols: list[str] | None = None,
         **kwargs: Any,  # noqa: ANN401
@@ -46,16 +46,16 @@ class Mt5TradingClient(Mt5DataClient):
                 operation results for each closed position as values.
         """
         return {
-            s: self.close_position(symbol=s, **kwargs)
+            s: self.close_position_by_symbol(symbol=s, **kwargs)
             for s in (self.symbols_get() if symbols is None else symbols)
         }
 
-    def close_position(
+    def close_position_by_symbol(
         self,
         symbol: str | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
-        """Close an open position by ticket.
+        """Close all open positions for a specific symbol.
 
         Args:
             symbol: Optional symbol filter.

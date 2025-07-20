@@ -195,7 +195,7 @@ class TestMt5TradingClient:
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
 
-        result = client.close_position("EURUSD")
+        result = client.close_position_by_symbol("EURUSD")
 
         assert result == []
         mock_mt5_import.positions_get.assert_called_once_with(symbol="EURUSD")
@@ -219,7 +219,7 @@ class TestMt5TradingClient:
             "result": "success",
         }
 
-        result = client.close_position("EURUSD")
+        result = client.close_position_by_symbol("EURUSD")
 
         assert len(result) == 1
         assert result[0]["retcode"] == 10009
@@ -238,7 +238,7 @@ class TestMt5TradingClient:
         mock_mt5_import.symbols_get.return_value = ["EURUSD", "GBPUSD"]
         mock_mt5_import.positions_get.return_value = []  # No positions
 
-        result = client.close_open_positions()
+        result = client.close_positions_by_symbols()
 
         assert len(result) == 2
         assert "EURUSD" in result
@@ -258,7 +258,7 @@ class TestMt5TradingClient:
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
 
-        result = client.close_open_positions(["EURUSD"])
+        result = client.close_positions_by_symbols(["EURUSD"])
 
         assert len(result) == 1
         assert "EURUSD" in result
@@ -446,7 +446,7 @@ class TestMt5TradingClient:
             "retcode": 10009
         }
 
-        client.close_position("EURUSD")
+        client.close_position_by_symbol("EURUSD")
 
         # Verify that ORDER_FILLING_FOK was used
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -471,7 +471,7 @@ class TestMt5TradingClient:
             "retcode": 10009
         }
 
-        client.close_position("EURUSD")
+        client.close_position_by_symbol("EURUSD")
 
         # Buy position should result in sell order
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -482,7 +482,7 @@ class TestMt5TradingClient:
 
         mock_mt5_import.order_send.reset_mock()
 
-        client.close_position("GBPUSD")
+        client.close_position_by_symbol("GBPUSD")
 
         # Sell position should result in buy order
         call_args = mock_mt5_import.order_send.call_args[0][0]
