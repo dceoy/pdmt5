@@ -122,18 +122,19 @@ class Mt5TradingClient(Mt5DataClient):
         if ((not self.dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
             self.dry_run and retcode == 0
         ):
-            self.logger.info("response: %s", response)
+            self.logger.info("retcode: %s, response: %s", retcode, response)
             return response
         elif retcode in {
             self.mt5.TRADE_RETCODE_TRADE_DISABLED,
             self.mt5.TRADE_RETCODE_MARKET_CLOSED,
         }:
-            self.logger.info("response: %s", response)
+            self.logger.info("retcode: %s, response: %s", retcode, response)
             comment = response.get("comment", "Unknown error")
             self.logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
             return response
         else:
-            self.logger.error("response: %s", response)
+            self.logger.error("retcode: %s, response: %s", retcode, response)
             comment = response.get("comment", "Unknown error")
-            error_message = f"{order_func}() failed. <= `{comment}`"
+            error_message = f"{order_func}() failed and aborted. <= `{comment}`"
+            self.logger.error(error_message)
             raise Mt5TradingError(error_message)
