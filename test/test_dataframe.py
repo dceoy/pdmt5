@@ -14,7 +14,11 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from pdmt5.dataframe import Mt5Config, Mt5DataClient
+from pdmt5.dataframe import (
+    Mt5Config,
+    Mt5DataClient,
+    _convert_time_values_in_dict,
+)
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
 # Rebuild models to ensure they are fully defined for testing
@@ -3351,3 +3355,477 @@ class TestMt5DataClientCoverageMissing:
 
         result = client.symbols_get_as_dict(convert_time=False)
         assert isinstance(result[0]["time"], int)
+
+    def test_detect_and_convert_time_decorator_list_return(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test detect_and_convert_time decorator with list return value."""
+        # Mock a method that returns a list
+        mock_symbols = [
+            MockSymbolInfo(
+                custom=False,
+                chart_mode=0,
+                select=True,
+                visible=True,
+                session_deals=0,
+                session_buy_orders=0,
+                session_sell_orders=0,
+                volume=0,
+                volumehigh=0,
+                volumelow=0,
+                time=1640995200,
+                digits=5,
+                spread=10,
+                spread_float=True,
+                ticks_bookdepth=10,
+                trade_calc_mode=0,
+                trade_mode=4,
+                start_time=0,
+                expiration_time=0,
+                trade_stops_level=0,
+                trade_freeze_level=0,
+                trade_exemode=1,
+                swap_mode=1,
+                swap_rollover3days=3,
+                margin_hedged_use_leg=False,
+                expiration_mode=7,
+                filling_mode=1,
+                order_mode=127,
+                order_gtc_mode=0,
+                option_mode=0,
+                option_right=0,
+                bid=1.13200,
+                bidhigh=1.13500,
+                bidlow=1.13000,
+                ask=1.13210,
+                askhigh=1.13510,
+                asklow=1.13010,
+                last=1.13205,
+                lasthigh=1.13505,
+                lastlow=1.13005,
+                volume_real=1000000.0,
+                volumehigh_real=2000000.0,
+                volumelow_real=500000.0,
+                option_strike=0.0,
+                point=0.00001,
+                trade_tick_value=1.0,
+                trade_tick_value_profit=1.0,
+                trade_tick_value_loss=1.0,
+                trade_tick_size=0.00001,
+                trade_contract_size=100000.0,
+                trade_accrued_interest=0.0,
+                trade_face_value=0.0,
+                trade_liquidity_rate=0.0,
+                volume_min=0.01,
+                volume_max=500.0,
+                volume_step=0.01,
+                volume_limit=0.0,
+                swap_long=-0.5,
+                swap_short=-0.3,
+                margin_initial=0.0,
+                margin_maintenance=0.0,
+                session_volume=0.0,
+                session_turnover=0.0,
+                session_interest=0.0,
+                session_buy_orders_volume=0.0,
+                session_sell_orders_volume=0.0,
+                session_open=1.13100,
+                session_close=1.13200,
+                session_aw=0.0,
+                session_price_settlement=0.0,
+                session_price_limit_min=0.0,
+                session_price_limit_max=0.0,
+                margin_hedged=50000.0,
+                price_change=0.0010,
+                price_volatility=0.0,
+                price_theoretical=0.0,
+                price_greeks_delta=0.0,
+                price_greeks_theta=0.0,
+                price_greeks_gamma=0.0,
+                price_greeks_vega=0.0,
+                price_greeks_rho=0.0,
+                price_greeks_omega=0.0,
+                price_sensitivity=0.0,
+                basis="",
+                category="",
+                currency_base="EUR",
+                currency_profit="USD",
+                currency_margin="USD",
+                bank="",
+                description="Euro vs US Dollar",
+                exchange="",
+                formula="",
+                isin="",
+                name="EURUSD",
+                page="",
+                path="Forex\\Majors\\EURUSD",
+            )
+        ]
+
+        mock_mt5_import.symbols_get.return_value = mock_symbols
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # This should trigger the list processing path (lines 44-52)
+        result = client.symbols_get_as_dict()
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], dict)
+        assert "time" in result[0]
+
+    def test_detect_and_convert_time_decorator_non_dict_object(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test detect_and_convert_time decorator with non-dict return value."""
+        # Mock a method that returns a non-dict, non-list, non-DataFrame object
+        mock_mt5_import.symbols_total.return_value = 42
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # This should trigger the else path (line 56)
+        result = client.symbols_total()
+        assert result == 42  # Should return unchanged
+
+    def test_convert_time_values_in_dict_with_time_msc(self) -> None:
+        """Test _convert_time_values_in_dict with time_msc fields."""
+        test_dict = {
+            "time_setup_msc": 1640995200000,
+            "time_done_msc": 1640995210000,
+            "regular_field": "unchanged",
+            "numeric_field": 123.45,
+        }
+
+        result = _convert_time_values_in_dict(test_dict)
+
+        # Lines 76-77 should be covered
+        assert isinstance(result["time_setup_msc"], pd.Timestamp)
+        assert isinstance(result["time_done_msc"], pd.Timestamp)
+        assert result["regular_field"] == "unchanged"
+        assert result["numeric_field"] == 123.45
+
+    def test_convert_time_values_in_dict_with_time_fields(self) -> None:
+        """Test _convert_time_values_in_dict with regular time fields."""
+        test_dict = {
+            "time": 1640995200,
+            "time_setup": 1640995210,
+            "time_update": 1640995220,
+            "regular_field": "unchanged",
+            "string_field": "not_time",
+        }
+
+        result = _convert_time_values_in_dict(test_dict)
+
+        # Lines 78-79 should be covered
+        assert isinstance(result["time"], pd.Timestamp)
+        assert isinstance(result["time_setup"], pd.Timestamp)
+        assert isinstance(result["time_update"], pd.Timestamp)
+        assert result["regular_field"] == "unchanged"
+        assert result["string_field"] == "not_time"
+
+    def test_set_index_if_possible_non_dataframe_return(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test set_index_if_possible decorator with non-DataFrame return."""
+        # Create a custom decorated function that returns non-DataFrame
+        from pdmt5.dataframe import set_index_if_possible  # noqa: PLC0415
+
+        @set_index_if_possible(index_parameters="index_keys")
+        def mock_function_returning_non_df(
+            self: Mt5DataClient,  # noqa: ARG001
+            index_keys: str | None = None,  # noqa: ARG001
+        ) -> int:
+            """Mock function that returns non-DataFrame."""
+            return 42  # Return integer instead of DataFrame
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        # Bind the mock function to the client instance
+        bound_mock = mock_function_returning_non_df.__get__(client, Mt5DataClient)
+
+        # This should trigger the TypeError at lines 116-120
+        with pytest.raises(TypeError, match="returned non-DataFrame result"):
+            bound_mock(index_keys="some_key")
+
+    def test_convert_time_decorator_dict_return_with_convert_time_true(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test detect_and_convert_time decorator with dict return."""
+        # This test specifically targets line 43
+        mock_symbol = MockSymbolInfo(
+            custom=False,
+            chart_mode=0,
+            select=True,
+            visible=True,
+            session_deals=0,
+            session_buy_orders=0,
+            session_sell_orders=0,
+            volume=0,
+            volumehigh=0,
+            volumelow=0,
+            time=1640995200,
+            digits=5,
+            spread=10,
+            spread_float=True,
+            ticks_bookdepth=10,
+            trade_calc_mode=0,
+            trade_mode=4,
+            start_time=0,
+            expiration_time=0,
+            trade_stops_level=0,
+            trade_freeze_level=0,
+            trade_exemode=1,
+            swap_mode=1,
+            swap_rollover3days=3,
+            margin_hedged_use_leg=False,
+            expiration_mode=7,
+            filling_mode=1,
+            order_mode=127,
+            order_gtc_mode=0,
+            option_mode=0,
+            option_right=0,
+            bid=1.13200,
+            bidhigh=1.13500,
+            bidlow=1.13000,
+            ask=1.13210,
+            askhigh=1.13510,
+            asklow=1.13010,
+            last=1.13205,
+            lasthigh=1.13505,
+            lastlow=1.13005,
+            volume_real=1000000.0,
+            volumehigh_real=2000000.0,
+            volumelow_real=500000.0,
+            option_strike=0.0,
+            point=0.00001,
+            trade_tick_value=1.0,
+            trade_tick_value_profit=1.0,
+            trade_tick_value_loss=1.0,
+            trade_tick_size=0.00001,
+            trade_contract_size=100000.0,
+            trade_accrued_interest=0.0,
+            trade_face_value=0.0,
+            trade_liquidity_rate=0.0,
+            volume_min=0.01,
+            volume_max=500.0,
+            volume_step=0.01,
+            volume_limit=0.0,
+            swap_long=-0.5,
+            swap_short=-0.3,
+            margin_initial=0.0,
+            margin_maintenance=0.0,
+            session_volume=0.0,
+            session_turnover=0.0,
+            session_interest=0.0,
+            session_buy_orders_volume=0.0,
+            session_sell_orders_volume=0.0,
+            session_open=1.13100,
+            session_close=1.13200,
+            session_aw=0.0,
+            session_price_settlement=0.0,
+            session_price_limit_min=0.0,
+            session_price_limit_max=0.0,
+            margin_hedged=50000.0,
+            price_change=0.0010,
+            price_volatility=0.0,
+            price_theoretical=0.0,
+            price_greeks_delta=0.0,
+            price_greeks_theta=0.0,
+            price_greeks_gamma=0.0,
+            price_greeks_vega=0.0,
+            price_greeks_rho=0.0,
+            price_greeks_omega=0.0,
+            price_sensitivity=0.0,
+            basis="",
+            category="",
+            currency_base="EUR",
+            currency_profit="USD",
+            currency_margin="USD",
+            bank="",
+            description="Euro vs US Dollar",
+            exchange="",
+            formula="",
+            isin="",
+            name="EURUSD",
+            page="",
+            path="Forex\\Majors\\EURUSD",
+        )
+
+        mock_mt5_import.symbol_info.return_value = mock_symbol
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # This should trigger line 43: return _convert_time_values_in_dict()
+        result = client.symbol_info_as_dict("EURUSD", convert_time=True)
+        assert isinstance(result, dict)
+        assert "time" in result
+        # Check that time was converted to datetime
+        assert isinstance(result["time"], pd.Timestamp)
+
+    def test_convert_time_decorator_list_with_dicts_convert_time_true(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test detect_and_convert_time decorator with list of dicts."""
+        # This test specifically targets line 45 with dict processing
+        mock_symbols = [
+            MockSymbolInfo(
+                custom=False,
+                chart_mode=0,
+                select=True,
+                visible=True,
+                session_deals=0,
+                session_buy_orders=0,
+                session_sell_orders=0,
+                volume=0,
+                volumehigh=0,
+                volumelow=0,
+                time=1640995200,
+                digits=5,
+                spread=10,
+                spread_float=True,
+                ticks_bookdepth=10,
+                trade_calc_mode=0,
+                trade_mode=4,
+                start_time=0,
+                expiration_time=0,
+                trade_stops_level=0,
+                trade_freeze_level=0,
+                trade_exemode=1,
+                swap_mode=1,
+                swap_rollover3days=3,
+                margin_hedged_use_leg=False,
+                expiration_mode=7,
+                filling_mode=1,
+                order_mode=127,
+                order_gtc_mode=0,
+                option_mode=0,
+                option_right=0,
+                bid=1.13200,
+                bidhigh=1.13500,
+                bidlow=1.13000,
+                ask=1.13210,
+                askhigh=1.13510,
+                asklow=1.13010,
+                last=1.13205,
+                lasthigh=1.13505,
+                lastlow=1.13005,
+                volume_real=1000000.0,
+                volumehigh_real=2000000.0,
+                volumelow_real=500000.0,
+                option_strike=0.0,
+                point=0.00001,
+                trade_tick_value=1.0,
+                trade_tick_value_profit=1.0,
+                trade_tick_value_loss=1.0,
+                trade_tick_size=0.00001,
+                trade_contract_size=100000.0,
+                trade_accrued_interest=0.0,
+                trade_face_value=0.0,
+                trade_liquidity_rate=0.0,
+                volume_min=0.01,
+                volume_max=500.0,
+                volume_step=0.01,
+                volume_limit=0.0,
+                swap_long=-0.5,
+                swap_short=-0.3,
+                margin_initial=0.0,
+                margin_maintenance=0.0,
+                session_volume=0.0,
+                session_turnover=0.0,
+                session_interest=0.0,
+                session_buy_orders_volume=0.0,
+                session_sell_orders_volume=0.0,
+                session_open=1.13100,
+                session_close=1.13200,
+                session_aw=0.0,
+                session_price_settlement=0.0,
+                session_price_limit_min=0.0,
+                session_price_limit_max=0.0,
+                margin_hedged=50000.0,
+                price_change=0.0010,
+                price_volatility=0.0,
+                price_theoretical=0.0,
+                price_greeks_delta=0.0,
+                price_greeks_theta=0.0,
+                price_greeks_gamma=0.0,
+                price_greeks_vega=0.0,
+                price_greeks_rho=0.0,
+                price_greeks_omega=0.0,
+                price_sensitivity=0.0,
+                basis="",
+                category="",
+                currency_base="EUR",
+                currency_profit="USD",
+                currency_margin="USD",
+                bank="",
+                description="Euro vs US Dollar",
+                exchange="",
+                formula="",
+                isin="",
+                name="EURUSD",
+                page="",
+                path="Forex\\Majors\\EURUSD",
+            )
+        ]
+
+        mock_mt5_import.symbols_get.return_value = mock_symbols
+        mock_mt5_import.initialize.return_value = True
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # This should trigger line 45: the list comprehension with dict processing
+        result = client.symbols_get_as_dict(convert_time=True)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], dict)
+        assert "time" in result[0]
+        # Check that time was converted to datetime
+        assert isinstance(result[0]["time"], pd.Timestamp)
+
+    def test_convert_time_decorator_non_standard_return_type(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test detect_and_convert_time decorator with non-standard return type."""
+        # This test specifically targets line 56: return result (else case)
+
+        # Mock a method that returns a string (not dict, list, or DataFrame)
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.version.return_value = (123, 456, "2024-01-01")  # returns tuple
+
+        client = Mt5DataClient(mt5=mock_mt5_import)
+        client.initialize()
+
+        # version() returns a tuple, which should trigger the else clause (line 56)
+        result = client.version()
+        assert isinstance(result, tuple)
+        assert result == (123, 456, "2024-01-01")  # Should return unchanged
+
+    def test_convert_time_decorator_string_return_type(self) -> None:
+        """Test detect_and_convert_time decorator with string return type."""
+        # This test specifically targets line 56: return result (else case)
+        from pdmt5.dataframe import detect_and_convert_time_to_datetime  # noqa: PLC0415
+
+        @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+        def mock_function_returning_string(convert_time: bool = True) -> str:  # noqa: ARG001
+            """Mock function that returns a string."""
+            return "test_string"  # Return string instead of dict/list/DataFrame
+
+        # Call with convert_time=True (should trigger else clause at line 56)
+        result = mock_function_returning_string(convert_time=True)
+        assert result == "test_string"  # Should return unchanged
+
+        # Call with convert_time=False (should trigger early return at line 41)
+        result = mock_function_returning_string(convert_time=False)
+        assert result == "test_string"  # Should return unchanged

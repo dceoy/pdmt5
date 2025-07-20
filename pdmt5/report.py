@@ -58,7 +58,7 @@ class Mt5ReportClient(Mt5DataClient):
         pd.set_option("display.max_columns", display_max_columns)
         pd.set_option("display.width", display_width)
         pd.set_option("display.max_rows", df.shape[0])
-        print(df.reset_index().to_string(index=include_index))  # noqa: T201
+        print(df.to_string(index=include_index))  # noqa: T201
 
     @staticmethod
     def drop_duplicates_in_sqlite3(
