@@ -85,6 +85,40 @@ class TestConvertTimeValuesInDict:
         result = _convert_time_values_in_dict(input_dict)
         assert result == input_dict
 
+    def test_convert_time_values_in_dict_with_time_msc_additional(self) -> None:
+        """Test _convert_time_values_in_dict with time_msc fields."""
+        test_dict = {
+            "time_setup_msc": 1640995200000,
+            "time_done_msc": 1640995210000,
+            "regular_field": "unchanged",
+            "numeric_field": 123.45,
+        }
+
+        result = _convert_time_values_in_dict(test_dict)
+
+        assert isinstance(result["time_setup_msc"], pd.Timestamp)
+        assert isinstance(result["time_done_msc"], pd.Timestamp)
+        assert result["regular_field"] == "unchanged"
+        assert result["numeric_field"] == 123.45
+
+    def test_convert_time_values_in_dict_with_time_fields_additional(self) -> None:
+        """Test _convert_time_values_in_dict with regular time fields."""
+        test_dict = {
+            "time": 1640995200,
+            "time_setup": 1640995210,
+            "time_update": 1640995220,
+            "regular_field": "unchanged",
+            "string_field": "not_time",
+        }
+
+        result = _convert_time_values_in_dict(test_dict)
+
+        assert isinstance(result["time"], pd.Timestamp)
+        assert isinstance(result["time_setup"], pd.Timestamp)
+        assert isinstance(result["time_update"], pd.Timestamp)
+        assert result["regular_field"] == "unchanged"
+        assert result["string_field"] == "not_time"
+
 
 class TestConvertTimeColumnsInDf:
     """Test _convert_time_columns_in_df function."""
@@ -191,16 +225,16 @@ class TestDetectAndConvertTimeToDatetime:
     def test_decorator_with_skip_toggle(self) -> None:
         """Test decorator with skip_toggle parameter."""
 
-        @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-        def get_data(convert_time: bool = True) -> dict[str, Any]:  # noqa: ARG001
+        @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
+        def get_data(skip_to_datetime: bool = False) -> dict[str, Any]:  # noqa: ARG001
             return {"time": 1704067200, "price": 100.5}
 
-        # With conversion
-        result1 = get_data(convert_time=True)
+        # With conversion (default)
+        result1 = get_data(skip_to_datetime=False)
         assert isinstance(result1["time"], pd.Timestamp)
 
         # Without conversion
-        result2 = get_data(convert_time=False)
+        result2 = get_data(skip_to_datetime=True)
         assert isinstance(result2["time"], int)
         assert result2["time"] == 1704067200
 

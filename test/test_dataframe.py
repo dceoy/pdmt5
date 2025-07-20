@@ -16,7 +16,9 @@ from pytest_mock import MockerFixture
 
 from pdmt5.dataframe import Mt5Config, Mt5DataClient
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
-from pdmt5.utils import _convert_time_values_in_dict
+from pdmt5.utils import (
+    detect_and_convert_time_to_datetime,
+)
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
@@ -489,7 +491,7 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = True
 
         client = Mt5DataClient(mt5=mock_mt5_import)
-        # Set _is_initialized to True to test the early return path (line 100)
+        # Set _is_initialized to True to test the early return path
         client._is_initialized = True
 
         # Call initialize when already initialized - should return True immediately
@@ -663,8 +665,10 @@ class TestMt5DataClient:
         assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
         assert df_result.iloc[0]["volume_initial"] == 0.1
-        # Time setup field should be present (conversion behavior may vary)
-        assert "time_setup" in df_result.columns
+        assert df_result.iloc[0]["time_setup"] == pd.to_datetime(1640995200, unit="s")
+        assert df_result.iloc[0]["time_setup_msc"] == pd.to_datetime(
+            1640995200000, unit="ms"
+        )
 
     def test_positions_get_with_data(self, mock_mt5_import: ModuleType | None) -> None:
         """Test positions_get method with data."""
@@ -1799,7 +1803,7 @@ class TestMt5DataClientValidation:
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
             mock_mt5_import.copy_rates_from.return_value = mock_rates
 
-            # This should trigger the _validate_positive_count call on line 163
+            # This should trigger the _validate_positive_count call
             result = client.copy_rates_from_as_df(
                 symbol="EURUSD",
                 timeframe=16385,
@@ -1836,7 +1840,7 @@ class TestMt5DataClientValidation:
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
             mock_mt5_import.copy_rates_range.return_value = mock_rates
 
-            # This should trigger the _validate_date_range call on line 224
+            # This should trigger the _validate_date_range call
             result = client.copy_rates_range_as_df(
                 symbol="EURUSD",
                 timeframe=16385,
@@ -2146,8 +2150,7 @@ class TestMt5DataClientRetryLogic:
         assert dict_result["ask"] == 1.13210
         assert dict_result["last"] == 1.13205
         assert dict_result["volume"] == 100
-        # Time field should be present (conversion behavior may vary)
-        assert "time" in dict_result
+        assert dict_result["time"] == pd.to_datetime(1640995200, unit="s")
         assert dict_result["flags"] == 134
 
     def test_inheritance_behavior(self, mock_mt5_import: ModuleType | None) -> None:
@@ -2415,7 +2418,7 @@ class TestMt5DataClientRetryLogic:
         # Reset the mock
         mock_mt5_import.initialize.reset_mock()
 
-        # Call initialize again - should take the early exit at line 70
+        # Call initialize again - should take the early exit
         client.initialize()
 
         # Initialize should not be called since we're already initialized
@@ -2665,7 +2668,7 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         # Test without convert_time
-        result = client.symbols_get_as_dicts(convert_time=False)
+        result = client.symbols_get_as_dicts(skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["name"] == "EURUSD"
         assert result[0]["time"] == 1640995200
@@ -2702,21 +2705,21 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # Test with convert_time=False
-        result = client.symbols_get_as_df(convert_time=False)
+        # Test with skip_to_datetime=True
+        result = client.symbols_get_as_df(skip_to_datetime=True)
         assert isinstance(result["time"].iloc[0], (int, np.integer))
         assert result.index.name is None
 
-        # Test with convert_time=True and index_keys
-        result = client.symbols_get_as_df(convert_time=True, index_keys="name")
+        # Test with skip_to_datetime=False and index_keys
+        result = client.symbols_get_as_df(skip_to_datetime=False, index_keys="name")
         assert "time" in result.columns
         assert result.index.name == "name"
         assert "EURUSD" in result.index
 
-    def test_symbol_info_as_dict_with_convert_time(
+    def test_symbol_info_as_dict_with_skip_to_datetime(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test symbol_info_as_dict with convert_time parameter."""
+        """Test symbol_info_as_dict with skip_to_datetime parameter."""
 
         # Create a minimal mock symbol with required fields
         class MockSymbol:
@@ -2737,8 +2740,8 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # Test with convert_time=False
-        result = client.symbol_info_as_dict("EURUSD", convert_time=False)
+        # Test with skip_to_datetime=True
+        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=True)
         assert result["time"] == 1640995200
         assert isinstance(result["time"], int)
 
@@ -2747,10 +2750,10 @@ class TestMt5DataClientCoverageMissing:
         assert "time" in result
         assert "time_msc" in result
 
-    def test_symbol_info_tick_as_dict_with_convert_time(
+    def test_symbol_info_tick_as_dict_with_skip_to_datetime(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test symbol_info_tick_as_dict with convert_time parameter."""
+        """Test symbol_info_tick_as_dict with skip_to_datetime parameter."""
         mock_tick = MockTick(
             time=1640995200,
             bid=1.1300,
@@ -2767,8 +2770,8 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # Test with convert_time=False
-        result = client.symbol_info_tick_as_dict("EURUSD", convert_time=False)
+        # Test with skip_to_datetime=True
+        result = client.symbol_info_tick_as_dict("EURUSD", skip_to_datetime=True)
         assert result["time"] == 1640995200
         assert isinstance(result["time"], int)
 
@@ -2792,7 +2795,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.market_book_get_as_dicts("EURUSD", convert_time=False)
+        result = client.market_book_get_as_dicts("EURUSD", skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["price"] == 1.1300
         assert result[0]["type"] == 0
@@ -2824,7 +2827,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.copy_rates_from_as_dicts(
-            "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, convert_time=False
+            "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
@@ -2858,7 +2861,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.copy_rates_from_pos_as_dicts(
-            "EURUSD", 16385, 0, 10, convert_time=False
+            "EURUSD", 16385, 0, 10, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
@@ -2892,7 +2895,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.copy_rates_range_as_dicts(
-            "EURUSD", 16385, date_from, date_to, convert_time=False
+            "EURUSD", 16385, date_from, date_to, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
@@ -2927,7 +2930,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.copy_ticks_from_as_dicts(
-            "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, convert_time=False
+            "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
@@ -2967,7 +2970,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.copy_ticks_range_as_dicts(
-            "EURUSD", date_from, date_to, 0, convert_time=False
+            "EURUSD", date_from, date_to, 0, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
@@ -3014,7 +3017,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.orders_get_as_dicts(convert_time=False)
+        result = client.orders_get_as_dicts(skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
         assert isinstance(result[0]["time_setup"], int)
@@ -3055,7 +3058,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.positions_get_as_dicts(convert_time=False)
+        result = client.positions_get_as_dicts(skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
         assert isinstance(result[0]["time"], int)
@@ -3104,7 +3107,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.history_orders_get_as_dicts(
-            date_from=date_from, date_to=date_to, convert_time=False
+            date_from=date_from, date_to=date_to, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
@@ -3150,7 +3153,7 @@ class TestMt5DataClientCoverageMissing:
 
         # Test without convert_time
         result = client.history_deals_get_as_dicts(
-            date_from=date_from, date_to=date_to, convert_time=False
+            date_from=date_from, date_to=date_to, skip_to_datetime=True
         )
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
@@ -3188,10 +3191,7 @@ class TestMt5DataClientCoverageMissing:
             "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, index_keys="time"
         )
         assert result.index.name == "time"
-        assert (
-            1640995200 in result.index
-            or pd.Timestamp(1640995200, unit="s") in result.index
-        )
+        assert pd.to_datetime(1640995200, unit="s") in result.index
 
         # Test copy_ticks_from_as_df with index_keys
         tick_dtype = np.dtype([
@@ -3214,10 +3214,7 @@ class TestMt5DataClientCoverageMissing:
             "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, index_keys="time_msc"
         )
         assert result.index.name == "time_msc"
-        assert (
-            1640995200000 in result.index
-            or pd.Timestamp(1640995200000, unit="ms") in result.index
-        )
+        assert pd.to_datetime(1640995200000, unit="ms") in result.index
 
         # Test orders_get_as_df with index_keys
         mock_order = MockOrder(
@@ -3342,8 +3339,8 @@ class TestMt5DataClientCoverageMissing:
         result = client.symbol_info_as_dict("EURUSD")
         assert "time" in result
 
-        # With convert_time=False
-        result = client.symbol_info_as_dict("EURUSD", convert_time=False)
+        # With skip_to_datetime=True
+        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=True)
         assert isinstance(result["time"], int)
 
         # Test with list result
@@ -3352,7 +3349,7 @@ class TestMt5DataClientCoverageMissing:
         result = client.symbols_get_as_dicts()
         assert "time" in result[0]
 
-        result = client.symbols_get_as_dicts(convert_time=False)
+        result = client.symbols_get_as_dicts(skip_to_datetime=True)
         assert isinstance(result[0]["time"], int)
 
     def test_detect_and_convert_time_decorator_list_return(
@@ -3468,7 +3465,7 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # This should trigger the list processing path (lines 44-52)
+        # This should trigger the list processing path
         result = client.symbols_get_as_dicts()
         assert isinstance(result, list)
         assert len(result) == 1
@@ -3487,77 +3484,16 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # This should trigger the else path (line 56)
+        # This should trigger the else path
         result = client.symbols_total()
         assert result == 42  # Should return unchanged
-
-    def test_convert_time_values_in_dict_with_time_msc(self) -> None:
-        """Test _convert_time_values_in_dict with time_msc fields."""
-        test_dict = {
-            "time_setup_msc": 1640995200000,
-            "time_done_msc": 1640995210000,
-            "regular_field": "unchanged",
-            "numeric_field": 123.45,
-        }
-
-        result = _convert_time_values_in_dict(test_dict)
-
-        # Lines 76-77 should be covered
-        assert isinstance(result["time_setup_msc"], pd.Timestamp)
-        assert isinstance(result["time_done_msc"], pd.Timestamp)
-        assert result["regular_field"] == "unchanged"
-        assert result["numeric_field"] == 123.45
-
-    def test_convert_time_values_in_dict_with_time_fields(self) -> None:
-        """Test _convert_time_values_in_dict with regular time fields."""
-        test_dict = {
-            "time": 1640995200,
-            "time_setup": 1640995210,
-            "time_update": 1640995220,
-            "regular_field": "unchanged",
-            "string_field": "not_time",
-        }
-
-        result = _convert_time_values_in_dict(test_dict)
-
-        # Lines 78-79 should be covered
-        assert isinstance(result["time"], pd.Timestamp)
-        assert isinstance(result["time_setup"], pd.Timestamp)
-        assert isinstance(result["time_update"], pd.Timestamp)
-        assert result["regular_field"] == "unchanged"
-        assert result["string_field"] == "not_time"
-
-    def test_set_index_if_possible_non_dataframe_return(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test set_index_if_possible decorator with non-DataFrame return."""
-        # Create a custom decorated function that returns non-DataFrame
-        from pdmt5.utils import set_index_if_possible  # noqa: PLC0415
-
-        @set_index_if_possible(index_parameters="index_keys")
-        def mock_function_returning_non_df(
-            self: Mt5DataClient,  # noqa: ARG001
-            index_keys: str | None = None,  # noqa: ARG001
-        ) -> int:
-            """Mock function that returns non-DataFrame."""
-            return 42  # Return integer instead of DataFrame
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-
-        # Bind the mock function to the client instance
-        bound_mock = mock_function_returning_non_df.__get__(client, Mt5DataClient)
-
-        # This should trigger the TypeError at lines 116-120
-        with pytest.raises(TypeError, match="returned non-DataFrame result"):
-            bound_mock(index_keys="some_key")
 
     def test_convert_time_decorator_dict_return_with_convert_time_true(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test detect_and_convert_time decorator with dict return."""
-        # This test specifically targets line 43
+        # This test specifically targets early return for datetime
         mock_symbol = MockSymbolInfo(
             custom=False,
             chart_mode=0,
@@ -3663,8 +3599,8 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # This should trigger line 43: return _convert_time_values_in_dict()
-        result = client.symbol_info_as_dict("EURUSD", convert_time=True)
+        # This should trigger return _convert_time_values_in_dict()
+        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=False)
         assert isinstance(result, dict)
         assert "time" in result
         # Check that time was converted to datetime
@@ -3675,7 +3611,7 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test detect_and_convert_time decorator with list of dicts."""
-        # This test specifically targets line 45 with dict processing
+        # This test specifically targets dict processing
         mock_symbols = [
             MockSymbolInfo(
                 custom=False,
@@ -3783,8 +3719,8 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # This should trigger line 45: the list comprehension with dict processing
-        result = client.symbols_get_as_dicts(convert_time=True)
+        # This should trigger the list comprehension with dict processing
+        result = client.symbols_get_as_dicts(skip_to_datetime=False)
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], dict)
@@ -3797,7 +3733,7 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test detect_and_convert_time decorator with non-standard return type."""
-        # This test specifically targets line 56: return result (else case)
+        # This test specifically targets return result (else case)
 
         # Mock a method that returns a string (not dict, list, or DataFrame)
         mock_mt5_import.initialize.return_value = True
@@ -3806,25 +3742,24 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
 
-        # version() returns a tuple, which should trigger the else clause (line 56)
+        # version() returns a tuple, which should trigger the else clause
         result = client.version()
         assert isinstance(result, tuple)
         assert result == (123, 456, "2024-01-01")  # Should return unchanged
 
     def test_convert_time_decorator_string_return_type(self) -> None:
         """Test detect_and_convert_time decorator with string return type."""
-        # This test specifically targets line 56: return result (else case)
-        from pdmt5.utils import detect_and_convert_time_to_datetime  # noqa: PLC0415
+        # This test specifically targets return result (else case)
 
-        @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-        def mock_function_returning_string(convert_time: bool = True) -> str:  # noqa: ARG001
+        @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
+        def mock_function_returning_string(skip_to_datetime: bool = False) -> str:  # noqa: ARG001
             """Mock function that returns a string."""
             return "test_string"  # Return string instead of dict/list/DataFrame
 
-        # Call with convert_time=True (should trigger else clause at line 56)
-        result = mock_function_returning_string(convert_time=True)
+        # Call with skip_to_datetime=False (should trigger else clause)
+        result = mock_function_returning_string(skip_to_datetime=False)
         assert result == "test_string"  # Should return unchanged
 
-        # Call with convert_time=False (should trigger early return at line 41)
-        result = mock_function_returning_string(convert_time=False)
+        # Call with skip_to_datetime=True (should trigger early return)
+        result = mock_function_returning_string(skip_to_datetime=True)
         assert result == "test_string"  # Should return unchanged
