@@ -299,7 +299,7 @@ class Mt5DataClient(Mt5Client):
         return pd.DataFrame([self.terminal_info_as_dict()])
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def symbols_get_as_dict(
+    def symbols_get_as_dicts(
         self,
         group: str | None = None,
         convert_time: bool = True,  # noqa: ARG002
@@ -333,7 +333,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with symbol information.
         """
-        return pd.DataFrame(self.symbols_get_as_dict(group=group, convert_time=False))
+        return pd.DataFrame(self.symbols_get_as_dicts(group=group, convert_time=False))
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
     def symbol_info_as_dict(
@@ -414,7 +414,7 @@ class Mt5DataClient(Mt5Client):
         ])
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def market_book_get_as_dict(
+    def market_book_get_as_dicts(
         self,
         symbol: str,
         convert_time: bool = True,  # noqa: ARG002
@@ -449,10 +449,10 @@ class Mt5DataClient(Mt5Client):
             DataFrame with market depth data.
         """
         return pd.DataFrame(
-            self.market_book_get_as_dict(symbol=symbol, convert_time=False)
+            self.market_book_get_as_dicts(symbol=symbol, convert_time=False)
         )
 
-    def copy_rates_from_as_dict(
+    def copy_rates_from_as_dicts(
         self,
         symbol: str,
         timeframe: int,
@@ -515,7 +515,7 @@ class Mt5DataClient(Mt5Client):
             )
         )
 
-    def copy_rates_from_pos_as_dict(
+    def copy_rates_from_pos_as_dicts(
         self,
         symbol: str,
         timeframe: int,
@@ -579,7 +579,7 @@ class Mt5DataClient(Mt5Client):
             )
         )
 
-    def copy_rates_range_as_dict(
+    def copy_rates_range_as_dicts(
         self,
         symbol: str,
         timeframe: int,
@@ -642,7 +642,7 @@ class Mt5DataClient(Mt5Client):
             )
         )
 
-    def copy_ticks_from_as_dict(
+    def copy_ticks_from_as_dicts(
         self,
         symbol: str,
         date_from: datetime,
@@ -705,7 +705,7 @@ class Mt5DataClient(Mt5Client):
             )
         )
 
-    def copy_ticks_range_as_dict(
+    def copy_ticks_range_as_dicts(
         self,
         symbol: str,
         date_from: datetime,
@@ -769,7 +769,7 @@ class Mt5DataClient(Mt5Client):
         )
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def orders_get_as_dict(
+    def orders_get_as_dicts(
         self,
         symbol: str | None = None,
         group: str | None = None,
@@ -815,7 +815,7 @@ class Mt5DataClient(Mt5Client):
             DataFrame with order information or empty DataFrame if no orders.
         """
         return pd.DataFrame(
-            self.orders_get_as_dict(
+            self.orders_get_as_dicts(
                 symbol=symbol,
                 group=group,
                 ticket=ticket,
@@ -894,7 +894,7 @@ class Mt5DataClient(Mt5Client):
         ])
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def positions_get_as_dict(
+    def positions_get_as_dicts(
         self,
         symbol: str | None = None,
         group: str | None = None,
@@ -941,7 +941,7 @@ class Mt5DataClient(Mt5Client):
             DataFrame with position information or empty DataFrame if no positions.
         """
         return pd.DataFrame(
-            self.positions_get_as_dict(
+            self.positions_get_as_dicts(
                 symbol=symbol,
                 group=group,
                 ticket=ticket,
@@ -950,7 +950,7 @@ class Mt5DataClient(Mt5Client):
         )
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def history_orders_get_as_dict(
+    def history_orders_get_as_dicts(
         self,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
@@ -1020,7 +1020,7 @@ class Mt5DataClient(Mt5Client):
             DataFrame with historical order information.
         """
         return pd.DataFrame(
-            self.history_orders_get_as_dict(
+            self.history_orders_get_as_dicts(
                 date_from=date_from,
                 date_to=date_to,
                 group=group,
@@ -1032,7 +1032,7 @@ class Mt5DataClient(Mt5Client):
         )
 
     @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
-    def history_deals_get_as_dict(
+    def history_deals_get_as_dicts(
         self,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
@@ -1102,7 +1102,7 @@ class Mt5DataClient(Mt5Client):
             DataFrame with historical deal information.
         """
         return pd.DataFrame(
-            self.history_deals_get_as_dict(
+            self.history_deals_get_as_dicts(
                 date_from=date_from,
                 date_to=date_to,
                 group=group,

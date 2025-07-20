@@ -2646,8 +2646,8 @@ class TestMt5DataClientCoverageMissing:
 
         assert result == {"level1_level2": {"level3": "value"}, "simple": "value2"}
 
-    def test_symbols_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test symbols_get_as_dict method."""
+    def test_symbols_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test symbols_get_as_dicts method."""
 
         # Create a minimal mock symbol with required fields
         class MockSymbol:
@@ -2668,14 +2668,14 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         # Test without convert_time
-        result = client.symbols_get_as_dict(convert_time=False)
+        result = client.symbols_get_as_dicts(convert_time=False)
         assert len(result) == 1
         assert result[0]["name"] == "EURUSD"
         assert result[0]["time"] == 1640995200
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.symbols_get_as_dict()
+        result = client.symbols_get_as_dicts()
         assert len(result) == 1
         assert result[0]["name"] == "EURUSD"
         # Note: Time conversion behavior through decorators needs validation
@@ -2780,8 +2780,8 @@ class TestMt5DataClientCoverageMissing:
         assert "time" in result
         assert "time_msc" in result
 
-    def test_market_book_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test market_book_get_as_dict method."""
+    def test_market_book_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test market_book_get_as_dicts method."""
         mock_book_entry = MockBookInfo(
             type=0,
             price=1.1300,
@@ -2795,19 +2795,19 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.market_book_get_as_dict("EURUSD", convert_time=False)
+        result = client.market_book_get_as_dicts("EURUSD", convert_time=False)
         assert len(result) == 1
         assert result[0]["price"] == 1.1300
         assert result[0]["type"] == 0
 
         # Test with convert_time (default True)
-        result = client.market_book_get_as_dict("EURUSD")
+        result = client.market_book_get_as_dicts("EURUSD")
         assert len(result) == 1
         assert result[0]["price"] == 1.1300
         assert result[0]["type"] == 0
 
-    def test_copy_rates_from_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_from_as_dict method."""
+    def test_copy_rates_from_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test copy_rates_from_as_dicts method."""
         rate_dtype = np.dtype([
             ("time", "int64"),
             ("open", "float64"),
@@ -2826,7 +2826,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.copy_rates_from_as_dict(
+        result = client.copy_rates_from_as_dicts(
             "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, convert_time=False
         )
         assert len(result) == 1
@@ -2834,14 +2834,14 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.copy_rates_from_as_dict(
+        result = client.copy_rates_from_as_dicts(
             "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10
         )
         assert len(result) == 1
         assert "time" in result[0]
 
-    def test_copy_rates_from_pos_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_from_pos_as_dict method."""
+    def test_copy_rates_from_pos_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test copy_rates_from_pos_as_dicts method."""
         rate_dtype = np.dtype([
             ("time", "int64"),
             ("open", "float64"),
@@ -2860,7 +2860,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.copy_rates_from_pos_as_dict(
+        result = client.copy_rates_from_pos_as_dicts(
             "EURUSD", 16385, 0, 10, convert_time=False
         )
         assert len(result) == 1
@@ -2868,12 +2868,12 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.copy_rates_from_pos_as_dict("EURUSD", 16385, 0, 10)
+        result = client.copy_rates_from_pos_as_dicts("EURUSD", 16385, 0, 10)
         assert len(result) == 1
         assert "time" in result[0]
 
-    def test_copy_rates_range_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_range_as_dict method."""
+    def test_copy_rates_range_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test copy_rates_range_as_dicts method."""
         rate_dtype = np.dtype([
             ("time", "int64"),
             ("open", "float64"),
@@ -2894,7 +2894,7 @@ class TestMt5DataClientCoverageMissing:
         date_to = datetime(2023, 1, 2, tzinfo=UTC)
 
         # Test without convert_time
-        result = client.copy_rates_range_as_dict(
+        result = client.copy_rates_range_as_dicts(
             "EURUSD", 16385, date_from, date_to, convert_time=False
         )
         assert len(result) == 1
@@ -2902,12 +2902,12 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.copy_rates_range_as_dict("EURUSD", 16385, date_from, date_to)
+        result = client.copy_rates_range_as_dicts("EURUSD", 16385, date_from, date_to)
         assert len(result) == 1
         assert "time" in result[0]
 
-    def test_copy_ticks_from_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_ticks_from_as_dict method."""
+    def test_copy_ticks_from_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test copy_ticks_from_as_dicts method."""
         tick_dtype = np.dtype([
             ("time", "int64"),
             ("bid", "float64"),
@@ -2929,7 +2929,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.copy_ticks_from_as_dict(
+        result = client.copy_ticks_from_as_dicts(
             "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, convert_time=False
         )
         assert len(result) == 1
@@ -2937,15 +2937,15 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.copy_ticks_from_as_dict(
+        result = client.copy_ticks_from_as_dicts(
             "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0
         )
         assert len(result) == 1
         assert "time" in result[0]
         assert "time_msc" in result[0]
 
-    def test_copy_ticks_range_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_ticks_range_as_dict method."""
+    def test_copy_ticks_range_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test copy_ticks_range_as_dicts method."""
         tick_dtype = np.dtype([
             ("time", "int64"),
             ("bid", "float64"),
@@ -2969,7 +2969,7 @@ class TestMt5DataClientCoverageMissing:
         date_to = datetime(2023, 1, 2, tzinfo=UTC)
 
         # Test without convert_time
-        result = client.copy_ticks_range_as_dict(
+        result = client.copy_ticks_range_as_dicts(
             "EURUSD", date_from, date_to, 0, convert_time=False
         )
         assert len(result) == 1
@@ -2977,13 +2977,13 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.copy_ticks_range_as_dict("EURUSD", date_from, date_to, 0)
+        result = client.copy_ticks_range_as_dicts("EURUSD", date_from, date_to, 0)
         assert len(result) == 1
         assert "time" in result[0]
         assert "time_msc" in result[0]
 
-    def test_orders_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test orders_get_as_dict method."""
+    def test_orders_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test orders_get_as_dicts method."""
         mock_order = MockOrder(
             ticket=12345,
             time_setup=1640995200,
@@ -3017,19 +3017,19 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.orders_get_as_dict(convert_time=False)
+        result = client.orders_get_as_dicts(convert_time=False)
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
         assert isinstance(result[0]["time_setup"], int)
 
         # Test with convert_time (default True)
-        result = client.orders_get_as_dict()
+        result = client.orders_get_as_dicts()
         assert len(result) == 1
         assert "time_setup" in result[0]
         assert "time_setup_msc" in result[0]
 
-    def test_positions_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test positions_get_as_dict method."""
+    def test_positions_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test positions_get_as_dicts method."""
         mock_position = MockPosition(
             ticket=12345,
             time=1640995200,
@@ -3058,19 +3058,19 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # Test without convert_time
-        result = client.positions_get_as_dict(convert_time=False)
+        result = client.positions_get_as_dicts(convert_time=False)
         assert len(result) == 1
         assert result[0]["ticket"] == 12345
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.positions_get_as_dict()
+        result = client.positions_get_as_dicts()
         assert len(result) == 1
         assert "time" in result[0]
         assert "time_msc" in result[0]
 
-    def test_history_orders_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test history_orders_get_as_dict method."""
+    def test_history_orders_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test history_orders_get_as_dicts method."""
         mock_order = MockOrder(
             ticket=12345,
             time_setup=1640995200,
@@ -3106,7 +3106,7 @@ class TestMt5DataClientCoverageMissing:
         date_to = datetime(2023, 1, 2, tzinfo=UTC)
 
         # Test without convert_time
-        result = client.history_orders_get_as_dict(
+        result = client.history_orders_get_as_dicts(
             date_from=date_from, date_to=date_to, convert_time=False
         )
         assert len(result) == 1
@@ -3114,13 +3114,15 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time_setup"], int)
 
         # Test with convert_time (default True)
-        result = client.history_orders_get_as_dict(date_from=date_from, date_to=date_to)
+        result = client.history_orders_get_as_dicts(
+            date_from=date_from, date_to=date_to
+        )
         assert len(result) == 1
         assert "time_setup" in result[0]
         assert "time_done_msc" in result[0]
 
-    def test_history_deals_get_as_dict(self, mock_mt5_import: ModuleType) -> None:
-        """Test history_deals_get_as_dict method."""
+    def test_history_deals_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
+        """Test history_deals_get_as_dicts method."""
         mock_deal = MockDeal(
             ticket=12345,
             order=0,
@@ -3150,7 +3152,7 @@ class TestMt5DataClientCoverageMissing:
         date_to = datetime(2023, 1, 2, tzinfo=UTC)
 
         # Test without convert_time
-        result = client.history_deals_get_as_dict(
+        result = client.history_deals_get_as_dicts(
             date_from=date_from, date_to=date_to, convert_time=False
         )
         assert len(result) == 1
@@ -3158,7 +3160,7 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(result[0]["time"], int)
 
         # Test with convert_time (default True)
-        result = client.history_deals_get_as_dict(date_from=date_from, date_to=date_to)
+        result = client.history_deals_get_as_dicts(date_from=date_from, date_to=date_to)
         assert len(result) == 1
         assert "time" in result[0]
         assert "time_msc" in result[0]
@@ -3350,10 +3352,10 @@ class TestMt5DataClientCoverageMissing:
         # Test with list result
         mock_mt5_import.symbols_get.return_value = [mock_symbol]
 
-        result = client.symbols_get_as_dict()
+        result = client.symbols_get_as_dicts()
         assert "time" in result[0]
 
-        result = client.symbols_get_as_dict(convert_time=False)
+        result = client.symbols_get_as_dicts(convert_time=False)
         assert isinstance(result[0]["time"], int)
 
     def test_detect_and_convert_time_decorator_list_return(
@@ -3470,7 +3472,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # This should trigger the list processing path (lines 44-52)
-        result = client.symbols_get_as_dict()
+        result = client.symbols_get_as_dicts()
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], dict)
@@ -3785,7 +3787,7 @@ class TestMt5DataClientCoverageMissing:
         client.initialize()
 
         # This should trigger line 45: the list comprehension with dict processing
-        result = client.symbols_get_as_dict(convert_time=True)
+        result = client.symbols_get_as_dicts(convert_time=True)
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], dict)

@@ -64,7 +64,7 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             List of dictionaries with operation results for each closed position.
         """
-        positions_dict = self.positions_get_as_dict(symbol=symbol)
+        positions_dict = self.positions_get_as_dicts(symbol=symbol)
         if not positions_dict:
             self.logger.warning("No open positions found for symbol: %s", symbol)
             return []
