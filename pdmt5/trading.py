@@ -29,28 +29,33 @@ class Mt5TradingClient(Mt5DataClient):
     )
     dry_run: bool = Field(default=False, description="Enable dry run mode for testing.")
 
-    def close_positions_by_symbols(
+    def close_open_positions(
         self,
-        symbols: list[str] | None = None,
+        symbols: str | list[str] | tuple[str] | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
 
         Args:
-            symbols: List of symbols to close positions for.
-                If None, closes all open positions.
+            symbols: Optional symbol or list of symbols to filter positions.
+                If None, all symbols will be considered.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
             Dictionary with symbols as keys and lists of dictionaries containing
                 operation results for each closed position as values.
         """
+        if isinstance(symbols, str):
+            symbol_list = [symbols]
+        elif isinstance(symbols, (list, tuple)):
+            symbol_list = symbols
+        else:
+            symbol_list = self.symbols_get()
         return {
-            s: self.close_position_by_symbol(symbol=s, **kwargs)
-            for s in (self.symbols_get() if symbols is None else symbols)
+            s: self._fetch_and_close_position(symbol=s, **kwargs) for s in symbol_list
         }
 
-    def close_position_by_symbol(
+    def _fetch_and_close_position(
         self,
         symbol: str | None = None,
         **kwargs: Any,  # noqa: ANN401
@@ -75,7 +80,7 @@ class Mt5TradingClient(Mt5DataClient):
                 f"ORDER_FILLING_{self.order_filling_mode}",
             )
             return [
-                self._send_or_check_order(
+                self.send_or_check_order(
                     request={
                         "action": self.mt5.TRADE_ACTION_DEAL,
                         "symbol": p["symbol"],
@@ -94,7 +99,7 @@ class Mt5TradingClient(Mt5DataClient):
                 for p in positions_dict
             ]
 
-    def _send_or_check_order(self, request: dict[str, Any]) -> dict[str, Any]:
+    def send_or_check_order(self, request: dict[str, Any]) -> dict[str, Any]:
         """Send or check an order request.
 
         Args:
