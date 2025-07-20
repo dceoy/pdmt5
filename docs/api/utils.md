@@ -68,7 +68,7 @@ These utilities enable Mt5DataClient to provide user-friendly data:
 
 ```python
 # Time values are automatically converted
-df = client.symbols_get_as_df(convert_time=True)
+df = client.get_symbols_as_df(convert_time=True)
 # Returns DataFrame with datetime objects instead of Unix timestamps
 
 # DataFrames can have custom indexes

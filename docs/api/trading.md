@@ -34,16 +34,18 @@ from pdmt5 import Mt5TradingClient, Mt5Config
 config = Mt5Config(
     login=123456,
     password="your_password",
-    server="broker_server"
+    server="broker_server",
+    timeout=60000,
+    portable=False
 )
 
 # Create client with dry run mode for testing
-client = Mt5TradingClient(mt5=mt5, config=config, dry_run=True)
+client = Mt5TradingClient(config=config, dry_run=True)
 
 # Use as context manager
 with client:
-    # Get current positions
-    positions_df = client.positions_get_as_df()
+    # Get current positions as DataFrame
+    positions_df = client.get_positions_as_df()
     print(f"Open positions: {len(positions_df)}")
     
     # Close positions for specific symbol
@@ -55,7 +57,7 @@ with client:
 
 ```python
 # Create client for live trading (dry_run=False)
-client = Mt5TradingClient(mt5=mt5, config=config, dry_run=False)
+client = Mt5TradingClient(config=config, dry_run=False)
 
 with client:
     # Close all positions for multiple symbols
@@ -71,21 +73,18 @@ with client:
 # Configure different order filling modes
 # IOC (Immediate or Cancel) - default
 client_ioc = Mt5TradingClient(
-    mt5=mt5, 
     config=config, 
     order_filling_mode="IOC"
 )
 
 # FOK (Fill or Kill)
 client_fok = Mt5TradingClient(
-    mt5=mt5, 
     config=config, 
     order_filling_mode="FOK"
 )
 
 # RETURN (Return if not filled)
 client_return = Mt5TradingClient(
-    mt5=mt5, 
     config=config, 
     order_filling_mode="RETURN"
 )
@@ -120,19 +119,14 @@ except Mt5TradingError as e:
 
 ```python
 with client:
-    # Send or check order depending on dry_run mode
-    request = {
-        "action": mt5.TRADE_ACTION_DEAL,
-        "symbol": "EURUSD",
-        "volume": 1.0,
-        "type": mt5.ORDER_TYPE_BUY,
-        "type_filling": mt5.ORDER_FILLING_IOC,
-        "type_time": mt5.ORDER_TIME_GTC
-    }
+    # Check order (note: send_or_check_order is an internal method)
+    # For trading operations, use the provided methods like close_open_positions
     
-    # In dry_run mode: validates order
-    # In production: sends actual order
-    result = client.send_or_check_order(request)
+    # Example: Check if we can close a position
+    positions = client.get_positions_as_df()
+    if not positions.empty:
+        # Close specific position
+        results = client.close_open_positions("EURUSD")
 ```
 
 ## Position Management Features
@@ -151,10 +145,10 @@ Dry run mode is essential for testing trading strategies:
 
 ```python
 # Test mode - validates orders without execution
-test_client = Mt5TradingClient(mt5=mt5, config=config, dry_run=True)
+test_client = Mt5TradingClient(config=config, dry_run=True)
 
 # Production mode - executes real orders
-prod_client = Mt5TradingClient(mt5=mt5, config=config, dry_run=False)
+prod_client = Mt5TradingClient(config=config, dry_run=False)
 ```
 
 In dry run mode:
@@ -207,9 +201,9 @@ The `close_open_positions()` method returns a dictionary with symbols as keys:
 Since Mt5TradingClient inherits from Mt5DataClient, all data retrieval methods are available:
 
 ```python
-with Mt5TradingClient(mt5=mt5, config=config) as client:
+with Mt5TradingClient(config=config) as client:
     # Get current positions as DataFrame
-    positions_df = client.positions_get_as_df()
+    positions_df = client.get_positions_as_df()
     
     # Analyze positions
     if not positions_df.empty:

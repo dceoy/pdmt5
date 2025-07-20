@@ -19,7 +19,7 @@ pdmt5 is a Python library that provides a pandas-based interface for handling Me
 pip install pdmt5
 ```
 
-## Quick Start
+### Quick Start
 
 ```python
 from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5TradingClient
@@ -27,24 +27,37 @@ import MetaTrader5 as mt5
 from datetime import datetime
 
 # Configure connection
-config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
+config = Mt5Config(
+    login=12345678,
+    password="your_password",
+    server="YourBroker-Server",
+    timeout=60000,
+    portable=False
+)
 
 # Low-level API access with context manager
-with Mt5Client(mt5=mt5) as client:
+with Mt5Client() as client:
     client.initialize()
+    client.login(config.login, config.password, config.server)
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
 # Pandas-friendly interface with automatic initialization
-with Mt5DataClient(mt5=mt5, config=config) as client:
-    symbols_df = client.symbols_get()
-    rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
+with Mt5DataClient(config=config) as client:
+    # Get symbol information as DataFrame
+    symbols_df = client.get_symbols_as_df()
+    # Get OHLCV data as DataFrame
+    rates_df = client.copy_rates_from_as_df(
+        "EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100
+    )
+    # Get account info as DataFrame
+    account_df = client.get_account_info_as_df()
 
 # Trading operations with dry run support
-with Mt5TradingClient(mt5=mt5, config=config, dry_run=True) as client:
-    # Check open positions
-    positions_df = client.positions_get_as_df()
-    # Close positions for specific symbol
+with Mt5TradingClient(config=config, dry_run=True) as client:
+    # Check open positions as DataFrame
+    positions_df = client.get_positions_as_df()
+    # Close positions for specific symbol (dry run)
     results = client.close_open_positions("EURUSD")
 ```
 
@@ -58,9 +71,10 @@ with Mt5TradingClient(mt5=mt5, config=config, dry_run=True) as client:
 
 Browse the API documentation to learn about available modules and functions:
 
-- [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access and error handling
-- [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client and configuration
+- [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access with context manager support
+- [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client with DataFrame conversions
 - [Mt5TradingClient](api/trading.md) - Advanced trading operations with position management
+- [Utility Functions](api/utils.md) - Helper decorators and functions for data processing
 
 ## Development
 

@@ -63,11 +63,13 @@ uv run mkdocs gh-deploy
 ### Package Structure
 
 - `pdmt5/`: Main package directory
-  - `__init__.py`: Package initialization and exports (Mt5Client, Mt5Config, Mt5DataClient, Mt5RuntimeError)
+  - `__init__.py`: Package initialization and exports (Mt5Client, Mt5Config, Mt5DataClient, Mt5RuntimeError, Mt5TradingClient)
   - `mt5.py`: MT5 terminal client with context manager support (`Mt5Client`, `Mt5RuntimeError`)
   - `dataframe.py`: MT5 data client with pandas DataFrame conversion (`Mt5Config`, `Mt5DataClient`)
+  - `trading.py`: Trading operations client (`Mt5TradingClient`, `Mt5TradingError`)
+  - `utils.py`: Utility decorators and functions for time conversion and DataFrame indexing
 - `test/`: Comprehensive test suite (pytest-based)
-  - `test_init.py`, `test_mt5.py`, `test_dataframe.py`
+  - `test_init.py`, `test_mt5.py`, `test_dataframe.py`, `test_trading.py`, `test_utils.py`
 - `docs/`: MkDocs documentation with API reference
   - `docs/api/`: Auto-generated API documentation for all modules
 - Modern Python packaging with `pyproject.toml` and uv dependency management
@@ -99,6 +101,8 @@ Uses MkDocs with Material theme for API documentation built from Google-style do
 - `docs/api/`: Auto-generated API reference
   - `mt5.md`: Mt5Client and Mt5RuntimeError
   - `dataframe.md`: Mt5Config and Mt5DataClient
+  - `trading.md`: Mt5TradingClient and Mt5TradingError
+  - `utils.md`: Utility decorators and helper functions
 
 ### Workflow
 
