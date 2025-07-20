@@ -12,8 +12,6 @@ Base client class for MetaTrader 5 operations with connection management, low-le
 ### [Mt5DataClient & Mt5Config](dataframe.md)
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
-### [Mt5ReportClient](report.md)
-Reporting operations and data export functionality for MetaTrader 5 data.
 
 ## Architecture Overview
 
@@ -21,7 +19,6 @@ The package follows a layered architecture:
 
 1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
 2. **Core Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
-3. **Presentation Layer** (`report.py`): Extends `Mt5DataClient` with reporting operations and export capabilities (`Mt5ReportClient`)
 
 ## Usage Guidelines
 
@@ -36,7 +33,7 @@ All modules follow these conventions:
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient
+from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient
 import MetaTrader5 as mt5
 from datetime import datetime
 
@@ -52,16 +49,6 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     symbols_df = client.symbols_get()
     rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Enhanced functionality with Mt5ReportClient for data analysis and export
-with Mt5ReportClient(mt5=mt5, config=config) as reporter:
-    # Display formatted data
-    Mt5ReportClient.print_df(rates_df, include_index=True)
-    Mt5ReportClient.print_json(account._asdict() if hasattr(account, '_asdict') else account)
-    
-    # Print with optional SQLite export
-    reporter.print_rates("EURUSD", mt5.TIMEFRAME_H1, 100,
-                        sqlite3_file_path="trading_data.db", 
-                        sqlite3_table="eurusd_rates")
 ```
 
 ## Examples

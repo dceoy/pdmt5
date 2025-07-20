@@ -57,7 +57,6 @@ nav:
     - Overview: api/index.md
     - MetaTrader5: api/mt5.md
     - DataFrame: api/dataframe.md
-    - Report: api/report.md
 
 markdown_extensions:
   - admonition
