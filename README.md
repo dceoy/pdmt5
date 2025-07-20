@@ -61,12 +61,12 @@ config = Mt5Config(
 
 # Use as context manager
 with Mt5DataClient(config=config) as client:
-    # Get account information
-    account_info = client.get_account_info()
+    # Get account information as DataFrame
+    account_info = client.get_account_info_as_df()
     print(account_info)
 
-    # Get OHLCV data
-    rates = client.copy_rates_from(
+    # Get OHLCV data as DataFrame
+    rates = client.copy_rates_from_as_df(
         symbol="EURUSD",
         timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime(2024, 1, 1),
@@ -74,17 +74,29 @@ with Mt5DataClient(config=config) as client:
     )
     print(rates.head())
 
-    # Get current positions
-    positions = client.get_positions()
+    # Get current positions as DataFrame
+    positions = client.get_positions_as_df()
     print(positions)
 ```
 
 ## Core Components
 
+### Mt5Client
+
+The base client for MT5 operations with context manager support:
+
+- **Connection Management**: `initialize()`, `login()`, `shutdown()`
+- **Account & Terminal Info**: Access account details and terminal information
+- **Symbol Operations**: Get symbol information and market data
+- **Trading Operations**: Execute orders, manage positions and deals
+- **History Access**: Retrieve historical orders and deals
+
 ### Mt5DataClient
 
-The main interface for interacting with MetaTrader 5:
+Extends Mt5Client with pandas DataFrame conversions:
 
+- **DataFrame Methods**: All data methods have `_as_df` variants returning DataFrames
+- **Dictionary Methods**: All data methods have `_as_dict` variants returning dictionaries
 - **Account Operations**: `get_account_info()`, `get_terminal_info()`
 - **Market Data**: `copy_rates_*()` methods for OHLCV data
 - **Tick Data**: `copy_ticks_*()` methods for tick-level data
@@ -93,7 +105,7 @@ The main interface for interacting with MetaTrader 5:
 
 ### Mt5TradingClient
 
-An advanced trading operations interface that extends Mt5DataClient:
+Advanced trading operations interface that extends Mt5DataClient:
 
 - **Position Management**: `close_open_positions()` - Close positions by symbol
 - **Order Filling Modes**: IOC (Immediate or Cancel), FOK (Fill or Kill), or RETURN
@@ -123,8 +135,8 @@ import MetaTrader5 as mt5
 from datetime import datetime
 
 with Mt5DataClient(config=config) as client:
-    # Get last 1000 H1 bars for EURUSD
-    df = client.copy_rates_from(
+    # Get last 1000 H1 bars for EURUSD as DataFrame
+    df = client.copy_rates_from_as_df(
         symbol="EURUSD",
         timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime.now(),
@@ -139,9 +151,11 @@ with Mt5DataClient(config=config) as client:
 ### Working with Tick Data
 
 ```python
+from datetime import datetime, timedelta
+
 with Mt5DataClient(config=config) as client:
-    # Get ticks for the last hour
-    ticks = client.copy_ticks_from(
+    # Get ticks for the last hour as DataFrame
+    ticks = client.copy_ticks_from_as_df(
         symbol="EURUSD",
         date_from=datetime.now() - timedelta(hours=1),
         count=10000,
@@ -156,8 +170,8 @@ with Mt5DataClient(config=config) as client:
 
 ```python
 with Mt5DataClient(config=config) as client:
-    # Get all open positions
-    positions = client.get_positions()
+    # Get all open positions as DataFrame
+    positions = client.get_positions_as_df()
 
     if not positions.empty:
         # Calculate summary statistics

@@ -32,7 +32,7 @@ def detect_and_convert_time_to_datetime(
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
             result = func(*args, **kwargs)
-            if skip_toggle and not kwargs.get(skip_toggle):
+            if skip_toggle and kwargs.get(skip_toggle):
                 return result
             elif isinstance(result, dict):
                 return _convert_time_values_in_dict(dictionary=result)

@@ -186,17 +186,17 @@ class Mt5DataClient(Mt5Client):
         """
         return pd.DataFrame([self.terminal_info_as_dict()])
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbols_get_as_dicts(
         self,
         group: str | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get symbols as a list of dictionaries.
 
         Args:
             group: Symbol group filter (e.g., "*USD*", "Forex*").
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with symbol information.
@@ -204,36 +204,38 @@ class Mt5DataClient(Mt5Client):
         return [s._asdict() for s in self.symbols_get(group=group)]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbols_get_as_df(
         self,
         group: str | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get symbols as a data frame.
 
         Args:
             group: Symbol group filter (e.g., "*USD*", "Forex*").
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
             DataFrame with symbol information.
         """
-        return pd.DataFrame(self.symbols_get_as_dicts(group=group, convert_time=False))
+        return pd.DataFrame(
+            self.symbols_get_as_dicts(group=group, skip_to_datetime=True)
+        )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbol_info_as_dict(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> dict[str, Any]:
         """Get data on a specific symbol as a dictionary.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             Dictionary with symbol information.
@@ -241,38 +243,38 @@ class Mt5DataClient(Mt5Client):
         return self.symbol_info(symbol=symbol)._asdict()
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbol_info_as_df(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get data on a specific symbol as a data frame.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
             DataFrame with symbol information.
         """
         return pd.DataFrame([
-            self.symbol_info_as_dict(symbol=symbol, convert_time=False)
+            self.symbol_info_as_dict(symbol=symbol, skip_to_datetime=True)
         ])
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbol_info_tick_as_dict(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> dict[str, Any]:
         """Get the last tick for the specified financial instrument as a dictionary.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             Dictionary with tick information.
@@ -280,38 +282,38 @@ class Mt5DataClient(Mt5Client):
         return self.symbol_info_tick(symbol=symbol)._asdict()
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbol_info_tick_as_df(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get the last tick for the specified financial instrument as a data frame.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
             DataFrame with tick information.
         """
         return pd.DataFrame([
-            self.symbol_info_tick_as_dict(symbol=symbol, convert_time=False)
+            self.symbol_info_tick_as_dict(symbol=symbol, skip_to_datetime=True)
         ])
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def market_book_get_as_dicts(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get market depth for a specified symbol as a list of dictionaries.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with market depth data.
@@ -319,25 +321,25 @@ class Mt5DataClient(Mt5Client):
         return [b._asdict() for b in self.market_book_get(symbol=symbol)]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def market_book_get_as_df(
         self,
         symbol: str,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get market depth for a specified symbol as a data frame.
 
         Args:
             symbol: Symbol name.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
             DataFrame with market depth data.
         """
         return pd.DataFrame(
-            self.market_book_get_as_dicts(symbol=symbol, convert_time=False)
+            self.market_book_get_as_dicts(symbol=symbol, skip_to_datetime=True)
         )
 
     def copy_rates_from_as_dicts(
@@ -346,7 +348,7 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         date_from: datetime,
         count: int,
-        convert_time: bool = True,
+        skip_to_datetime: bool = False,
     ) -> list[dict[str, Any]]:
         """Get bars for a specified date range as a list of dictionaries.
 
@@ -355,7 +357,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             date_from: Start date.
             count: Number of rates to retrieve.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with OHLCV data.
@@ -365,19 +367,19 @@ class Mt5DataClient(Mt5Client):
             timeframe=timeframe,
             date_from=date_from,
             count=count,
-            convert_time=convert_time,
+            skip_to_datetime=skip_to_datetime,
             index_keys=None,
         ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def copy_rates_from_as_df(
         self,
         symbol: str,
         timeframe: int,
         date_from: datetime,
         count: int,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get bars for a specified date range as a data frame.
@@ -387,7 +389,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             date_from: Start date.
             count: Number of rates to retrieve.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -409,7 +411,7 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         start_pos: int,
         count: int,
-        convert_time: bool = True,
+        skip_to_datetime: bool = False,
     ) -> list[dict[str, Any]]:
         """Get bars from a specified position as a list of dictionaries.
 
@@ -418,7 +420,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             start_pos: Start position.
             count: Number of rates to retrieve.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with OHLCV data.
@@ -428,19 +430,19 @@ class Mt5DataClient(Mt5Client):
             timeframe=timeframe,
             start_pos=start_pos,
             count=count,
-            convert_time=convert_time,
+            skip_to_datetime=skip_to_datetime,
             index_keys=None,
         ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def copy_rates_from_pos_as_df(
         self,
         symbol: str,
         timeframe: int,
         start_pos: int,
         count: int,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get bars from a specified position as a data frame.
@@ -450,7 +452,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             start_pos: Start position.
             count: Number of rates to retrieve.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -473,7 +475,7 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         date_from: datetime,
         date_to: datetime,
-        convert_time: bool = True,
+        skip_to_datetime: bool = False,
     ) -> list[dict[str, Any]]:
         """Get bars for a specified date range as a list of dictionaries.
 
@@ -482,7 +484,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             date_from: Start date.
             date_to: End date.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with OHLCV data.
@@ -492,19 +494,19 @@ class Mt5DataClient(Mt5Client):
             timeframe=timeframe,
             date_from=date_from,
             date_to=date_to,
-            convert_time=convert_time,
+            skip_to_datetime=skip_to_datetime,
             index_keys=None,
         ).to_dict(orient="records")
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def copy_rates_range_as_df(
         self,
         symbol: str,
         timeframe: int,
         date_from: datetime,
         date_to: datetime,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get bars for a specified date range as a data frame.
@@ -514,7 +516,7 @@ class Mt5DataClient(Mt5Client):
             timeframe: Timeframe constant.
             date_from: Start date.
             date_to: End date.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -536,7 +538,7 @@ class Mt5DataClient(Mt5Client):
         date_from: datetime,
         count: int,
         flags: int,
-        convert_time: bool = True,
+        skip_to_datetime: bool = False,
     ) -> list[dict[str, Any]]:
         """Get ticks from a specified date as a list of dictionaries.
 
@@ -545,7 +547,7 @@ class Mt5DataClient(Mt5Client):
             date_from: Start date.
             count: Number of ticks to retrieve.
             flags: Tick flags (use constants from MetaTrader5).
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with tick data.
@@ -555,19 +557,19 @@ class Mt5DataClient(Mt5Client):
             date_from=date_from,
             count=count,
             flags=flags,
-            convert_time=convert_time,
+            skip_to_datetime=skip_to_datetime,
             index_keys=None,
         ).to_dict(orient="records")  # type: ignore[reportReturnType]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def copy_ticks_from_as_df(
         self,
         symbol: str,
         date_from: datetime,
         count: int,
         flags: int,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get ticks from a specified date as a data frame.
@@ -577,7 +579,7 @@ class Mt5DataClient(Mt5Client):
             date_from: Start date.
             count: Number of ticks to retrieve.
             flags: Tick flags (use constants from MetaTrader5).
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -599,7 +601,7 @@ class Mt5DataClient(Mt5Client):
         date_from: datetime,
         date_to: datetime,
         flags: int,
-        convert_time: bool = True,
+        skip_to_datetime: bool = False,
     ) -> list[dict[str, Any]]:
         """Get ticks for a specified date range as a list of dictionaries.
 
@@ -608,7 +610,7 @@ class Mt5DataClient(Mt5Client):
             date_from: Start date.
             date_to: End date.
             flags: Tick flags (use constants from MetaTrader5).
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with tick data.
@@ -618,19 +620,19 @@ class Mt5DataClient(Mt5Client):
             date_from=date_from,
             date_to=date_to,
             flags=flags,
-            convert_time=convert_time,
+            skip_to_datetime=skip_to_datetime,
             index_keys=None,
         ).to_dict(orient="records")  # type: ignore[reportReturnType]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def copy_ticks_range_as_df(
         self,
         symbol: str,
         date_from: datetime,
         date_to: datetime,
         flags: int,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get ticks for a specified date range as a data frame.
@@ -640,7 +642,7 @@ class Mt5DataClient(Mt5Client):
             date_from: Start date.
             date_to: End date.
             flags: Tick flags (use constants from MetaTrader5).
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -656,13 +658,13 @@ class Mt5DataClient(Mt5Client):
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def orders_get_as_dicts(
         self,
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get active orders with optional filters as a list of dictionaries.
 
@@ -670,7 +672,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             group: Optional group filter.
             ticket: Optional order ticket filter.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with order information or empty list if no orders.
@@ -681,13 +683,13 @@ class Mt5DataClient(Mt5Client):
         ]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def orders_get_as_df(
         self,
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get active orders with optional filters as a data frame.
@@ -696,7 +698,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             group: Optional group filter.
             ticket: Optional order ticket filter.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -707,7 +709,7 @@ class Mt5DataClient(Mt5Client):
                 symbol=symbol,
                 group=group,
                 ticket=ticket,
-                convert_time=False,
+                skip_to_datetime=True,
             )
         )
 
@@ -781,13 +783,13 @@ class Mt5DataClient(Mt5Client):
             )
         ])
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def positions_get_as_dicts(
         self,
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get open positions with optional filters as a list of dictionaries.
 
@@ -795,7 +797,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             group: Optional group filter.
             ticket: Optional position ticket filter.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with position information or empty list if no
@@ -807,13 +809,13 @@ class Mt5DataClient(Mt5Client):
         ]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def positions_get_as_df(
         self,
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get open positions with optional filters as a data frame.
@@ -822,7 +824,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             group: Optional group filter.
             ticket: Optional position ticket filter.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -833,11 +835,11 @@ class Mt5DataClient(Mt5Client):
                 symbol=symbol,
                 group=group,
                 ticket=ticket,
-                convert_time=False,
+                skip_to_datetime=True,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def history_orders_get_as_dicts(
         self,
         date_from: datetime | None = None,
@@ -846,7 +848,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get historical orders with optional filters as a list of dictionaries.
 
@@ -857,7 +859,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             ticket: Get orders by ticket.
             position: Get orders by position.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with historical order information.
@@ -880,7 +882,7 @@ class Mt5DataClient(Mt5Client):
         ]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def history_orders_get_as_df(
         self,
         date_from: datetime | None = None,
@@ -889,7 +891,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get historical orders with optional filters as a data frame.
@@ -901,7 +903,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             ticket: Get orders by ticket.
             position: Get orders by position.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -915,11 +917,11 @@ class Mt5DataClient(Mt5Client):
                 symbol=symbol,
                 ticket=ticket,
                 position=position,
-                convert_time=False,
+                skip_to_datetime=True,
             )
         )
 
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def history_deals_get_as_dicts(
         self,
         date_from: datetime | None = None,
@@ -928,7 +930,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Get historical deals with optional filters as a list of dictionaries.
 
@@ -939,7 +941,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
             List of dictionaries with historical deal information.
@@ -962,7 +964,7 @@ class Mt5DataClient(Mt5Client):
         ]
 
     @set_index_if_possible(index_parameters="index_keys")
-    @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+    @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def history_deals_get_as_df(
         self,
         date_from: datetime | None = None,
@@ -971,7 +973,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        convert_time: bool = True,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # noqa: ARG002
         index_keys: str | None = None,  # noqa: ARG002
     ) -> pd.DataFrame:
         """Get historical deals with optional filters as a data frame.
@@ -983,7 +985,7 @@ class Mt5DataClient(Mt5Client):
             symbol: Optional symbol filter.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
-            convert_time: Whether to convert time values to datetime.
+            skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
         Returns:
@@ -997,7 +999,7 @@ class Mt5DataClient(Mt5Client):
                 symbol=symbol,
                 ticket=ticket,
                 position=position,
-                convert_time=False,
+                skip_to_datetime=True,
             )
         )
 
