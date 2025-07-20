@@ -37,12 +37,14 @@ class Mt5TradingClient(Mt5DataClient):
         """Close all open positions for specified symbols.
 
         Args:
-            symbols: List of symbols to close positions for. If None, closes all open positions.
+            symbols: List of symbols to close positions for.
+                If None, closes all open positions.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
             Dictionary with symbols as keys and lists of dictionaries containing
-        """  # noqa: E501
+                operation results for each closed position as values.
+        """
         return {
             s: self.close_position(symbol=s, **kwargs)
             for s in (self.symbols_get() if symbols is None else symbols)
@@ -56,7 +58,6 @@ class Mt5TradingClient(Mt5DataClient):
         """Close an open position by ticket.
 
         Args:
-            ticket: Position ticket number.
             symbol: Optional symbol filter.
             **kwargs: Additional keyword arguments for request parameters.
 
