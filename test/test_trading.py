@@ -399,7 +399,7 @@ class TestMt5TradingClient:
             "comment": "Invalid request",
         }
 
-        with pytest.raises(Mt5TradingError, match="order_send\\(\\) failed"):
+        with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed"):
             client._send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_failure(
@@ -425,7 +425,7 @@ class TestMt5TradingClient:
             "comment": "Invalid request",
         }
 
-        with pytest.raises(Mt5TradingError, match="order_check\\(\\) failed"):
+        with pytest.raises(Mt5TradingError, match=r"order_check\(\) failed"):
             client._send_or_check_order(request)
 
     def test_order_filling_mode_constants(

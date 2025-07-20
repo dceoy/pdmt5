@@ -64,8 +64,8 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             List of dictionaries with operation results for each closed position.
         """
-        positions_df = self.positions_get_as_df(symbol=symbol)
-        if positions_df.empty:
+        positions_dict = self.positions_get_as_dict(symbol=symbol)
+        if not positions_dict:
             self.logger.warning("No open positions found for symbol: %s", symbol)
             return []
         else:
@@ -91,7 +91,7 @@ class Mt5TradingClient(Mt5DataClient):
                         **kwargs,
                     },
                 )
-                for _, p in positions_df.iterrows()
+                for p in positions_dict
             ]
 
     def _send_or_check_order(self, request: dict[str, Any]) -> dict[str, Any]:
