@@ -195,9 +195,9 @@ class TestMt5TradingClient:
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
 
-        result = client.close_position_by_symbol("EURUSD")
+        result = client.close_open_positions("EURUSD")
 
-        assert result == []
+        assert result == {"EURUSD": []}
         mock_mt5_import.positions_get.assert_called_once_with(symbol="EURUSD")
 
     def test_close_position_with_positions(
@@ -219,10 +219,10 @@ class TestMt5TradingClient:
             "result": "success",
         }
 
-        result = client.close_position_by_symbol("EURUSD")
+        result = client.close_open_positions("EURUSD")
 
-        assert len(result) == 1
-        assert result[0]["retcode"] == 10009
+        assert len(result["EURUSD"]) == 1
+        assert result["EURUSD"][0]["retcode"] == 10009
         mock_mt5_import.order_send.assert_called_once()
 
     def test_close_open_positions_all_symbols(
@@ -238,7 +238,7 @@ class TestMt5TradingClient:
         mock_mt5_import.symbols_get.return_value = ["EURUSD", "GBPUSD"]
         mock_mt5_import.positions_get.return_value = []  # No positions
 
-        result = client.close_positions_by_symbols()
+        result = client.close_open_positions()
 
         assert len(result) == 2
         assert "EURUSD" in result
@@ -258,7 +258,7 @@ class TestMt5TradingClient:
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
 
-        result = client.close_positions_by_symbols(["EURUSD"])
+        result = client.close_open_positions(["EURUSD"])
 
         assert len(result) == 1
         assert "EURUSD" in result
@@ -268,7 +268,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order in dry run mode with success."""
+        """Test send_or_check_order in dry run mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -287,7 +287,7 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client._send_or_check_order(request)
+        result = client.send_or_check_order(request)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -297,7 +297,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order in real mode with success."""
+        """Test send_or_check_order in real mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -316,7 +316,7 @@ class TestMt5TradingClient:
             "result": "send_success",
         }
 
-        result = client._send_or_check_order(request)
+        result = client.send_or_check_order(request)
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
@@ -326,7 +326,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order with trade disabled."""
+        """Test send_or_check_order with trade disabled."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -345,7 +345,7 @@ class TestMt5TradingClient:
             "comment": "Trade disabled",
         }
 
-        result = client._send_or_check_order(request)
+        result = client.send_or_check_order(request)
 
         assert result["retcode"] == 10017
 
@@ -353,7 +353,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order with market closed."""
+        """Test send_or_check_order with market closed."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -372,7 +372,7 @@ class TestMt5TradingClient:
             "comment": "Market closed",
         }
 
-        result = client._send_or_check_order(request)
+        result = client.send_or_check_order(request)
 
         assert result["retcode"] == 10018
 
@@ -380,7 +380,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order with failure."""
+        """Test send_or_check_order with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -399,14 +399,14 @@ class TestMt5TradingClient:
             "comment": "Invalid request",
         }
 
-        with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed"):
-            client._send_or_check_order(request)
+        with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed and aborted"):
+            client.send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_failure(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test _send_or_check_order in dry run mode with failure."""
+        """Test send_or_check_order in dry run mode with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -425,8 +425,10 @@ class TestMt5TradingClient:
             "comment": "Invalid request",
         }
 
-        with pytest.raises(Mt5TradingError, match=r"order_check\(\) failed"):
-            client._send_or_check_order(request)
+        with pytest.raises(
+            Mt5TradingError, match=r"order_check\(\) failed and aborted"
+        ):
+            client.send_or_check_order(request)
 
     def test_order_filling_mode_constants(
         self,
@@ -446,7 +448,7 @@ class TestMt5TradingClient:
             "retcode": 10009
         }
 
-        client.close_position_by_symbol("EURUSD")
+        client.close_open_positions("EURUSD")
 
         # Verify that ORDER_FILLING_FOK was used
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -471,7 +473,7 @@ class TestMt5TradingClient:
             "retcode": 10009
         }
 
-        client.close_position_by_symbol("EURUSD")
+        client.close_open_positions("EURUSD")
 
         # Buy position should result in sell order
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -482,7 +484,7 @@ class TestMt5TradingClient:
 
         mock_mt5_import.order_send.reset_mock()
 
-        client.close_position_by_symbol("GBPUSD")
+        client.close_open_positions("GBPUSD")
 
         # Sell position should result in buy order
         call_args = mock_mt5_import.order_send.call_args[0][0]

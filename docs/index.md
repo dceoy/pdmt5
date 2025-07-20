@@ -22,7 +22,7 @@ pip install pdmt5
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5ReportClient
+from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5TradingClient
 import MetaTrader5 as mt5
 from datetime import datetime
 
@@ -40,16 +40,12 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     symbols_df = client.symbols_get()
     rates_df = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Enhanced functionality with reporting and export
-with Mt5ReportClient(mt5=mt5, config=config) as reporter:
-    # Print data with custom formatting
-    Mt5ReportClient.print_df(rates_df, include_index=True)
-    Mt5ReportClient.print_json(account._asdict() if hasattr(account, '_asdict') else account)
-    
-    # Print with optional SQLite export
-    reporter.print_rates("EURUSD", mt5.TIMEFRAME_H1, 100, 
-                        sqlite3_file_path="trading_data.db", 
-                        sqlite3_table="eurusd_rates")
+# Trading operations with dry run support
+with Mt5TradingClient(mt5=mt5, config=config, dry_run=True) as client:
+    # Check open positions
+    positions_df = client.positions_get_as_df()
+    # Close positions for specific symbol
+    results = client.close_open_positions("EURUSD")
 ```
 
 ## Requirements
@@ -64,7 +60,7 @@ Browse the API documentation to learn about available modules and functions:
 
 - [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access and error handling
 - [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client and configuration
-- [Mt5ReportClient](api/report.md) - Reporting operations and data export functionality
+- [Mt5TradingClient](api/trading.md) - Advanced trading operations with position management
 
 ## Development
 

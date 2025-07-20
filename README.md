@@ -46,7 +46,8 @@ uv sync
 ## Quick Start
 
 ```python
-import pdmt5
+import MetaTrader5 as mt5
+from datetime import datetime
 from pdmt5 import Mt5DataClient, Mt5Config
 
 # Configure connection
@@ -67,7 +68,7 @@ with Mt5DataClient(config=config) as client:
     # Get OHLCV data
     rates = client.copy_rates_from(
         symbol="EURUSD",
-        timeframe=pdmt5.TIMEFRAME_H1,
+        timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime(2024, 1, 1),
         count=100
     )
@@ -90,6 +91,15 @@ The main interface for interacting with MetaTrader 5:
 - **Trading Info**: `get_orders()`, `get_positions()`, `get_deals()`
 - **Symbol Info**: `get_symbols()`, `get_symbol_info()`
 
+### Mt5TradingClient
+
+An advanced trading operations interface that extends Mt5DataClient:
+
+- **Position Management**: `close_open_positions()` - Close positions by symbol
+- **Order Filling Modes**: IOC (Immediate or Cancel), FOK (Fill or Kill), or RETURN
+- **Dry Run Mode**: Test trading logic without executing real trades
+- **Full Trading Operations**: Includes all Mt5DataClient capabilities plus trading features
+
 ### Configuration
 
 ```python
@@ -109,14 +119,14 @@ config = Mt5Config(
 ### Getting Historical Data
 
 ```python
-import pdmt5
+import MetaTrader5 as mt5
 from datetime import datetime
 
 with Mt5DataClient(config=config) as client:
     # Get last 1000 H1 bars for EURUSD
     df = client.copy_rates_from(
         symbol="EURUSD",
-        timeframe=pdmt5.TIMEFRAME_H1,
+        timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime.now(),
         count=1000
     )
@@ -135,7 +145,7 @@ with Mt5DataClient(config=config) as client:
         symbol="EURUSD",
         date_from=datetime.now() - timedelta(hours=1),
         count=10000,
-        flags=pdmt5.COPY_TICKS_ALL
+        flags=mt5.COPY_TICKS_ALL
     )
 
     # Tick data includes: time, bid, ask, last, volume, flags
@@ -157,6 +167,27 @@ with Mt5DataClient(config=config) as client:
             'price_open': 'mean'
         })
         print(summary)
+```
+
+### Trading Operations
+
+```python
+from pdmt5 import Mt5TradingClient
+
+# Create trading client with specific order filling mode
+with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
+    # Close all EURUSD positions
+    results = trader.close_open_positions(symbols="EURUSD")
+
+    if results:
+        for result in results:
+            print(f"Closed position {result['position']} with result: {result['retcode']}")
+
+    # Using dry run mode for testing
+    trader_dry = Mt5TradingClient(config=config, dry_run=True)
+    with trader_dry:
+        # Test closing positions without actual execution
+        test_results = trader_dry.close_open_positions(symbols=["EURUSD", "GBPUSD"])
 ```
 
 ## Development
@@ -188,7 +219,7 @@ This project maintains high code quality standards:
 
 - **Type Checking**: Strict mode with pyright
 - **Linting**: Comprehensive ruff configuration with 40+ rule categories
-- **Testing**: pytest with coverage tracking (minimum 50%)
+- **Testing**: pytest with coverage tracking (minimum 90%)
 - **Documentation**: Google-style docstrings
 
 ## Error Handling
@@ -196,12 +227,12 @@ This project maintains high code quality standards:
 The package provides detailed error information:
 
 ```python
-from pdmt5 import Mt5Error
+from pdmt5 import Mt5RuntimeError
 
 try:
     with Mt5DataClient(config=config) as client:
-        data = client.copy_rates_from("INVALID", pdmt5.TIMEFRAME_H1, datetime.now(), 100)
-except Mt5Error as e:
+        data = client.copy_rates_from("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
+except Mt5RuntimeError as e:
     print(f"MT5 Error: {e}")
     print(f"Error code: {e.error_code}")
     print(f"Description: {e.description}")

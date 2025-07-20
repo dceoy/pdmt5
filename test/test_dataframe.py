@@ -14,12 +14,9 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from pdmt5.dataframe import (
-    Mt5Config,
-    Mt5DataClient,
-    _convert_time_values_in_dict,
-)
+from pdmt5.dataframe import Mt5Config, Mt5DataClient
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
+from pdmt5.utils import _convert_time_values_in_dict
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
@@ -3536,7 +3533,7 @@ class TestMt5DataClientCoverageMissing:
     ) -> None:
         """Test set_index_if_possible decorator with non-DataFrame return."""
         # Create a custom decorated function that returns non-DataFrame
-        from pdmt5.dataframe import set_index_if_possible  # noqa: PLC0415
+        from pdmt5.utils import set_index_if_possible  # noqa: PLC0415
 
         @set_index_if_possible(index_parameters="index_keys")
         def mock_function_returning_non_df(
@@ -3817,7 +3814,7 @@ class TestMt5DataClientCoverageMissing:
     def test_convert_time_decorator_string_return_type(self) -> None:
         """Test detect_and_convert_time decorator with string return type."""
         # This test specifically targets line 56: return result (else case)
-        from pdmt5.dataframe import detect_and_convert_time_to_datetime  # noqa: PLC0415
+        from pdmt5.utils import detect_and_convert_time_to_datetime  # noqa: PLC0415
 
         @detect_and_convert_time_to_datetime(skip_toggle="convert_time")
         def mock_function_returning_string(convert_time: bool = True) -> str:  # noqa: ARG001
