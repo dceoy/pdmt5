@@ -31,7 +31,7 @@ class Mt5TradingClient(Mt5DataClient):
 
     def close_open_positions(
         self,
-        symbols: str | list[str] | tuple[str] | None = None,
+        symbols: str | list[str] | tuple[str, ...] | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
@@ -99,11 +99,16 @@ class Mt5TradingClient(Mt5DataClient):
                 for p in positions_dict
             ]
 
-    def send_or_check_order(self, request: dict[str, Any]) -> dict[str, Any]:
+    def send_or_check_order(
+        self,
+        request: dict[str, Any],
+        dry_run: bool | None = None,
+    ) -> dict[str, Any]:
         """Send or check an order request.
 
         Args:
             request: Order request dictionary.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
 
         Returns:
             Dictionary with operation result.
@@ -112,15 +117,16 @@ class Mt5TradingClient(Mt5DataClient):
             Mt5TradingError: If the order operation fails.
         """
         self.logger.debug("request: %s", request)
-        if self.dry_run:
+        is_dry_run = dry_run if dry_run is not None else self.dry_run
+        if is_dry_run:
             response = self.order_check_as_dict(request=request)
             order_func = "order_check"
         else:
             response = self.order_send_as_dict(request=request)
             order_func = "order_send"
         retcode = response.get("retcode")
-        if ((not self.dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
-            self.dry_run and retcode == 0
+        if ((not is_dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
+            is_dry_run and retcode == 0
         ):
             self.logger.info("retcode: %s, response: %s", retcode, response)
             return response

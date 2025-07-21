@@ -265,6 +265,58 @@ class TestMt5TradingClient:
         assert "EURUSD" in result
         assert result["EURUSD"] == []
 
+    def test_close_open_positions_tuple_input(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test close_open_positions with tuple input."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        result = client.close_open_positions(("EURUSD", "GBPUSD"))
+
+        assert len(result) == 2
+        assert "EURUSD" in result
+        assert "GBPUSD" in result
+        assert result["EURUSD"] == []
+        assert result["GBPUSD"] == []
+
+    def test_close_open_positions_with_kwargs(
+        self,
+        mock_mt5_import: ModuleType,
+        mock_position_buy: MockPositionInfo,
+    ) -> None:
+        """Test close_open_positions with additional kwargs."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock positions
+        mock_mt5_import.positions_get.return_value = [mock_position_buy]
+
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "result": "success",
+        }
+
+        # Pass custom kwargs
+        result = client.close_open_positions(
+            "EURUSD", comment="custom_close", magic=12345
+        )
+
+        assert len(result["EURUSD"]) == 1
+        assert result["EURUSD"][0]["retcode"] == 10009
+
+        # Check that kwargs were passed through
+        call_args = mock_mt5_import.order_send.call_args[0][0]
+        assert call_args["comment"] == "custom_close"
+        assert call_args["magic"] == 12345
+
     def test_send_or_check_order_dry_run_success(
         self,
         mock_mt5_import: ModuleType,
@@ -430,6 +482,72 @@ class TestMt5TradingClient:
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
             client.send_or_check_order(request)
+
+    def test_send_or_check_order_dry_run_override(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test send_or_check_order with dry_run parameter override."""
+        # Client initialized with dry_run=False
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        request = {
+            "action": 1,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 1,
+        }
+
+        # Mock successful order check
+        mock_mt5_import.order_check.return_value.retcode = 0
+        mock_mt5_import.order_check.return_value._asdict.return_value = {
+            "retcode": 0,
+            "result": "check_success",
+        }
+
+        # Override with dry_run=True
+        result = client.send_or_check_order(request, dry_run=True)
+
+        assert result["retcode"] == 0
+        assert result["result"] == "check_success"
+        # Should call order_check, not order_send
+        mock_mt5_import.order_check.assert_called_once_with(request)
+        mock_mt5_import.order_send.assert_not_called()
+
+    def test_send_or_check_order_real_mode_override(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test send_or_check_order with real mode override."""
+        # Client initialized with dry_run=True
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        request = {
+            "action": 1,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 1,
+        }
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "result": "send_success",
+        }
+
+        # Override with dry_run=False
+        result = client.send_or_check_order(request, dry_run=False)
+
+        assert result["retcode"] == 10009
+        assert result["result"] == "send_success"
+        # Should call order_send, not order_check
+        mock_mt5_import.order_send.assert_called_once_with(request)
+        mock_mt5_import.order_check.assert_not_called()
 
     def test_order_filling_mode_constants(
         self,
