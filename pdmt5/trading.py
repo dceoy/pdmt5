@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import timedelta
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ConfigDict, Field
 
 from .dataframe import Mt5DataClient
 from .mt5 import Mt5RuntimeError
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class Mt5TradingError(Mt5RuntimeError):
@@ -190,3 +194,84 @@ class Mt5TradingClient(Mt5DataClient):
                 f"Failed to calculate minimum order margins for symbol: {symbol}."
             )
             raise Mt5TradingError(error_message)
+
+    def calculate_spread_ratio(
+        self,
+        symbol: str,
+    ) -> float:
+        """Calculate the spread ratio for a given symbol.
+
+        Args:
+            symbol: Symbol for which to calculate the spread ratio.
+
+        Returns:
+            Spread ratio as a float.
+        """
+        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+        return (
+            (symbol_info_tick["ask"] - symbol_info_tick["bid"])
+            / (symbol_info_tick["ask"] + symbol_info_tick["bid"])
+            * 2
+        )
+
+    def copy_latest_rates_as_df(
+        self,
+        symbol: str,
+        granularity: str = "M1",
+        count: int = 1440,
+        index_keys: str | None = "time",
+    ) -> pd.DataFrame:
+        """Fetch rate (OHLC) data as a DataFrame.
+
+        Args:
+            symbol: Symbol to fetch data for.
+            granularity: Time granularity as a timeframe suffix (e.g., "M1", "H1").
+            count: Number of bars to fetch.
+            index_keys: Optional index keys for the DataFrame.
+
+        Returns:
+            pd.DataFrame: OHLC data with time index.
+
+        Raises:
+            Mt5TradingError: If the granularity is not supported by MetaTrader5.
+        """
+        try:
+            timeframe = getattr(self.mt5, f"TIMEFRAME_{granularity.upper()}")
+        except AttributeError as e:
+            error_message = (
+                f"MetaTrader5 does not support the given granularity: {granularity}"
+            )
+            raise Mt5TradingError(error_message) from e
+        else:
+            return self.copy_rates_from_pos_as_df(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_pos=0,
+                count=count,
+                index_keys=index_keys,
+            )
+
+    def copy_latest_ticks_as_df(
+        self,
+        symbol: str,
+        seconds: int = 300,
+        index_keys: str | None = "time_msc",
+    ) -> pd.DataFrame:
+        """Fetch tick data as a DataFrame.
+
+        Args:
+            symbol: Symbol to fetch tick data for.
+            seconds: Time range in seconds to fetch ticks around the last tick time.
+            index_keys: Optional index keys for the DataFrame.
+
+        Returns:
+            pd.DataFrame: Tick data with time index.
+        """
+        last_tick_time = self.symbol_info_tick_as_dict(symbol=symbol)["time"]
+        return self.copy_ticks_range_as_df(
+            symbol=symbol,
+            date_from=(last_tick_time - timedelta(seconds=seconds)),
+            date_to=(last_tick_time + timedelta(seconds=seconds)),
+            flags=self.mt5.COPY_TICKS_ALL,
+            index_keys=index_keys,
+        )
