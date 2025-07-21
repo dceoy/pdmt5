@@ -106,7 +106,6 @@ class Mt5Client(BaseModel):
         password: str | None = None,
         server: str | None = None,
         timeout: int | None = None,
-        portable: bool | None = None,
     ) -> bool:
         """Establish a connection with the MetaTrader 5 terminal.
 
@@ -116,7 +115,6 @@ class Mt5Client(BaseModel):
             password: Trading account password.
             server: Trade server address.
             timeout: Connection timeout in milliseconds.
-            portable: Use portable mode.
 
         Returns:
             True if successful, False otherwise.
@@ -135,7 +133,6 @@ class Mt5Client(BaseModel):
                         "password": password,
                         "server": server,
                         "timeout": timeout,
-                        "portable": portable,
                     }.items()
                     if v is not None
                 },

@@ -88,7 +88,6 @@ class TestMt5Client:
             password="secret",
             server="Demo",
             timeout=60000,
-            portable=True,
         )
 
         assert result is True
@@ -98,7 +97,6 @@ class TestMt5Client:
             password="secret",
             server="Demo",
             timeout=60000,
-            portable=True,
         )
 
     def test_initialize_failure(self, client: Mt5Client, mock_mt5: Mock) -> None:

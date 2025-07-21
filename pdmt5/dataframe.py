@@ -29,7 +29,6 @@ class Mt5Config(BaseModel):
     timeout: int | None = Field(
         default=None, description="Connection timeout in milliseconds"
     )
-    portable: bool | None = Field(default=None, description="Use portable mode")
 
 
 class Mt5DataClient(Mt5Client):
@@ -51,14 +50,13 @@ class Mt5DataClient(Mt5Client):
         description="Number of retry attempts for connection initialization",
     )
 
-    def initialize_mt5(
+    def initialize_and_login_mt5(
         self,
         path: str | None = None,
         login: int | None = None,
         password: str | None = None,
         server: str | None = None,
         timeout: int | None = None,
-        portable: bool | None = None,
     ) -> None:
         """Initialize MetaTrader5 connection with retry logic.
 
@@ -70,18 +68,16 @@ class Mt5DataClient(Mt5Client):
             password: Account password (overrides config).
             server: Server name (overrides config).
             timeout: Connection timeout (overrides config).
-            portable: Use portable mode (overrides config).
 
         Raises:
             Mt5RuntimeError: If initialization fails after retries.
         """
-        initialize_kwargs = {
-            "path": path or self.config.path,
+        path = path or self.config.path
+        login_kwargs = {
             "login": login or self.config.login,
             "password": password or self.config.password,
             "server": server or self.config.server,
             "timeout": timeout or self.config.timeout,
-            "portable": portable if portable is not None else self.config.portable,
         }
         for i in range(1 + max(0, self.retry_count)):
             if i:
@@ -91,11 +87,12 @@ class Mt5DataClient(Mt5Client):
                     self.retry_count,
                 )
                 time.sleep(i)
-            if self.initialize(**initialize_kwargs):  # type: ignore[reportArgumentType]
-                self.logger.info("MT5 initialization successful.")
+            if self.initialize(path=path, **login_kwargs) and (
+                (not login_kwargs["login"]) or self.login(**login_kwargs)
+            ):
                 return
         error_message = (
-            f"MT5 initialization failed after {self.retry_count} retries:"
+            f"MT5 initialize and login failed after {self.retry_count} retries:"
             f" {self.last_error()}"
         )
         raise Mt5RuntimeError(error_message)
