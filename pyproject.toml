@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "0.0.7"
+version = "0.0.8"
 description = "Pandas-based data handler for MetaTrader 5"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
@@ -177,7 +177,7 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 90
+fail_under = 100
 exclude_lines = ["if TYPE_CHECKING:"]
 
 [build-system]

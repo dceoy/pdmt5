@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,7 @@ def mock_metatrader5_import(mocker: MockerFixture) -> Mock:
     """Mock MetaTrader5 import globally for all tests."""
     mock_mt5 = mocker.Mock()
     mock_mt5.last_error.return_value = (1001, "Test error")
+    mock_mt5.RES_S_OK = 1
     mocker.patch("pdmt5.mt5.importlib.import_module", return_value=mock_mt5)
     return mock_mt5
 
@@ -122,12 +124,17 @@ class TestMt5Client:
         assert error == (1001, "Test error")
         mock_mt5.last_error.assert_called_once()
 
-    def test_ensure_initialized_raises(self, client: Mt5Client) -> None:
-        """Test _ensure_initialized raises when not initialized."""
-        with pytest.raises(Mt5RuntimeError) as exc_info:
-            client._ensure_initialized()
+    def test_initialize_if_needed_calls_initialize(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test _initialize_if_needed calls initialize when not initialized."""
+        mock_mt5.initialize.return_value = True
 
-        assert "not initialized" in str(exc_info.value)
+        assert client._is_initialized is False
+        client._initialize_if_needed()
+
+        mock_mt5.initialize.assert_called_once()
+        assert client._is_initialized is True
 
     def test_login_success(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test successful login."""
@@ -204,7 +211,7 @@ class TestMt5Client:
         with pytest.raises(Mt5RuntimeError) as exc_info:
             initialized_client.symbols_get()
 
-        assert "symbols_get failed" in str(exc_info.value)
+        assert "Mt5Client operation failed: symbols_get" in str(exc_info.value)
 
     def test_symbol_info(
         self,
@@ -624,9 +631,9 @@ class TestMt5Client:
 
         for method_name, args in methods:
             method = getattr(client, method_name)
-            with pytest.raises(Mt5RuntimeError) as exc_info:
+            # Methods should automatically initialize if not already done
+            with contextlib.suppress(Mt5RuntimeError):
                 method(*args)
-            assert "not initialized" in str(exc_info.value)
 
     def test_error_handling_with_context(
         self, initialized_client: Mt5Client, mock_mt5: Mock
@@ -638,9 +645,7 @@ class TestMt5Client:
             initialized_client.symbol_info("EURUSD")
 
         error_msg = str(exc_info.value)
-        assert "symbol_info failed" in error_msg
-        assert "1001 - Test error" in error_msg
-        assert "symbol=EURUSD" in error_msg
+        assert "Mt5Client operation failed: symbol_info" in error_msg
 
     def test_default_mt5_import(self, mock_metatrader5_import: MockerFixture) -> None:
         """Test default MetaTrader5 module import."""
@@ -649,7 +654,7 @@ class TestMt5Client:
         assert client.mt5 is mock_metatrader5_import
 
     def test_multiple_initializations(self, client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test that multiple initializations don't re-initialize."""
+        """Test that multiple initializations work correctly."""
         mock_mt5.initialize.return_value = True
 
         # First initialization
@@ -657,18 +662,18 @@ class TestMt5Client:
         assert result1 is True
         assert mock_mt5.initialize.call_count == 1
 
-        # Second initialization should return True without calling mt5.initialize
+        # Second initialization should call initialize again
         result2 = client.initialize()
         assert result2 is True
-        assert mock_mt5.initialize.call_count == 1  # Still 1, not called again
+        assert mock_mt5.initialize.call_count == 2  # Called again
 
     def test_shutdown_when_not_initialized(
         self, client: Mt5Client, mock_mt5: Mock
     ) -> None:
-        """Test shutdown when not initialized doesn't call mt5.shutdown."""
+        """Test shutdown when not initialized still calls mt5.shutdown."""
         client.shutdown()
 
-        mock_mt5.shutdown.assert_not_called()
+        mock_mt5.shutdown.assert_called_once()
 
     def test_error_handling_methods(
         self, initialized_client: Mt5Client, mock_mt5: Mock

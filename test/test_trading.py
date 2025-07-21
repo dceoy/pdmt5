@@ -66,6 +66,7 @@ def mock_mt5_import(
         mock_mt5.TRADE_RETCODE_DONE = 10009
         mock_mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
         mock_mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
+        mock_mt5.RES_S_OK = 1
 
         yield mock_mt5
 
