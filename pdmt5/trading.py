@@ -161,13 +161,13 @@ class Mt5TradingClient(Mt5DataClient):
         """
         symbol_info = self.symbol_info_as_dict(symbol=symbol)
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        min_ask_order_margin = self.mt5.order_calc_margin(
+        min_ask_order_margin = self.order_calc_margin(
             action=self.mt5.ORDER_TYPE_BUY,
             symbol=symbol,
             volume=symbol_info["volume_min"],
             price=symbol_info_tick["ask"],
         )
-        min_bid_order_margin = self.mt5.order_calc_margin(
+        min_bid_order_margin = self.order_calc_margin(
             action=self.mt5.ORDER_TYPE_SELL,
             symbol=symbol,
             volume=symbol_info["volume_min"],
