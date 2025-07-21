@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import importlib
 import logging
+from functools import wraps
 from types import ModuleType  # noqa: TC003
 from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from datetime import datetime
     from types import TracebackType
 
@@ -43,6 +45,37 @@ class Mt5Client(BaseModel):
     )
     _is_initialized: bool = False
 
+    @staticmethod
+    def _log_mt5_last_status_code(func: Callable[..., Any]) -> Callable[..., Any]:
+        """Decorator to log MetaTrader5 last status code after method execution.
+
+        Args:
+            func: The method to decorate.
+
+        Returns:
+            The decorated method.
+        """
+
+        @wraps(func)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            try:
+                result = func(self, *args, **kwargs)
+            except Exception as e:
+                error_message = f"Mt5Client operation failed: {func.__name__}"
+                self.logger.exception(error_message)
+                raise Mt5RuntimeError(error_message) from e
+            else:
+                return result
+            finally:
+                last_error_response = self.mt5.last_error()
+                message = f"MetaTrader5 last status: {last_error_response}"
+                if last_error_response[0] != self.mt5.RES_S_OK:
+                    self.logger.warning(message)
+                else:
+                    self.logger.info(message)
+
+        return wrapper
+
     def __enter__(self) -> Self:
         """Context manager entry.
 
@@ -61,6 +94,7 @@ class Mt5Client(BaseModel):
         """Context manager exit."""
         self.shutdown()
 
+    @_log_mt5_last_status_code
     def initialize(
         self,
         path: str | None = None,
@@ -83,9 +117,7 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """
-        if self._is_initialized:
-            self.logger.warning("Skipping initialization, already initialized.")
-        elif path is not None:
+        if path is not None:
             self.logger.info(
                 "Initializing MetaTrader5 connection with path: %s",
                 path,
@@ -109,6 +141,7 @@ class Mt5Client(BaseModel):
             self._is_initialized = self.mt5.initialize()
         return self._is_initialized
 
+    @_log_mt5_last_status_code
     def login(
         self,
         login: int,
@@ -127,7 +160,7 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Logging in to MetaTrader5 account: %d", login)
         return self.mt5.login(
             login,
@@ -142,24 +175,22 @@ class Mt5Client(BaseModel):
             },
         )
 
+    @_log_mt5_last_status_code
     def shutdown(self) -> None:
         """Close the previously established connection to the MetaTrader 5 terminal."""
-        if self._is_initialized:
-            self.logger.info("Shutting down MetaTrader5 connection.")
-            self.mt5.shutdown()
-            self._is_initialized = False
-        else:
-            self.logger.warning(
-                "MetaTrader5 connection is not initialized, nothing to shut down"
-            )
+        self.logger.info("Shutting down MetaTrader5 connection.")
+        response = self.mt5.shutdown()
+        self._is_initialized = False
+        return response
 
+    @_log_mt5_last_status_code
     def version(self) -> tuple[int, int, str]:
         """Return the MetaTrader 5 terminal version.
 
         Returns:
             Tuple of (terminal_version, build, release_date).
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving MetaTrader5 version information.")
         return self.mt5.version()
 
@@ -172,43 +203,49 @@ class Mt5Client(BaseModel):
         self.logger.info("Retrieving last MetaTrader5 error")
         return self.mt5.last_error()
 
+    @_log_mt5_last_status_code
     def account_info(self) -> Any:
         """Get info on the current trading account.
 
         Returns:
             AccountInfo structure or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving account information.")
         response = self.mt5.account_info()
-        self._validate_metatrader5_response(response=response, operation="account_info")
+        self._validate_mt5_response_is_not_none(
+            response=response, operation="account_info"
+        )
         return response
 
+    @_log_mt5_last_status_code
     def terminal_info(self) -> Any:
         """Get the connected MetaTrader 5 client terminal status and settings.
 
         Returns:
             TerminalInfo structure or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving terminal information.")
         response = self.mt5.terminal_info()
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="terminal_info",
         )
         return response
 
+    @_log_mt5_last_status_code
     def symbols_total(self) -> int:
         """Get the number of all financial instruments in the terminal.
 
         Returns:
             Total number of symbols.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving total number of symbols.")
         return self.mt5.symbols_total()
 
+    @_log_mt5_last_status_code
     def symbols_get(self, group: str | None = None) -> tuple[Any, ...]:
         """Get all financial instruments from the terminal.
 
@@ -218,7 +255,7 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of symbol info structures or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         if group is not None:
             self.logger.info("Retrieving symbols for group: %s", group)
             response = self.mt5.symbols_get(group=group)
@@ -227,13 +264,14 @@ class Mt5Client(BaseModel):
             self.logger.info("Retrieving all symbols.")
             response = self.mt5.symbols_get()
             context = None
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="symbols_get",
             context=context,
         )
         return response
 
+    @_log_mt5_last_status_code
     def symbol_info(self, symbol: str) -> Any:
         """Get data on the specified financial instrument.
 
@@ -243,16 +281,17 @@ class Mt5Client(BaseModel):
         Returns:
             Symbol info structure or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving information for symbol: %s", symbol)
         response = self.mt5.symbol_info(symbol)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="symbol_info",
             context=f"symbol={symbol}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def symbol_info_tick(self, symbol: str) -> Any:
         """Get the last tick for the specified financial instrument.
 
@@ -262,16 +301,17 @@ class Mt5Client(BaseModel):
         Returns:
             Tick info structure or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving last tick for symbol: %s", symbol)
         response = self.mt5.symbol_info_tick(symbol)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="symbol_info_tick",
             context=f"symbol={symbol}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def symbol_select(self, symbol: str, enable: bool = True) -> bool:
         """Select a symbol in the MarketWatch window or remove a symbol from the window.
 
@@ -282,16 +322,17 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Selecting symbol: %s, enable=%s", symbol, enable)
         response = self.mt5.symbol_select(symbol, enable)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="symbol_select",
             context=f"symbol={symbol}, enable={enable}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def market_book_add(self, symbol: str) -> bool:
         """Subscribe the terminal to the Market Depth change events for a specified symbol.
 
@@ -301,16 +342,17 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Adding market book for symbol: %s", symbol)
         response = self.mt5.market_book_add(symbol)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="market_book_add",
             context=f"symbol={symbol}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def market_book_get(self, symbol: str) -> tuple[Any, ...]:
         """Return a tuple from BookInfo featuring Market Depth entries for the specified symbol.
 
@@ -320,16 +362,17 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of BookInfo structures or None.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving market book for symbol: %s", symbol)
         response = self.mt5.market_book_get(symbol)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="market_book_get",
             context=f"symbol={symbol}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def market_book_release(self, symbol: str) -> bool:
         """Cancels subscription of the terminal to the Market Depth change events for a specified symbol.
 
@@ -339,16 +382,17 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Releasing market book for symbol: %s", symbol)
         response = self.mt5.market_book_release(symbol)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="market_book_release",
             context=f"symbol={symbol}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def copy_rates_from(
         self,
         symbol: str,
@@ -367,7 +411,7 @@ class Mt5Client(BaseModel):
         Returns:
             Array of rates or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Copying rates from symbol: %s, timeframe: %d, date_from: %s, count: %d",
             symbol,
@@ -376,7 +420,7 @@ class Mt5Client(BaseModel):
             count,
         )
         response = self.mt5.copy_rates_from(symbol, timeframe, date_from, count)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="copy_rates_from",
             context=(
@@ -386,6 +430,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def copy_rates_from_pos(
         self,
         symbol: str,
@@ -404,7 +449,7 @@ class Mt5Client(BaseModel):
         Returns:
             Array of rates or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             (
                 "Copying rates from position:"
@@ -416,7 +461,7 @@ class Mt5Client(BaseModel):
             count,
         )
         response = self.mt5.copy_rates_from_pos(symbol, timeframe, start_pos, count)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="copy_rates_from_pos",
             context=(
@@ -426,6 +471,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def copy_rates_range(
         self,
         symbol: str,
@@ -444,7 +490,7 @@ class Mt5Client(BaseModel):
         Returns:
             Array of rates or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Copying rates range: symbol=%s, timeframe=%d, date_from=%s, date_to=%s",
             symbol,
@@ -453,7 +499,7 @@ class Mt5Client(BaseModel):
             date_to,
         )
         response = self.mt5.copy_rates_range(symbol, timeframe, date_from, date_to)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="copy_rates_range",
             context=(
@@ -463,6 +509,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def copy_ticks_from(
         self,
         symbol: str,
@@ -481,7 +528,7 @@ class Mt5Client(BaseModel):
         Returns:
             Array of ticks or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Copying ticks from symbol: %s, date_from: %s, count: %d, flags: %d",
             symbol,
@@ -490,7 +537,7 @@ class Mt5Client(BaseModel):
             flags,
         )
         response = self.mt5.copy_ticks_from(symbol, date_from, count, flags)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="copy_ticks_from",
             context=(
@@ -499,6 +546,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def copy_ticks_range(
         self,
         symbol: str,
@@ -517,7 +565,7 @@ class Mt5Client(BaseModel):
         Returns:
             Array of ticks or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Copying ticks range: symbol=%s, date_from=%s, date_to=%s, flags=%d",
             symbol,
@@ -526,7 +574,7 @@ class Mt5Client(BaseModel):
             flags,
         )
         response = self.mt5.copy_ticks_range(symbol, date_from, date_to, flags)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="copy_ticks_range",
             context=(
@@ -536,16 +584,18 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def orders_total(self) -> int:
         """Get the number of active orders.
 
         Returns:
             Number of active orders.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving total number of active orders.")
         return self.mt5.orders_total()
 
+    @_log_mt5_last_status_code
     def orders_get(
         self,
         symbol: str | None = None,
@@ -562,7 +612,7 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of order info structures or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         if ticket is not None:
             self.logger.info("Retrieving order with ticket: %d", ticket)
             response = self.mt5.orders_get(ticket=ticket)
@@ -579,13 +629,14 @@ class Mt5Client(BaseModel):
             self.logger.info("Retrieving all active orders.")
             response = self.mt5.orders_get()
             context = None
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="orders_get",
             context=context,
         )
         return response
 
+    @_log_mt5_last_status_code
     def order_calc_margin(
         self,
         action: int,
@@ -604,7 +655,7 @@ class Mt5Client(BaseModel):
         Returns:
             Required margin amount or None.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Calculating margin: action=%d, symbol=%s, volume=%.2f, price=%.5f",
             action,
@@ -613,13 +664,14 @@ class Mt5Client(BaseModel):
             price,
         )
         response = self.mt5.order_calc_margin(action, symbol, volume, price)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="order_calc_margin",
             context=f"action={action}, symbol={symbol}, volume={volume}, price={price}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def order_calc_profit(
         self,
         action: int,
@@ -640,7 +692,7 @@ class Mt5Client(BaseModel):
         Returns:
             Calculated profit or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             (
                 "Calculating profit: action=%d, symbol=%s, volume=%.2f,"
@@ -655,7 +707,7 @@ class Mt5Client(BaseModel):
         response = self.mt5.order_calc_profit(
             action, symbol, volume, price_open, price_close
         )
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="order_calc_profit",
             context=(
@@ -665,6 +717,7 @@ class Mt5Client(BaseModel):
         )
         return response
 
+    @_log_mt5_last_status_code
     def order_check(self, request: dict[str, Any]) -> Any:
         """Check funds sufficiency for performing a required trading operation.
 
@@ -674,16 +727,17 @@ class Mt5Client(BaseModel):
         Returns:
             OrderCheckResult structure or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Checking order with request: %s", request)
         response = self.mt5.order_check(request)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="order_check",
             context=f"request={request}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def order_send(self, request: dict[str, Any]) -> Any:
         """Send a request to perform a trading operation from the terminal to the trade server.
 
@@ -693,26 +747,28 @@ class Mt5Client(BaseModel):
         Returns:
             OrderSendResult structure or None.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Sending order with request: %s", request)
         response = self.mt5.order_send(request)
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="order_send",
             context=f"request={request}",
         )
         return response
 
+    @_log_mt5_last_status_code
     def positions_total(self) -> int:
         """Get the number of open positions.
 
         Returns:
             Number of open positions.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info("Retrieving total number of open positions.")
         return self.mt5.positions_total()
 
+    @_log_mt5_last_status_code
     def positions_get(
         self,
         symbol: str | None = None,
@@ -729,7 +785,7 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of position info structures or None.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         if ticket is not None:
             self.logger.info("Retrieving position with ticket: %d", ticket)
             response = self.mt5.positions_get(ticket=ticket)
@@ -746,13 +802,14 @@ class Mt5Client(BaseModel):
             self.logger.info("Retrieving all open positions.")
             response = self.mt5.positions_get()
             context = None
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="positions_get",
             context=context,
         )
         return response
 
+    @_log_mt5_last_status_code
     def history_orders_total(
         self,
         date_from: datetime | int,
@@ -767,7 +824,7 @@ class Mt5Client(BaseModel):
         Returns:
             Number of historical orders.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Retrieving total number of historical orders from %s to %s",
             date_from,
@@ -775,6 +832,7 @@ class Mt5Client(BaseModel):
         )
         return self.mt5.history_orders_total(date_from, date_to)
 
+    @_log_mt5_last_status_code
     def history_orders_get(
         self,
         date_from: datetime | int | None = None,
@@ -795,7 +853,7 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of historical order info structures or None.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         if ticket is not None:
             self.logger.info("Retrieving order with ticket: %d", ticket)
             response = self.mt5.history_orders_get(ticket=ticket)
@@ -821,13 +879,14 @@ class Mt5Client(BaseModel):
             )
             response = self.mt5.history_orders_get(date_from, date_to)
             context = f"date_from={date_from}, date_to={date_to}"
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="history_orders_get",
             context=context,
         )
         return response
 
+    @_log_mt5_last_status_code
     def history_deals_total(
         self,
         date_from: datetime | int,
@@ -842,7 +901,7 @@ class Mt5Client(BaseModel):
         Returns:
             Number of historical deals.
         """
-        self._ensure_initialized()
+        self._initialize_if_needed()
         self.logger.info(
             "Retrieving total number of historical deals from %s to %s",
             date_from,
@@ -850,6 +909,7 @@ class Mt5Client(BaseModel):
         )
         return self.mt5.history_deals_total(date_from, date_to)
 
+    @_log_mt5_last_status_code
     def history_deals_get(
         self,
         date_from: datetime | int | None = None,
@@ -870,7 +930,7 @@ class Mt5Client(BaseModel):
         Returns:
             Tuple of historical deal info structures or None.
         """  # noqa: E501
-        self._ensure_initialized()
+        self._initialize_if_needed()
         if ticket is not None:
             self.logger.info("Retrieving deal with ticket: %d", ticket)
             response = self.mt5.history_deals_get(ticket=ticket)
@@ -896,20 +956,25 @@ class Mt5Client(BaseModel):
             )
             response = self.mt5.history_deals_get(date_from, date_to)
             context = f"date_from={date_from}, date_to={date_to}"
-        self._validate_metatrader5_response(
+        self._validate_mt5_response_is_not_none(
             response=response,
             operation="history_deals_get",
             context=context,
         )
         return response
 
-    def _validate_metatrader5_response(
+    def _initialize_if_needed(self) -> None:
+        """Ensure the MetaTrader5 client is initialized before performing operations."""
+        if not self._is_initialized:
+            self.initialize()
+
+    def _validate_mt5_response_is_not_none(
         self,
         response: Any,
         operation: str,
         context: str | None = None,
     ) -> None:
-        """Validate the response from MetaTrader5 terminal functions.
+        """Validate that the MetaTrader5 response is not None.
 
         Args:
             response: The response object to validate.
@@ -920,20 +985,10 @@ class Mt5Client(BaseModel):
             Mt5RuntimeError: With error details from MetaTrader5.
         """
         if response is None:
-            error_code, error_description = self.last_error()
+            last_error_response = self.mt5.last_error()
             error_message = (
-                f"{operation} failed: {error_code} - {error_description}"
-                + (f" (context: {context})" if context else "")
-            )
+                f"MetaTrader5 {operation} returned {response}:"
+                f" last_error={last_error_response}"
+            ) + (f" context={context}" if context else "")
             self.logger.error(error_message)
-            raise Mt5RuntimeError(error_message)
-
-    def _ensure_initialized(self) -> None:
-        """Ensure MetaTrader5 is initialized.
-
-        Raises:
-            Mt5RuntimeError: If MetaTrader5 is not initialized.
-        """
-        if not self._is_initialized:
-            error_message = "MetaTrader5 not initialized. Call initialize() first."
             raise Mt5RuntimeError(error_message)
