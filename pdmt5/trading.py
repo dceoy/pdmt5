@@ -32,6 +32,7 @@ class Mt5TradingClient(Mt5DataClient):
     def close_open_positions(
         self,
         symbols: str | list[str] | tuple[str, ...] | None = None,
+        dry_run: bool | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
@@ -39,6 +40,8 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbols: Optional symbol or list of symbols to filter positions.
                 If None, all symbols will be considered.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
@@ -53,18 +56,22 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_list = self.symbols_get()
         self.logger.info("Fetching and closing positions for symbols: %s", symbol_list)
         return {
-            s: self._fetch_and_close_position(symbol=s, **kwargs) for s in symbol_list
+            s: self._fetch_and_close_position(symbol=s, dry_run=dry_run, **kwargs)
+            for s in symbol_list
         }
 
     def _fetch_and_close_position(
         self,
         symbol: str | None = None,
+        dry_run: bool | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
         """Close all open positions for a specific symbol.
 
         Args:
             symbol: Optional symbol filter.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
@@ -96,6 +103,7 @@ class Mt5TradingClient(Mt5DataClient):
                         "position": p["ticket"],
                         **kwargs,
                     },
+                    dry_run=dry_run,
                 )
                 for p in positions_dict
             ]
