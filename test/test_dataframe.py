@@ -397,7 +397,6 @@ class TestMt5Config:
         assert config.password is None
         assert config.server is None
         assert config.timeout is None
-        assert config.portable is None
 
     def test_custom_config(self) -> None:
         """Test custom configuration."""
@@ -406,13 +405,11 @@ class TestMt5Config:
             password="secret",
             server="Demo-Server",
             timeout=30000,
-            portable=True,
         )
         assert config.login == 123456
         assert config.password == "secret"  # noqa: S105
         assert config.server == "Demo-Server"
         assert config.timeout == 30000
-        assert config.portable is True
 
     def test_config_immutable(self) -> None:
         """Test that config is immutable."""
@@ -478,11 +475,11 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
         pattern = (
-            r"MT5 initialization failed after 0 retries: "
+            r"MT5 initialize and login failed after 0 retries: "
             r"\(1, 'Connection failed'\)"
         )
         with pytest.raises(Mt5RuntimeError, match=pattern):
-            client.initialize_mt5()
+            client.initialize_and_login_mt5()
 
     def test_initialize_already_initialized(
         self, mock_mt5_import: ModuleType | None
@@ -1864,7 +1861,7 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
         # Should succeed on third attempt
-        client.initialize_mt5()
+        client.initialize_and_login_mt5()
 
         assert mock_mt5_import.initialize.call_count == 3
 
@@ -1884,7 +1881,7 @@ class TestMt5DataClientRetryLogic:
         mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
 
         # Should succeed on second attempt
-        client.initialize_mt5()
+        client.initialize_and_login_mt5()
 
         assert mock_mt5_import.initialize.call_count == 2
         mock_sleep.assert_called_once_with(1)
@@ -1905,9 +1902,9 @@ class TestMt5DataClientRetryLogic:
         mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
 
         with pytest.raises(Mt5RuntimeError) as exc_info:
-            client.initialize_mt5()
+            client.initialize_and_login_mt5()
 
-        assert "MT5 initialization failed after" in str(exc_info.value)
+        assert "MT5 initialize and login failed after" in str(exc_info.value)
         assert mock_mt5_import.initialize.call_count == 3  # All attempts made
         # Check that sleep was called for retries
         assert mock_sleep.call_count == 2
