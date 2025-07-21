@@ -31,7 +31,7 @@ class Mt5TradingClient(Mt5DataClient):
 
     def close_open_positions(
         self,
-        symbols: str | list[str] | tuple[str] | None = None,
+        symbols: str | list[str] | tuple[str, ...] | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
@@ -51,6 +51,7 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_list = symbols
         else:
             symbol_list = self.symbols_get()
+        self.logger.info("Fetching and closing positions for symbols: %s", symbol_list)
         return {
             s: self._fetch_and_close_position(symbol=s, **kwargs) for s in symbol_list
         }
@@ -99,11 +100,17 @@ class Mt5TradingClient(Mt5DataClient):
                 for p in positions_dict
             ]
 
-    def send_or_check_order(self, request: dict[str, Any]) -> dict[str, Any]:
+    def send_or_check_order(
+        self,
+        request: dict[str, Any],
+        dry_run: bool | None = None,
+    ) -> dict[str, Any]:
         """Send or check an order request.
 
         Args:
             request: Order request dictionary.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
 
         Returns:
             Dictionary with operation result.
@@ -112,29 +119,66 @@ class Mt5TradingClient(Mt5DataClient):
             Mt5TradingError: If the order operation fails.
         """
         self.logger.debug("request: %s", request)
-        if self.dry_run:
+        is_dry_run = dry_run if dry_run is not None else self.dry_run
+        self.logger.debug("is_dry_run: %s", is_dry_run)
+        if is_dry_run:
             response = self.order_check_as_dict(request=request)
             order_func = "order_check"
         else:
             response = self.order_send_as_dict(request=request)
             order_func = "order_send"
         retcode = response.get("retcode")
-        if ((not self.dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
-            self.dry_run and retcode == 0
+        if ((not is_dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
+            is_dry_run and retcode == 0
         ):
-            self.logger.info("retcode: %s, response: %s", retcode, response)
+            self.logger.info("response: %s", response)
             return response
         elif retcode in {
             self.mt5.TRADE_RETCODE_TRADE_DISABLED,
             self.mt5.TRADE_RETCODE_MARKET_CLOSED,
         }:
-            self.logger.info("retcode: %s, response: %s", retcode, response)
+            self.logger.info("response: %s", response)
             comment = response.get("comment", "Unknown error")
             self.logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
             return response
         else:
-            self.logger.error("retcode: %s, response: %s", retcode, response)
+            self.logger.error("response: %s", response)
             comment = response.get("comment", "Unknown error")
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
-            self.logger.error(error_message)
+            raise Mt5TradingError(error_message)
+
+    def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
+        """Calculate minimum order margins for a given symbol.
+
+        Args:
+            symbol: Symbol for which to calculate minimum order margins.
+
+        Returns:
+            Dictionary with margin information.
+
+        Raises:
+            Mt5TradingError: If margin calculation fails.
+        """
+        symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+        min_ask_order_margin = self.mt5.order_calc_margin(
+            action=self.mt5.ORDER_TYPE_BUY,
+            symbol=symbol,
+            volume=symbol_info["volume_min"],
+            price=symbol_info_tick["ask"],
+        )
+        min_bid_order_margin = self.mt5.order_calc_margin(
+            action=self.mt5.ORDER_TYPE_SELL,
+            symbol=symbol,
+            volume=symbol_info["volume_min"],
+            price=symbol_info_tick["bid"],
+        )
+        min_order_margins = {"ask": min_ask_order_margin, "bid": min_bid_order_margin}
+        self.logger.info("Minimum order margins for %s: %s", symbol, min_order_margins)
+        if all(min_order_margins.values()):
+            return min_order_margins
+        else:
+            error_message = (
+                f"Failed to calculate minimum order margins for symbol: {symbol}."
+            )
             raise Mt5TradingError(error_message)

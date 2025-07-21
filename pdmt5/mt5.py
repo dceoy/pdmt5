@@ -59,16 +59,20 @@ class Mt5Client(BaseModel):
         @wraps(func)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             try:
-                result = func(self, *args, **kwargs)
+                response = func(self, *args, **kwargs)
             except Exception as e:
-                error_message = f"Mt5Client operation failed: {func.__name__}"
-                self.logger.exception(error_message)
+                error_message = f"MT5 {func.__name__} failed with error: {e}"
                 raise Mt5RuntimeError(error_message) from e
             else:
-                return result
+                self.logger.info(
+                    "MT5 %s returned a response: %s",
+                    func.__name__,
+                    response,
+                )
+                return response
             finally:
                 last_error_response = self.mt5.last_error()
-                message = f"MetaTrader5 last status: {last_error_response}"
+                message = f"MT5 last status: {last_error_response}"
                 if last_error_response[0] != self.mt5.RES_S_OK:
                     self.logger.warning(message)
                 else:
@@ -119,7 +123,7 @@ class Mt5Client(BaseModel):
         """
         if path is not None:
             self.logger.info(
-                "Initializing MetaTrader5 connection with path: %s",
+                "Initializing MT5 connection with path: %s",
                 path,
             )
             self._is_initialized = self.mt5.initialize(
@@ -137,7 +141,7 @@ class Mt5Client(BaseModel):
                 },
             )
         else:
-            self.logger.info("Initializing MetaTrader5 connection.")
+            self.logger.info("Initializing MT5 connection.")
             self._is_initialized = self.mt5.initialize()
         return self._is_initialized
 
@@ -161,7 +165,7 @@ class Mt5Client(BaseModel):
             True if successful, False otherwise.
         """
         self._initialize_if_needed()
-        self.logger.info("Logging in to MetaTrader5 account: %d", login)
+        self.logger.info("Logging in to MT5 account: %d", login)
         return self.mt5.login(
             login,
             **{
@@ -178,7 +182,7 @@ class Mt5Client(BaseModel):
     @_log_mt5_last_status_code
     def shutdown(self) -> None:
         """Close the previously established connection to the MetaTrader 5 terminal."""
-        self.logger.info("Shutting down MetaTrader5 connection.")
+        self.logger.info("Shutting down MT5 connection.")
         response = self.mt5.shutdown()
         self._is_initialized = False
         return response
@@ -191,16 +195,17 @@ class Mt5Client(BaseModel):
             Tuple of (terminal_version, build, release_date).
         """
         self._initialize_if_needed()
-        self.logger.info("Retrieving MetaTrader5 version information.")
+        self.logger.info("Retrieving MT5 version information.")
         return self.mt5.version()
 
+    @_log_mt5_last_status_code
     def last_error(self) -> tuple[int, str]:
         """Return data on the last error.
 
         Returns:
             Tuple of (error_code, error_description).
         """
-        self.logger.info("Retrieving last MetaTrader5 error")
+        self.logger.info("Retrieving last MT5 error")
         return self.mt5.last_error()
 
     @_log_mt5_last_status_code
@@ -985,10 +990,8 @@ class Mt5Client(BaseModel):
             Mt5RuntimeError: With error details from MetaTrader5.
         """
         if response is None:
-            last_error_response = self.mt5.last_error()
             error_message = (
-                f"MetaTrader5 {operation} returned {response}:"
-                f" last_error={last_error_response}"
+                f"MT5 {operation} returned {response}:"
+                f" last_error={self.mt5.last_error()}"
             ) + (f" context={context}" if context else "")
-            self.logger.error(error_message)
             raise Mt5RuntimeError(error_message)
