@@ -110,6 +110,7 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             request: Order request dictionary.
             dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
 
         Returns:
             Dictionary with operation result.

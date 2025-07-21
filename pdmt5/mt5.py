@@ -61,8 +61,7 @@ class Mt5Client(BaseModel):
             try:
                 response = func(self, *args, **kwargs)
             except Exception as e:
-                error_message = f"MT5 %s failed: {e}"
-                self.logger.exception(error_message)
+                error_message = f"MT5 {func.__name__} failed with error: {e}"
                 raise Mt5RuntimeError(error_message) from e
             else:
                 self.logger.info(
