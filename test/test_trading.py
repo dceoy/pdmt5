@@ -7,6 +7,7 @@ from collections.abc import Generator
 from types import ModuleType
 from typing import NamedTuple
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
@@ -54,6 +55,8 @@ def mock_mt5_import(
         mock_mt5.order_check = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.order_send = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.order_calc_margin = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.copy_rates_from_pos = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.copy_ticks_range = mocker.MagicMock()  # type: ignore[attr-defined]
 
         # Trading-specific constants
         mock_mt5.TRADE_ACTION_DEAL = 1
@@ -909,3 +912,146 @@ class TestMt5TradingClient:
 
         with pytest.raises(Mt5TradingError):
             client.calculate_minimum_order_margins("EURUSD")
+
+    def test_calculate_spread_ratio(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test calculation of spread ratio."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_spread_ratio("EURUSD")
+
+        # Expected calculation: (1.1002 - 1.1000) / (1.1002 + 1.1000) * 2
+        expected = (1.1002 - 1.1000) / (1.1002 + 1.1000) * 2
+        assert result == expected
+        mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
+
+    def test_copy_latest_rates_as_df_success(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test successful fetching of rate data as DataFrame."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock TIMEFRAME constant
+        mock_mt5_import.TIMEFRAME_M1 = 1
+
+        # Create structured array that mimics MT5 rates structure
+        rates_dtype = np.dtype([
+            ("time", "i8"),
+            ("open", "f8"),
+            ("high", "f8"),
+            ("low", "f8"),
+            ("close", "f8"),
+            ("tick_volume", "i8"),
+            ("spread", "i4"),
+            ("real_volume", "i8"),
+        ])
+
+        mock_rates_data = np.array(
+            [
+                (1234567890, 1.1000, 1.1010, 1.0990, 1.1005, 100, 2, 10000),
+            ],
+            dtype=rates_dtype,
+        )
+
+        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates_data
+
+        result = client.copy_latest_rates_as_df("EURUSD", granularity="M1", count=10)
+
+        assert result is not None
+        mock_mt5_import.copy_rates_from_pos.assert_called_once_with(
+            "EURUSD",  # symbol
+            1,  # timeframe
+            0,  # start_pos
+            10,  # count
+        )
+
+    def test_copy_latest_rates_as_df_invalid_granularity(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test fetching rate data with invalid granularity."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Ensure the attribute doesn't exist for invalid granularity
+        if hasattr(mock_mt5_import, "TIMEFRAME_INVALID"):
+            delattr(mock_mt5_import, "TIMEFRAME_INVALID")
+
+        with pytest.raises(
+            Mt5TradingError,
+            match="MetaTrader5 does not support the given granularity: INVALID",
+        ):
+            client.copy_latest_rates_as_df("EURUSD", granularity="INVALID")
+
+    def test_copy_latest_ticks_as_df(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test fetching tick data as DataFrame."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol tick info with time
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": 1234567890,
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock copy ticks flag
+        mock_mt5_import.COPY_TICKS_ALL = 1
+
+        # Create structured array that mimics MT5 ticks structure
+        ticks_dtype = np.dtype([
+            ("time", "i8"),
+            ("bid", "f8"),
+            ("ask", "f8"),
+            ("last", "f8"),
+            ("volume", "i8"),
+            ("time_msc", "i8"),
+            ("flags", "i4"),
+            ("volume_real", "f8"),
+        ])
+
+        mock_ticks_data = np.array(
+            [
+                (1234567890, 1.1000, 1.1002, 1.1001, 100, 1234567890000, 0, 100.0),
+            ],
+            dtype=ticks_dtype,
+        )
+
+        mock_mt5_import.copy_ticks_range.return_value = mock_ticks_data
+
+        result = client.copy_latest_ticks_as_df("EURUSD", seconds=60)
+
+        assert result is not None
+        # Verify the method was called
+        mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
+
+        # Verify copy_ticks_range was called with correct arguments
+        call_args = mock_mt5_import.copy_ticks_range.call_args[0]
+        assert call_args[0] == "EURUSD"  # symbol
+        assert call_args[3] == 1  # flags (COPY_TICKS_ALL)
+
+        # Verify result has the expected structure
+        assert len(result) == 1
+        # time_msc is likely the index, not a column
+        assert "bid" in result.columns
+        assert "ask" in result.columns
+        assert "last" in result.columns
+        assert "volume" in result.columns
