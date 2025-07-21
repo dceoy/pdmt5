@@ -49,9 +49,11 @@ def mock_mt5_import(
         mock_mt5.terminal_info = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.symbols_get = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.symbol_info = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.symbol_info_tick = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.positions_get = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.order_check = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.order_send = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.order_calc_margin = mocker.MagicMock()  # type: ignore[attr-defined]
 
         # Trading-specific constants
         mock_mt5.TRADE_ACTION_DEAL = 1
@@ -608,3 +610,139 @@ class TestMt5TradingClient:
         # Sell position should result in buy order
         call_args = mock_mt5_import.order_send.call_args[0][0]
         assert call_args["type"] == mock_mt5_import.ORDER_TYPE_BUY
+
+    def test_calculate_minimum_order_margins_success(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test successful calculation of minimum order margins."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return successful results
+        mock_mt5_import.order_calc_margin.side_effect = [100.5, 99.8]
+
+        result = client.calculate_minimum_order_margins("EURUSD")
+
+        assert result == {"ask": 100.5, "bid": 99.8}
+        assert mock_mt5_import.order_calc_margin.call_count == 2
+
+        # Verify first call (buy order)
+        first_call = mock_mt5_import.order_calc_margin.call_args_list[0]
+        assert first_call[1]["action"] == mock_mt5_import.ORDER_TYPE_BUY
+        assert first_call[1]["symbol"] == "EURUSD"
+        assert first_call[1]["volume"] == 0.01
+        assert first_call[1]["price"] == 1.1000
+
+        # Verify second call (sell order)
+        second_call = mock_mt5_import.order_calc_margin.call_args_list[1]
+        assert second_call[1]["action"] == mock_mt5_import.ORDER_TYPE_SELL
+        assert second_call[1]["symbol"] == "EURUSD"
+        assert second_call[1]["volume"] == 0.01
+        assert second_call[1]["price"] == 1.0998
+
+    def test_calculate_minimum_order_margins_failure_ask(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test failed calculation of minimum order margins - ask margin fails."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return None for ask margin
+        mock_mt5_import.order_calc_margin.side_effect = [None, 99.8]
+
+        with pytest.raises(Mt5TradingError) as exc_info:
+            client.calculate_minimum_order_margins("EURUSD")
+
+        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
+            exc_info.value
+        )
+
+    def test_calculate_minimum_order_margins_failure_bid(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test failed calculation of minimum order margins - bid margin fails."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return None for bid margin
+        mock_mt5_import.order_calc_margin.side_effect = [100.5, None]
+
+        with pytest.raises(Mt5TradingError) as exc_info:
+            client.calculate_minimum_order_margins("EURUSD")
+
+        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
+            exc_info.value
+        )
+
+    def test_calculate_minimum_order_margins_failure_both(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test failed calculation of minimum order margins - both margins fail."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return None for both margins
+        mock_mt5_import.order_calc_margin.side_effect = [None, None]
+
+        with pytest.raises(Mt5TradingError) as exc_info:
+            client.calculate_minimum_order_margins("EURUSD")
+
+        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
+            exc_info.value
+        )

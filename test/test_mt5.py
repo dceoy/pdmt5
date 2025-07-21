@@ -119,10 +119,12 @@ class TestMt5Client:
 
     def test_last_error(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test last_error method."""
+        mock_mt5.last_error.return_value = (1001, "Test error")
         error = client.last_error()
 
         assert error == (1001, "Test error")
-        mock_mt5.last_error.assert_called_once()
+        # last_error is called twice: once by the method, once by the decorator
+        assert mock_mt5.last_error.call_count == 2
 
     def test_initialize_if_needed_calls_initialize(
         self, client: Mt5Client, mock_mt5: Mock
@@ -211,7 +213,7 @@ class TestMt5Client:
         with pytest.raises(Mt5RuntimeError) as exc_info:
             initialized_client.symbols_get()
 
-        assert "Mt5Client operation failed: symbols_get" in str(exc_info.value)
+        assert "MT5 symbols_get returned None" in str(exc_info.value)
 
     def test_symbol_info(
         self,
@@ -645,7 +647,7 @@ class TestMt5Client:
             initialized_client.symbol_info("EURUSD")
 
         error_msg = str(exc_info.value)
-        assert "Mt5Client operation failed: symbol_info" in error_msg
+        assert "MT5 symbol_info returned None" in error_msg
 
     def test_default_mt5_import(self, mock_metatrader5_import: MockerFixture) -> None:
         """Test default MetaTrader5 module import."""

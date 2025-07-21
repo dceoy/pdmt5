@@ -478,7 +478,7 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
         pattern = (
-            r"MetaTrader5 initialization failed after 0 retries: "
+            r"MT5 initialization failed after 0 retries: "
             r"\(1, 'Connection failed'\)"
         )
         with pytest.raises(Mt5RuntimeError, match=pattern):
@@ -933,7 +933,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: order_calc_margin"
+            Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
         ):
             client.order_calc_margin(0, "EURUSD", 0.0, 1.1300)
 
@@ -949,7 +949,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: order_calc_margin"
+            Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
         ):
             client.order_calc_margin(0, "EURUSD", 0.1, 0.0)
 
@@ -964,7 +964,7 @@ class TestMt5DataClient:
         client.initialize()
         with pytest.raises(
             Mt5RuntimeError,
-            match=r"Mt5Client operation failed: order_calc_margin",
+            match=r"MT5 order_calc_margin returned None",
         ):
             client.order_calc_margin(0, "EURUSD", 0.1, 1.1300)
 
@@ -992,7 +992,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: order_calc_profit"
+            Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
         ):
             client.order_calc_profit(0, "EURUSD", 0.0, 1.1300, 1.1400)
 
@@ -1008,7 +1008,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: order_calc_profit"
+            Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
         ):
             client.order_calc_profit(0, "EURUSD", 0.1, 0.0, 1.1400)
 
@@ -1024,7 +1024,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
         with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: order_calc_profit"
+            Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
         ):
             client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 0.0)
 
@@ -1039,7 +1039,7 @@ class TestMt5DataClient:
         client.initialize()
         with pytest.raises(
             Mt5RuntimeError,
-            match=r"Mt5Client operation failed: order_calc_profit",
+            match=r"MT5 order_calc_profit returned None",
         ):
             client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 1.1400)
 
@@ -1126,9 +1126,7 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: symbol_select"
-        ):
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 symbol_select returned None"):
             client.symbol_select("EURUSD")
 
     def test_market_book_add(self, mock_mt5_import: ModuleType | None) -> None:
@@ -1152,9 +1150,7 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: market_book_add"
-        ):
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 market_book_add returned None"):
             client.market_book_add("EURUSD")
 
     def test_market_book_release(self, mock_mt5_import: ModuleType | None) -> None:
@@ -1182,7 +1178,7 @@ class TestMt5DataClient:
         client.initialize()
         with pytest.raises(
             Mt5RuntimeError,
-            match=r"Mt5Client operation failed: market_book_release",
+            match=r"MT5 market_book_release returned None",
         ):
             client.market_book_release("EURUSD")
 
@@ -1485,9 +1481,7 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"Mt5Client operation failed: market_book_get"
-        ):
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 market_book_get returned None"):
             client.market_book_get("EURUSD")
 
     def test_shutdown_when_not_initialized(
@@ -1913,7 +1907,7 @@ class TestMt5DataClientRetryLogic:
         with pytest.raises(Mt5RuntimeError) as exc_info:
             client.initialize_mt5()
 
-        assert "MetaTrader5 initialization failed after" in str(exc_info.value)
+        assert "MT5 initialization failed after" in str(exc_info.value)
         assert mock_mt5_import.initialize.call_count == 3  # All attempts made
         # Check that sleep was called for retries
         assert mock_sleep.call_count == 2

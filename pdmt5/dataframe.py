@@ -86,16 +86,16 @@ class Mt5DataClient(Mt5Client):
         for i in range(1 + max(0, self.retry_count)):
             if i:
                 self.logger.warning(
-                    "Retrying MetaTrader5 initialization (%d/%d)...",
+                    "Retrying MT5 initialization (%d/%d)...",
                     i,
                     self.retry_count,
                 )
                 time.sleep(i)
             if self.initialize(**initialize_kwargs):  # type: ignore[reportArgumentType]
-                self.logger.info("MetaTrader5 initialization successful.")
+                self.logger.info("MT5 initialization successful.")
                 return
         error_message = (
-            f"MetaTrader5 initialization failed after {self.retry_count} retries:"
+            f"MT5 initialization failed after {self.retry_count} retries:"
             f" {self.last_error()}"
         )
         raise Mt5RuntimeError(error_message)
