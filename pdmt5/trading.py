@@ -275,3 +275,36 @@ class Mt5TradingClient(Mt5DataClient):
             flags=self.mt5.COPY_TICKS_ALL,
             index_keys=index_keys,
         )
+
+    def collect_entry_deals_as_df(
+        self,
+        symbol: str,
+        history_seconds: int = 3600,
+        index_keys: str | None = "ticket",
+    ) -> pd.DataFrame:
+        """Collect entry deals as a DataFrame.
+
+        Args:
+            symbol: Symbol to collect entry deals for.
+            history_seconds: Time range in seconds to fetch deals around the last tick.
+            index_keys: Optional index keys for the DataFrame.
+
+        Returns:
+            pd.DataFrame: Entry deals with time index.
+        """
+        last_tick_time = self.symbol_info_tick_as_dict(symbol=symbol)["time"]
+        deals_df = self.history_deals_get_as_df(
+            date_from=(last_tick_time - timedelta(seconds=history_seconds)),
+            date_to=(last_tick_time + timedelta(seconds=history_seconds)),
+            symbol=symbol,
+            index_keys=index_keys,
+        )
+        if deals_df.empty:
+            return deals_df
+        else:
+            return deals_df.pipe(
+                lambda d: d[
+                    d["entry"]
+                    & d["type"].isin({self.mt5.DEAL_TYPE_BUY, self.mt5.DEAL_TYPE_SELL})
+                ]
+            )
