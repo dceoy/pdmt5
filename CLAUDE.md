@@ -113,7 +113,7 @@ Uses MkDocs with Material theme for API documentation built from Google-style do
 
 ## Web Search Instructions
 
-For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tools (WebFetch or WebSearch).
+For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tools (WebFetch and WebSearch).
 Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
 
 ### Usage

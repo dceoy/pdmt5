@@ -729,8 +729,8 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return None for both margins
-        mock_mt5_import.order_calc_margin.side_effect = [None, None]
+        # Mock order_calc_margin to return 0.0 for both margins (indicates failure)
+        mock_mt5_import.order_calc_margin.side_effect = [0.0, 0.0]
 
-        with pytest.raises(Mt5RuntimeError):
+        with pytest.raises(Mt5TradingError):
             client.calculate_minimum_order_margins("EURUSD")
