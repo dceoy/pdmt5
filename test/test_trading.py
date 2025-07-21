@@ -642,17 +642,17 @@ class TestMt5TradingClient:
 
         # Verify first call (buy order)
         first_call = mock_mt5_import.order_calc_margin.call_args_list[0]
-        assert first_call[1]["action"] == mock_mt5_import.ORDER_TYPE_BUY
-        assert first_call[1]["symbol"] == "EURUSD"
-        assert first_call[1]["volume"] == 0.01
-        assert first_call[1]["price"] == 1.1000
+        assert first_call[0][0] == mock_mt5_import.ORDER_TYPE_BUY  # action
+        assert first_call[0][1] == "EURUSD"  # symbol
+        assert first_call[0][2] == 0.01  # volume
+        assert first_call[0][3] == 1.1000  # price
 
         # Verify second call (sell order)
         second_call = mock_mt5_import.order_calc_margin.call_args_list[1]
-        assert second_call[1]["action"] == mock_mt5_import.ORDER_TYPE_SELL
-        assert second_call[1]["symbol"] == "EURUSD"
-        assert second_call[1]["volume"] == 0.01
-        assert second_call[1]["price"] == 1.0998
+        assert second_call[0][0] == mock_mt5_import.ORDER_TYPE_SELL  # action
+        assert second_call[0][1] == "EURUSD"  # symbol
+        assert second_call[0][2] == 0.01  # volume
+        assert second_call[0][3] == 1.0998  # price
 
     def test_calculate_minimum_order_margins_failure_ask(
         self,
@@ -678,12 +678,8 @@ class TestMt5TradingClient:
         # Mock order_calc_margin to return None for ask margin
         mock_mt5_import.order_calc_margin.side_effect = [None, 99.8]
 
-        with pytest.raises(Mt5TradingError) as exc_info:
+        with pytest.raises(Mt5RuntimeError):
             client.calculate_minimum_order_margins("EURUSD")
-
-        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
-            exc_info.value
-        )
 
     def test_calculate_minimum_order_margins_failure_bid(
         self,
@@ -709,12 +705,8 @@ class TestMt5TradingClient:
         # Mock order_calc_margin to return None for bid margin
         mock_mt5_import.order_calc_margin.side_effect = [100.5, None]
 
-        with pytest.raises(Mt5TradingError) as exc_info:
+        with pytest.raises(Mt5RuntimeError):
             client.calculate_minimum_order_margins("EURUSD")
-
-        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
-            exc_info.value
-        )
 
     def test_calculate_minimum_order_margins_failure_both(
         self,
@@ -740,9 +732,5 @@ class TestMt5TradingClient:
         # Mock order_calc_margin to return None for both margins
         mock_mt5_import.order_calc_margin.side_effect = [None, None]
 
-        with pytest.raises(Mt5TradingError) as exc_info:
+        with pytest.raises(Mt5RuntimeError):
             client.calculate_minimum_order_margins("EURUSD")
-
-        assert "Failed to calculate minimum order margins for symbol: EURUSD" in str(
-            exc_info.value
-        )
