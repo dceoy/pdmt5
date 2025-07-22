@@ -1300,3 +1300,170 @@ class TestMt5TradingClient:
 
         # Verify order_calc_margin was called twice (ask and bid)
         assert mock_mt5_import.order_calc_margin.call_count == 2
+
+    def test_calculate_new_position_margin_ratio_no_equity(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio when account has no equity."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info with zero equity
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 0.0,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="buy", new_volume=0.1
+        )
+
+        assert result == 0.0
+
+    def test_calculate_new_position_margin_ratio_buy_position(
+        self, mock_mt5_import: ModuleType, mocker: MockerFixture
+    ) -> None:
+        """Test calculating margin ratio for a new buy position."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock existing positions
+        mock_position = mocker.MagicMock()
+        mock_position._asdict.return_value = {
+            "ticket": 12345,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 0,  # POSITION_TYPE_BUY
+            "time": 1234567890,
+            "price_open": 1.2,
+            "price_current": 1.205,
+            "profit": 5.0,
+            "sl": 0.0,
+            "tp": 0.0,
+            "identifier": 12345,
+            "reason": 0,
+            "swap": 0.0,
+            "magic": 0,
+            "comment": "test",
+            "external_id": "",
+        }
+        mock_mt5_import.positions_get.return_value = [mock_position]
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock order calc margin
+        mock_mt5_import.order_calc_margin.return_value = 1000.0
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="buy", new_volume=0.1
+        )
+
+        # Should return (new_margin + current_margin) / equity
+        # current_margin = 100.0 (from position), new_margin = 1000.0
+        expected_ratio = abs((1000.0 + 100.0) / 10000.0)
+        assert result == expected_ratio
+
+    def test_calculate_new_position_margin_ratio_sell_position(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio for a new sell position."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock order calc margin
+        mock_mt5_import.order_calc_margin.return_value = 1000.0
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="sell", new_volume=0.1
+        )
+
+        # Should return abs(-new_margin / equity) for sell
+        expected_ratio = abs(-1000.0 / 10000.0)
+        assert result == expected_ratio
+
+    def test_calculate_new_position_margin_ratio_zero_volume(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio with zero volume."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="buy", new_volume=0
+        )
+
+        # Should return 0 since new_volume is 0
+        assert result == 0.0
+
+    def test_calculate_new_position_margin_ratio_invalid_side(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio with invalid side."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side=None, new_volume=0.1
+        )
+
+        # Should return 0 since side is invalid
+        assert result == 0.0

@@ -369,3 +369,50 @@ class Mt5TradingClient(Mt5DataClient):
                 )
                 .drop(columns=["buy_i", "sell_i", "sign", "underlier_increase_ratio"])
             )
+
+    def calculate_new_position_margin_ratio(
+        self,
+        symbol: str,
+        new_side: Literal["buy", "sell"] | None = None,
+        new_volume: float = 0,
+    ) -> float:
+        """Calculate the margin ratio for a new position.
+
+        Args:
+            symbol: Symbol for which to calculate the margin ratio.
+            new_side: Side of the new position, either "buy" or "sell".
+            new_volume: Volume of the new position.
+
+        Returns:
+            float: Margin ratio for the new position as a fraction of account equity.
+        """
+        account_info = self.account_info_as_dict()
+        if not account_info["equity"]:
+            return 0.0
+        else:
+            positions_df = self.fetch_positions_with_metrics_as_df(symbol=symbol)
+            current_signed_margin = (
+                positions_df["signed_margin"].sum() if positions_df.size else 0
+            )
+            symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+            if new_volume == 0:
+                new_signed_margin = 0
+            elif new_side == "buy":
+                new_signed_margin = self.order_calc_margin(
+                    action=self.mt5.ORDER_TYPE_BUY,
+                    symbol=symbol,
+                    volume=new_volume,
+                    price=symbol_info_tick["ask"],
+                )
+            elif new_side == "sell":
+                new_signed_margin = -self.order_calc_margin(
+                    action=self.mt5.ORDER_TYPE_SELL,
+                    symbol=symbol,
+                    volume=new_volume,
+                    price=symbol_info_tick["bid"],
+                )
+            else:
+                new_signed_margin = 0
+            return abs(
+                (new_signed_margin + current_signed_margin) / account_info["equity"]
+            )
