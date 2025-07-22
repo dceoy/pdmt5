@@ -214,7 +214,7 @@ class Mt5TradingClient(Mt5DataClient):
             * 2
         )
 
-    def copy_latest_rates_as_df(
+    def fetch_latest_rates_as_df(
         self,
         symbol: str,
         granularity: str = "M1",
@@ -251,7 +251,7 @@ class Mt5TradingClient(Mt5DataClient):
                 index_keys=index_keys,
             )
 
-    def copy_latest_ticks_as_df(
+    def fetch_latest_ticks_as_df(
         self,
         symbol: str,
         seconds: int = 300,
@@ -275,3 +275,97 @@ class Mt5TradingClient(Mt5DataClient):
             flags=self.mt5.COPY_TICKS_ALL,
             index_keys=index_keys,
         )
+
+    def collect_entry_deals_as_df(
+        self,
+        symbol: str,
+        history_seconds: int = 3600,
+        index_keys: str | None = "ticket",
+    ) -> pd.DataFrame:
+        """Collect entry deals as a DataFrame.
+
+        Args:
+            symbol: Symbol to collect entry deals for.
+            history_seconds: Time range in seconds to fetch deals around the last tick.
+            index_keys: Optional index keys for the DataFrame.
+
+        Returns:
+            pd.DataFrame: Entry deals with time index.
+        """
+        last_tick_time = self.symbol_info_tick_as_dict(symbol=symbol)["time"]
+        deals_df = self.history_deals_get_as_df(
+            date_from=(last_tick_time - timedelta(seconds=history_seconds)),
+            date_to=(last_tick_time + timedelta(seconds=history_seconds)),
+            symbol=symbol,
+            index_keys=index_keys,
+        )
+        if deals_df.empty:
+            return deals_df
+        else:
+            return deals_df.pipe(
+                lambda d: d[
+                    d["entry"]
+                    & d["type"].isin({self.mt5.DEAL_TYPE_BUY, self.mt5.DEAL_TYPE_SELL})
+                ]
+            )
+
+    def fetch_positions_with_metrics_as_df(
+        self,
+        symbol: str,
+    ) -> pd.DataFrame:
+        """Fetch open positions as a DataFrame with additional metrics.
+
+        Args:
+            symbol: Symbol to fetch positions for.
+
+        Returns:
+            pd.DataFrame: DataFrame containing open positions with additional metrics.
+        """
+        positions_df = self.positions_get_as_df(symbol=symbol)
+        if positions_df.empty:
+            return positions_df
+        else:
+            symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+            ask_margin = self.order_calc_margin(
+                action=self.mt5.ORDER_TYPE_BUY,
+                symbol=symbol,
+                volume=1,
+                price=symbol_info_tick["ask"],
+            )
+            bid_margin = self.order_calc_margin(
+                action=self.mt5.ORDER_TYPE_SELL,
+                symbol=symbol,
+                volume=1,
+                price=symbol_info_tick["bid"],
+            )
+            return (
+                positions_df.assign(
+                    elapsed_seconds=lambda d: (
+                        symbol_info_tick["time"] - d["time"]
+                    ).dt.total_seconds(),
+                    underlier_increase_ratio=lambda d: (
+                        d["price_current"] / d["price_open"] - 1
+                    ),
+                    buy=lambda d: (d["type"] == self.mt5.POSITION_TYPE_BUY),
+                    sell=lambda d: (d["type"] == self.mt5.POSITION_TYPE_SELL),
+                )
+                .assign(
+                    buy_i=lambda d: d["buy"].astype(int),
+                    sell_i=lambda d: d["sell"].astype(int),
+                )
+                .assign(
+                    sign=lambda d: (d["buy_i"] - d["sell_i"]),
+                    margin=lambda d: (
+                        (d["buy_i"] * ask_margin + d["sell_i"] * bid_margin)
+                        * d["volume"]
+                    ),
+                )
+                .assign(
+                    signed_volume=lambda d: (d["volume"] * d["sign"]),
+                    signed_margin=lambda d: (d["margin"] * d["sign"]),
+                    underlier_profit_ratio=lambda d: (
+                        d["underlier_increase_ratio"] * d["sign"]
+                    ),
+                )
+                .drop(columns=["buy_i", "sell_i", "sign", "underlier_increase_ratio"])
+            )

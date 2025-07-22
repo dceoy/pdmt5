@@ -8,6 +8,7 @@ from types import ModuleType
 from typing import NamedTuple
 
 import numpy as np
+import pandas as pd
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
@@ -57,6 +58,7 @@ def mock_mt5_import(
         mock_mt5.order_calc_margin = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.copy_rates_from_pos = mocker.MagicMock()  # type: ignore[attr-defined]
         mock_mt5.copy_ticks_range = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5.history_deals_get = mocker.MagicMock()  # type: ignore[attr-defined]
 
         # Trading-specific constants
         mock_mt5.TRADE_ACTION_DEAL = 1
@@ -72,6 +74,8 @@ def mock_mt5_import(
         mock_mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
         mock_mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
         mock_mt5.RES_S_OK = 1
+        mock_mt5.DEAL_TYPE_BUY = 0
+        mock_mt5.DEAL_TYPE_SELL = 1
 
         yield mock_mt5
 
@@ -95,6 +99,15 @@ class MockPositionInfo(NamedTuple):
     magic: int
     comment: str
     external_id: str
+
+
+class MockDealInfo(NamedTuple):
+    """Mock deal info structure."""
+
+    ticket: int
+    type: int
+    entry: bool
+    time: int
 
 
 @pytest.fixture
@@ -935,7 +948,7 @@ class TestMt5TradingClient:
         assert result == expected
         mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
 
-    def test_copy_latest_rates_as_df_success(
+    def test_fetch_latest_rates_as_df_success(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
@@ -968,7 +981,7 @@ class TestMt5TradingClient:
 
         mock_mt5_import.copy_rates_from_pos.return_value = mock_rates_data
 
-        result = client.copy_latest_rates_as_df("EURUSD", granularity="M1", count=10)
+        result = client.fetch_latest_rates_as_df("EURUSD", granularity="M1", count=10)
 
         assert result is not None
         mock_mt5_import.copy_rates_from_pos.assert_called_once_with(
@@ -978,7 +991,7 @@ class TestMt5TradingClient:
             10,  # count
         )
 
-    def test_copy_latest_rates_as_df_invalid_granularity(
+    def test_fetch_latest_rates_as_df_invalid_granularity(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
@@ -995,9 +1008,9 @@ class TestMt5TradingClient:
             Mt5TradingError,
             match="MetaTrader5 does not support the given granularity: INVALID",
         ):
-            client.copy_latest_rates_as_df("EURUSD", granularity="INVALID")
+            client.fetch_latest_rates_as_df("EURUSD", granularity="INVALID")
 
-    def test_copy_latest_ticks_as_df(
+    def test_fetch_latest_ticks_as_df(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
@@ -1037,7 +1050,7 @@ class TestMt5TradingClient:
 
         mock_mt5_import.copy_ticks_range.return_value = mock_ticks_data
 
-        result = client.copy_latest_ticks_as_df("EURUSD", seconds=60)
+        result = client.fetch_latest_ticks_as_df("EURUSD", seconds=60)
 
         assert result is not None
         # Verify the method was called
@@ -1055,3 +1068,235 @@ class TestMt5TradingClient:
         assert "ask" in result.columns
         assert "last" in result.columns
         assert "volume" in result.columns
+
+    def test_collect_entry_deals_as_df(self, mock_mt5_import: ModuleType) -> None:
+        """Test collecting entry deals as DataFrame."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": 1234567890,
+        }
+
+        # Create mock deal objects
+        mock_deals = [
+            # BUY, entry
+            MockDealInfo(ticket=1001, type=0, entry=True, time=1234567890),
+            # SELL, entry
+            MockDealInfo(ticket=1002, type=1, entry=True, time=1234567891),
+            # other type, entry
+            MockDealInfo(ticket=1003, type=2, entry=True, time=1234567892),
+            # BUY, not entry
+            MockDealInfo(ticket=1004, type=0, entry=False, time=1234567893),
+            # SELL, entry
+            MockDealInfo(ticket=1005, type=1, entry=True, time=1234567894),
+        ]
+
+        # Mock history_deals_get to return the mock deals
+        mock_mt5_import.history_deals_get.return_value = mock_deals
+
+        result = client.collect_entry_deals_as_df("EURUSD", history_seconds=3600)
+
+        # Verify symbol_info_tick was called
+        mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
+
+        # Verify history_deals_get was called with correct parameters
+        mock_mt5_import.history_deals_get.assert_called_once()
+        call_args = mock_mt5_import.history_deals_get.call_args
+        # Check positional args (date_from, date_to)
+        assert len(call_args[0]) == 2
+        date_from, date_to = call_args[0]
+        # Compare timestamps to avoid timezone issues
+        if isinstance(date_from, pd.Timestamp):
+            date_from_ts = date_from.timestamp()
+        else:
+            date_from_ts = date_from.timestamp()
+        if isinstance(date_to, pd.Timestamp):
+            date_to_ts = date_to.timestamp()
+        else:
+            date_to_ts = date_to.timestamp()
+
+        expected_from_ts = 1234567890 - 3600
+        expected_to_ts = 1234567890 + 3600
+        assert abs(date_from_ts - expected_from_ts) < 1  # Allow 1 second tolerance
+        assert abs(date_to_ts - expected_to_ts) < 1  # Allow 1 second tolerance
+        # Check group parameter
+        assert call_args[1]["group"] == "*EURUSD*"
+
+        # Verify filtered results - should only have entry deals with BUY/SELL types
+        assert len(result) == 3  # tickets 1001, 1002, 1005
+        assert 1001 in result.index  # entry=True, type=BUY
+        assert 1002 in result.index  # entry=True, type=SELL
+        assert 1003 not in result.index  # entry=True but type=2 (not BUY/SELL)
+        assert 1004 not in result.index  # entry=False
+        assert 1005 in result.index  # entry=True, type=SELL
+
+    def test_collect_entry_deals_as_df_custom_parameters(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test collecting entry deals with custom parameters."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": 1234567890,
+        }
+
+        # Mock empty deals
+        mock_mt5_import.history_deals_get.return_value = []
+
+        result = client.collect_entry_deals_as_df(
+            "GBPUSD", history_seconds=7200, index_keys="time"
+        )
+
+        # Verify parameters were passed through
+        mock_mt5_import.history_deals_get.assert_called_once()
+        call_args = mock_mt5_import.history_deals_get.call_args
+        # Check positional args
+        date_from, date_to = call_args[0]
+
+        # Compare timestamps to avoid timezone issues
+        if isinstance(date_from, pd.Timestamp):
+            date_from_ts = date_from.timestamp()
+        else:
+            date_from_ts = date_from.timestamp()
+        if isinstance(date_to, pd.Timestamp):
+            date_to_ts = date_to.timestamp()
+        else:
+            date_to_ts = date_to.timestamp()
+
+        expected_from_ts = 1234567890 - 7200
+        expected_to_ts = 1234567890 + 7200
+        assert abs(date_from_ts - expected_from_ts) < 1  # Allow 1 second tolerance
+        assert abs(date_to_ts - expected_to_ts) < 1  # Allow 1 second tolerance
+        # Check group parameter
+        assert call_args[1]["group"] == "*GBPUSD*"
+
+        # Result should be empty DataFrame
+        assert len(result) == 0
+
+    def test_collect_entry_deals_as_df_no_index(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test collecting entry deals without index."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": 1234567890,
+        }
+
+        # Create mock deal objects
+        mock_deals = [
+            # BUY, entry
+            MockDealInfo(ticket=1001, type=0, entry=True, time=1234567890),
+            # SELL, entry
+            MockDealInfo(ticket=1002, type=1, entry=True, time=1234567891),
+        ]
+
+        # Mock history_deals_get to return the mock deals
+        mock_mt5_import.history_deals_get.return_value = mock_deals
+
+        result = client.collect_entry_deals_as_df(
+            "USDJPY", history_seconds=1800, index_keys=None
+        )
+
+        # Verify results
+        assert len(result) == 2
+        # When index_keys is None, result should not have ticket as index
+        assert result.index.name is None
+        # Check that both deals are in the result
+        assert 1001 in result["ticket"].to_numpy()
+        assert 1002 in result["ticket"].to_numpy()
+
+    def test_fetch_positions_with_metrics_as_df_empty(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test fetching positions with metrics when no positions exist."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        result = client.fetch_positions_with_metrics_as_df("EURUSD")
+
+        # Should return empty DataFrame
+        assert result.empty
+        assert isinstance(result, pd.DataFrame)
+
+    def test_fetch_positions_with_metrics_as_df_with_positions(
+        self,
+        mock_mt5_import: ModuleType,
+        mock_position_buy: MockPositionInfo,  # noqa: ARG002
+        mocker: MockerFixture,
+    ) -> None:
+        """Test fetching positions with metrics when positions exist."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Create a mock position that returns the right data when converted
+        mock_position = mocker.MagicMock()
+        mock_position._asdict.return_value = {
+            "ticket": 12345,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 0,  # POSITION_TYPE_BUY
+            "time": 1234567890,  # This will be converted by decorator
+            "price_open": 1.2,
+            "price_current": 1.205,
+            "profit": 5.0,
+            "sl": 0.0,
+            "tp": 0.0,
+            "identifier": 12345,
+            "reason": 0,
+            "swap": 0.0,
+            "magic": 0,
+            "comment": "test",
+            "external_id": "",
+        }
+        mock_mt5_import.positions_get.return_value = [mock_position]
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp(
+                "2009-02-14 00:31:30"
+            ),  # tz-naive to match decorated positions
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock order calc margin
+        mock_mt5_import.order_calc_margin.return_value = 1000.0
+
+        result = client.fetch_positions_with_metrics_as_df("EURUSD")
+
+        # Verify DataFrame is not empty and has expected columns
+        assert not result.empty
+        assert isinstance(result, pd.DataFrame)
+        assert "elapsed_seconds" in result.columns
+        assert "underlier_profit_ratio" in result.columns
+        assert "buy" in result.columns
+        assert "sell" in result.columns
+        assert "margin" in result.columns
+        assert "signed_volume" in result.columns
+        assert "signed_margin" in result.columns
+
+        # Verify calculations
+        row = result.iloc[0]
+        assert row["buy"]  # mock_position_buy has type=0 (BUY)
+        assert not row["sell"]
+        assert row["margin"] == 100.0  # 0.1 volume * 1000 margin
+        assert row["signed_volume"] == 0.1  # buy position has positive volume
+        assert row["signed_margin"] == 100.0  # buy position has positive margin
+
+        # Verify order_calc_margin was called twice (ask and bid)
+        assert mock_mt5_import.order_calc_margin.call_count == 2
