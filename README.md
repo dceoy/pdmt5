@@ -85,7 +85,7 @@ with Mt5DataClient(config=config) as client:
 
 The base client wrapper for all MetaTrader5 operations with context manager support:
 
-- **Connection Management**: 
+- **Connection Management**:
   - `initialize()` - Establish connection with MT5 terminal (with optional path, login, password, server, timeout)
   - `login()` - Connect to trading account with credentials
   - `shutdown()` - Close MT5 terminal connection
@@ -131,7 +131,7 @@ The base client wrapper for all MetaTrader5 operations with context manager supp
 
 Extends Mt5Client with pandas DataFrame and dictionary conversions:
 
-- **Enhanced Connection**: 
+- **Enhanced Connection**:
   - `initialize_and_login_mt5()` - Combined initialization and login with retry logic
   - Configurable retry attempts via `retry_count` parameter
 - **DataFrame/Dictionary Conversions**: All methods have both `_as_df` and `_as_dict` variants:
@@ -177,9 +177,10 @@ Advanced trading operations client that extends Mt5DataClient:
   - `calculate_minimum_order_margins()` - Calculate minimum required margins for buy/sell orders
   - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
 - **Simplified Data Access**:
-  - `copy_latest_rates_as_df()` - Get recent OHLC data with timeframe strings (e.g., "M1", "H1", "D1")
-  - `copy_latest_ticks_as_df()` - Get tick data for specified seconds around last tick
+  - `fetch_latest_rates_as_df()` - Get recent OHLC data with timeframe strings (e.g., "M1", "H1", "D1")
+  - `fetch_latest_ticks_as_df()` - Get tick data for specified seconds around last tick
   - `collect_entry_deals_as_df()` - Filter and collect entry deals (BUY/SELL) from history
+  - `fetch_positions_with_metrics_as_df()` - Get open positions with calculated metrics (elapsed time, margin, profit ratios)
 - **Features**:
   - Smart order routing with configurable filling modes
   - Comprehensive error handling with `Mt5TradingError`
@@ -292,7 +293,7 @@ with Mt5TradingClient(config=config) as trader:
     print(f"Minimum bid margin: {margins['bid']}")
 
     # Get recent OHLC data with custom timeframe
-    rates_df = trader.copy_latest_rates_as_df(
+    rates_df = trader.fetch_latest_rates_as_df(
         symbol="EURUSD",
         granularity="M15",  # 15-minute bars
         count=100
@@ -300,7 +301,7 @@ with Mt5TradingClient(config=config) as trader:
     print(rates_df.tail())
 
     # Get tick data for the last 60 seconds
-    ticks_df = trader.copy_latest_ticks_as_df(
+    ticks_df = trader.fetch_latest_ticks_as_df(
         symbol="EURUSD",
         seconds=60
     )
@@ -314,6 +315,12 @@ with Mt5TradingClient(config=config) as trader:
     if not deals_df.empty:
         print(f"Found {len(deals_df)} entry deals")
         print(deals_df[['time', 'type', 'volume', 'price']].head())
+
+    # Get positions with calculated metrics
+    positions_df = trader.fetch_positions_with_metrics_as_df("EURUSD")
+    if not positions_df.empty:
+        print(f"Open positions with metrics:")
+        print(positions_df[['ticket', 'volume', 'profit', 'elapsed_seconds', 'underlier_profit_ratio']].head())
 ```
 
 ## Development
