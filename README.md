@@ -6,7 +6,6 @@ Pandas-based data handler for MetaTrader 5
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
-[![Version](https://img.shields.io/badge/version-0.1.4-green.svg)](https://github.com/dceoy/pdmt5)
 
 ## Overview
 
