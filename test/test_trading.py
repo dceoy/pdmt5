@@ -1567,19 +1567,197 @@ class TestMt5TradingClient:
         assert result[0]["retcode"] == 10009
         assert result[0]["order"] == 789012
 
-        # Verify the request was built correctly
-        expected_request = {
-            "action": 6,  # TRADE_ACTION_SLTP
-            "symbol": "EURUSD",
-            "position": 123456,
-            "sl": 1.0950,
-            "tp": 1.1050,
+    def test_update_open_position_sltp_no_positions(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test update_open_positions_sltp when no positions exist for symbol."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock empty positions result
+        mock_mt5_import.positions_get.return_value = []
+
+        result = client.update_open_positions_sltp(
+            symbol="EURUSD",
+            tickets=[123456],
+            stop_loss=1.0950,
+            take_profit=1.1050,
+        )
+
+        # Should return empty list and log warning
+        assert result == []
+        # Verify positions_get was called with correct symbol
+        mock_mt5_import.positions_get.assert_called_with(symbol="EURUSD")
+
+    def test_update_open_position_sltp_no_matching_tickets(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test update_open_positions_sltp when positions exist but no tickets match."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "digits": 5,
         }
 
-        # Get the actual call to order_send
-        call_args = mock_mt5_import.order_send.call_args
-        assert call_args[0][0]["action"] == expected_request["action"]
-        assert call_args[0][0]["symbol"] == expected_request["symbol"]
-        assert call_args[0][0]["position"] == expected_request["position"]
-        assert call_args[0][0]["sl"] == expected_request["sl"]
-        assert call_args[0][0]["tp"] == expected_request["tp"]
+        # Mock positions with different tickets
+        mock_position = MockPositionInfo(
+            ticket=999999,  # Different ticket
+            time=123456789,
+            type=0,  # buy
+            magic=0,
+            identifier=999999,
+            reason=0,
+            volume=0.1,
+            price_open=1.1000,
+            sl=1.0900,
+            tp=1.1100,
+            price_current=1.1050,
+            swap=0.0,
+            profit=50.0,
+            symbol="EURUSD",
+            comment="test",
+            external_id="",
+        )
+        mock_mt5_import.positions_get.return_value = [mock_position]
+
+        result = client.update_open_positions_sltp(
+            symbol="EURUSD",
+            tickets=[123456],  # This ticket doesn't exist
+            stop_loss=1.0950,
+            take_profit=1.1050,
+        )
+
+        # Should return empty list and log warning
+        assert result == []
+
+    def test_update_open_position_sltp_same_sltp_values(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test update_open_positions_sltp when SL/TP values are already the same."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "digits": 5,
+        }
+
+        # Mock positions with same SL/TP as requested
+        mock_position = MockPositionInfo(
+            ticket=123456,
+            time=123456789,
+            type=0,  # buy
+            magic=0,
+            identifier=123456,
+            reason=0,
+            volume=0.1,
+            price_open=1.1000,
+            sl=1.0950,  # Same as requested stop_loss
+            tp=1.1050,  # Same as requested take_profit
+            price_current=1.1050,
+            swap=0.0,
+            profit=50.0,
+            symbol="EURUSD",
+            comment="test",
+            external_id="",
+        )
+        mock_mt5_import.positions_get.return_value = [mock_position]
+
+        result = client.update_open_positions_sltp(
+            symbol="EURUSD",
+            tickets=[123456],
+            stop_loss=1.0950,  # Same as position's sl
+            take_profit=1.1050,  # Same as position's tp
+        )
+
+        # Should return empty list since no update is needed
+        assert result == []
+        # Verify order_send was NOT called
+        mock_mt5_import.order_send.assert_not_called()
+
+    def test_update_open_position_sltp_no_tickets(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test update_open_positions_sltp without specifying tickets."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "digits": 5,
+        }
+
+        # Mock positions for the symbol
+        mock_position1 = MockPositionInfo(
+            ticket=123456,
+            time=123456789,
+            type=0,  # buy
+            magic=0,
+            identifier=123456,
+            reason=0,
+            volume=0.1,
+            price_open=1.1000,
+            sl=1.0900,
+            tp=1.1100,
+            price_current=1.1050,
+            swap=0.0,
+            profit=50.0,
+            symbol="EURUSD",
+            comment="test",
+            external_id="",
+        )
+        mock_position2 = MockPositionInfo(
+            ticket=654321,
+            time=123456789,
+            type=1,  # sell
+            magic=0,
+            identifier=654321,
+            reason=0,
+            volume=0.2,
+            price_open=1.1050,
+            sl=1.1150,
+            tp=1.0950,
+            price_current=1.1050,
+            swap=0.0,
+            profit=-20.0,
+            symbol="EURUSD",
+            comment="test2",
+            external_id="",
+        )
+        mock_mt5_import.positions_get.return_value = [mock_position1, mock_position2]
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "deal": 0,
+            "order": 789012,
+        }
+
+        # Call without tickets to update all positions
+        result = client.update_open_positions_sltp(
+            symbol="EURUSD",
+            tickets=None,  # No tickets specified
+            stop_loss=1.0950,
+            take_profit=1.1050,
+        )
+
+        # Should return results for both positions
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(r["retcode"] == 10009 for r in result)

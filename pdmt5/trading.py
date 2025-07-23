@@ -220,7 +220,6 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             List of dictionaries with operation results for each updated position.
         """
-        symbol_info = self.symbol_info_as_dict(symbol=symbol)
         positions_df = self.positions_get_as_df(symbol=symbol)
         if positions_df.empty:
             self.logger.warning("No open positions found for symbol: %s", symbol)
@@ -239,6 +238,7 @@ class Mt5TradingClient(Mt5DataClient):
             )
             return []
         else:
+            symbol_info = self.symbol_info_as_dict(symbol=symbol)
             sl = round(stop_loss, symbol_info["digits"]) if stop_loss else None
             tp = round(take_profit, symbol_info["digits"]) if take_profit else None
             order_requests = [
