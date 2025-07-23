@@ -199,6 +199,41 @@ class Mt5TradingClient(Mt5DataClient):
             dry_run=(dry_run if dry_run is not None else self.dry_run),
         )
 
+    def update_open_position_sl_and_tp(
+        self,
+        symbol: str,
+        position_ticket: int,
+        sl: float | None = None,
+        tp: float | None = None,
+        dry_run: bool | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> dict[str, Any]:
+        """Change open position Stop Loss and Take Profit.
+
+        Args:
+            symbol: Symbol for the position.
+            position_ticket: Ticket number of the open position.
+            sl: New Stop Loss price.
+            tp: New Take Profit price.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
+            **kwargs: Additional keyword arguments for request parameters.
+
+        Returns:
+            Dictionary with operation result.
+        """
+        return self.send_or_check_order(
+            request={
+                "action": self.mt5.TRADE_ACTION_SLTP,
+                "symbol": symbol,
+                "position": position_ticket,
+                "sl": sl,
+                "tp": tp,
+                **kwargs,
+            },
+            dry_run=(dry_run if dry_run is not None else self.dry_run),
+        )
+
     def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
         """Calculate minimum order margins for a given symbol.
 

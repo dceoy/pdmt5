@@ -1513,3 +1513,47 @@ class TestMt5TradingClient:
 
         # Should return 0 since side is invalid
         assert result == 0.0
+
+    def test_update_open_position_sl_and_tp(self, mock_mt5_import: ModuleType) -> None:
+        """Test update_open_position_sl_and_tp method."""
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "deal": 0,
+            "order": 789012,
+        }
+
+        result = client.update_open_position_sl_and_tp(
+            symbol="EURUSD",
+            position_ticket=123456,
+            sl=1.0950,
+            tp=1.1050,
+        )
+
+        assert result["retcode"] == 10009
+        assert result["order"] == 789012
+
+        # Verify the request was built correctly
+        expected_request = {
+            "action": 6,  # TRADE_ACTION_SLTP
+            "symbol": "EURUSD",
+            "position": 123456,
+            "sl": 1.0950,
+            "tp": 1.1050,
+        }
+
+        # Get the actual call to order_send
+        call_args = mock_mt5_import.order_send.call_args
+        assert call_args[0][0]["action"] == expected_request["action"]
+        assert call_args[0][0]["symbol"] == expected_request["symbol"]
+        assert call_args[0][0]["position"] == expected_request["position"]
+        assert call_args[0][0]["sl"] == expected_request["sl"]
+        assert call_args[0][0]["tp"] == expected_request["tp"]
