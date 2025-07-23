@@ -92,7 +92,7 @@ class Mt5TradingClient(Mt5DataClient):
                 f"ORDER_FILLING_{self.order_filling_mode}",
             )
             return [
-                self.send_or_check_order(
+                self._send_or_check_order(
                     request={
                         "action": self.mt5.TRADE_ACTION_DEAL,
                         "symbol": p["symbol"],
@@ -112,7 +112,7 @@ class Mt5TradingClient(Mt5DataClient):
                 for p in positions_dict
             ]
 
-    def send_or_check_order(
+    def _send_or_check_order(
         self,
         request: dict[str, Any],
         dry_run: bool | None = None,
@@ -158,6 +158,82 @@ class Mt5TradingClient(Mt5DataClient):
             comment = response.get("comment", "Unknown error")
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
             raise Mt5TradingError(error_message)
+
+    def place_market_order(
+        self,
+        symbol: str,
+        volume: float,
+        order_side: Literal["BUY", "SELL"],
+        order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
+        order_time_mode: Literal["GTC", "DAY", "SPECIFIED", "SPECIFIED_DAY"] = "GTC",
+        dry_run: bool | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> dict[str, Any]:
+        """Send or check an order request to place a market order.
+
+        Args:
+            symbol: Symbol for the order.
+            volume: Volume of the order.
+            order_side: Side of the order, either "BUY" or "SELL".
+            order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
+            order_time_mode: Order time mode, either "GTC", "DAY", "SPECIFIED",
+                or "SPECIFIED_DAY".
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
+            **kwargs: Additional keyword arguments for request parameters.
+
+        Returns:
+            Dictionary with operation result.
+        """
+        return self._send_or_check_order(
+            request={
+                "action": self.mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": volume,
+                "type": getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+                "type_filling": getattr(
+                    self.mt5, f"ORDER_FILLING_{order_filling_mode.upper()}"
+                ),
+                "type_time": getattr(self.mt5, f"ORDER_TIME_{order_time_mode.upper()}"),
+                **kwargs,
+            },
+            dry_run=(dry_run if dry_run is not None else self.dry_run),
+        )
+
+    def update_open_position_sltp(
+        self,
+        symbol: str,
+        position_ticket: int,
+        sl: float | None = None,
+        tp: float | None = None,
+        dry_run: bool | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> dict[str, Any]:
+        """Change open position Stop Loss and Take Profit.
+
+        Args:
+            symbol: Symbol for the position.
+            position_ticket: Ticket number of the open position.
+            sl: New Stop Loss price.
+            tp: New Take Profit price.
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
+            **kwargs: Additional keyword arguments for request parameters.
+
+        Returns:
+            Dictionary with operation result.
+        """
+        return self._send_or_check_order(
+            request={
+                "action": self.mt5.TRADE_ACTION_SLTP,
+                "symbol": symbol,
+                "position": position_ticket,
+                "sl": sl,
+                "tp": tp,
+                **kwargs,
+            },
+            dry_run=(dry_run if dry_run is not None else self.dry_run),
+        )
 
     def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
         """Calculate minimum order margins for a given symbol.
@@ -368,4 +444,51 @@ class Mt5TradingClient(Mt5DataClient):
                     ),
                 )
                 .drop(columns=["buy_i", "sell_i", "sign", "underlier_increase_ratio"])
+            )
+
+    def calculate_new_position_margin_ratio(
+        self,
+        symbol: str,
+        new_side: Literal["BUY", "SELL"] | None = None,
+        new_volume: float = 0,
+    ) -> float:
+        """Calculate the margin ratio for a new position.
+
+        Args:
+            symbol: Symbol for which to calculate the margin ratio.
+            new_side: Side of the new position, either "BUY" or "SELL".
+            new_volume: Volume of the new position.
+
+        Returns:
+            float: Margin ratio for the new position as a fraction of account equity.
+        """
+        account_info = self.account_info_as_dict()
+        if not account_info["equity"]:
+            return 0.0
+        else:
+            positions_df = self.fetch_positions_with_metrics_as_df(symbol=symbol)
+            current_signed_margin = (
+                positions_df["signed_margin"].sum() if positions_df.size else 0
+            )
+            symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
+            if new_volume == 0:
+                new_signed_margin = 0
+            elif new_side == "BUY":
+                new_signed_margin = self.order_calc_margin(
+                    action=self.mt5.ORDER_TYPE_BUY,
+                    symbol=symbol,
+                    volume=new_volume,
+                    price=symbol_info_tick["ask"],
+                )
+            elif new_side == "SELL":
+                new_signed_margin = -self.order_calc_margin(
+                    action=self.mt5.ORDER_TYPE_SELL,
+                    symbol=symbol,
+                    volume=new_volume,
+                    price=symbol_info_tick["bid"],
+                )
+            else:
+                new_signed_margin = 0
+            return abs(
+                (new_signed_margin + current_signed_margin) / account_info["equity"]
             )

@@ -456,7 +456,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in dry run mode with success."""
+        """Test _send_or_check_order in dry run mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -475,7 +475,7 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -485,7 +485,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in real mode with success."""
+        """Test _send_or_check_order in real mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -504,7 +504,7 @@ class TestMt5TradingClient:
             "result": "send_success",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
@@ -514,7 +514,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with trade disabled."""
+        """Test _send_or_check_order with trade disabled."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -533,7 +533,7 @@ class TestMt5TradingClient:
             "comment": "Trade disabled",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10017
 
@@ -541,7 +541,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with market closed."""
+        """Test _send_or_check_order with market closed."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -560,7 +560,7 @@ class TestMt5TradingClient:
             "comment": "Market closed",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10018
 
@@ -568,7 +568,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with failure."""
+        """Test _send_or_check_order with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -588,13 +588,13 @@ class TestMt5TradingClient:
         }
 
         with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed and aborted"):
-            client.send_or_check_order(request)
+            client._send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_failure(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in dry run mode with failure."""
+        """Test _send_or_check_order in dry run mode with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -616,13 +616,13 @@ class TestMt5TradingClient:
         with pytest.raises(
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
-            client.send_or_check_order(request)
+            client._send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_override(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with dry_run parameter override."""
+        """Test _send_or_check_order with dry_run parameter override."""
         # Client initialized with dry_run=False
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
@@ -643,7 +643,7 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=True
-        result = client.send_or_check_order(request, dry_run=True)
+        result = client._send_or_check_order(request, dry_run=True)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -655,7 +655,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with real mode override."""
+        """Test _send_or_check_order with real mode override."""
         # Client initialized with dry_run=True
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
@@ -676,13 +676,59 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=False
-        result = client.send_or_check_order(request, dry_run=False)
+        result = client._send_or_check_order(request, dry_run=False)
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
         # Should call order_send, not order_check
         mock_mt5_import.order_send.assert_called_once_with(request)
         mock_mt5_import.order_check.assert_not_called()
+
+    def test_place_market_order(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test place_market_order method."""
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.ORDER_TYPE_BUY = 0
+        mock_mt5_import.ORDER_FILLING_IOC = 1
+        mock_mt5_import.ORDER_TIME_GTC = 0
+        mock_mt5_import.TRADE_ACTION_DEAL = 1
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "deal": 123456,
+            "order": 789012,
+        }
+
+        result = client.place_market_order(
+            symbol="EURUSD",
+            volume=0.1,
+            order_side="BUY",
+            order_filling_mode="IOC",
+            order_time_mode="GTC",
+        )
+
+        assert result["retcode"] == 10009
+        assert result["deal"] == 123456
+        assert result["order"] == 789012
+
+        # Verify the request was built correctly
+        expected_request = {
+            "action": 1,  # TRADE_ACTION_DEAL
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 0,  # ORDER_TYPE_BUY
+            "type_filling": 1,  # ORDER_FILLING_IOC
+            "type_time": 0,  # ORDER_TIME_GTC
+        }
+        mock_mt5_import.order_send.assert_called_once_with(expected_request)
 
     def test_order_filling_mode_constants(
         self,
@@ -1300,3 +1346,214 @@ class TestMt5TradingClient:
 
         # Verify order_calc_margin was called twice (ask and bid)
         assert mock_mt5_import.order_calc_margin.call_count == 2
+
+    def test_calculate_new_position_margin_ratio_no_equity(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio when account has no equity."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info with zero equity
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 0.0,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="BUY", new_volume=0.1
+        )
+
+        assert result == 0.0
+
+    def test_calculate_new_position_margin_ratio_buy_position(
+        self, mock_mt5_import: ModuleType, mocker: MockerFixture
+    ) -> None:
+        """Test calculating margin ratio for a new buy position."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock existing positions
+        mock_position = mocker.MagicMock()
+        mock_position._asdict.return_value = {
+            "ticket": 12345,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 0,  # POSITION_TYPE_BUY
+            "time": 1234567890,
+            "price_open": 1.2,
+            "price_current": 1.205,
+            "profit": 5.0,
+            "sl": 0.0,
+            "tp": 0.0,
+            "identifier": 12345,
+            "reason": 0,
+            "swap": 0.0,
+            "magic": 0,
+            "comment": "test",
+            "external_id": "",
+        }
+        mock_mt5_import.positions_get.return_value = [mock_position]
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock order calc margin
+        mock_mt5_import.order_calc_margin.return_value = 1000.0
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="BUY", new_volume=0.1
+        )
+
+        # Should return (new_margin + current_margin) / equity
+        # current_margin = 100.0 (from position), new_margin = 1000.0
+        expected_ratio = abs((1000.0 + 100.0) / 10000.0)
+        assert result == expected_ratio
+
+    def test_calculate_new_position_margin_ratio_sell_position(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio for a new sell position."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        # Mock order calc margin
+        mock_mt5_import.order_calc_margin.return_value = 1000.0
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="SELL", new_volume=0.1
+        )
+
+        # Should return abs(-new_margin / equity) for sell
+        expected_ratio = abs(-1000.0 / 10000.0)
+        assert result == expected_ratio
+
+    def test_calculate_new_position_margin_ratio_zero_volume(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio with zero volume."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side="BUY", new_volume=0
+        )
+
+        # Should return 0 since new_volume is 0
+        assert result == 0.0
+
+    def test_calculate_new_position_margin_ratio_invalid_side(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio with invalid side."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD", new_side=None, new_volume=0.1
+        )
+
+        # Should return 0 since side is invalid
+        assert result == 0.0
+
+    def test_update_open_position_sltp(self, mock_mt5_import: ModuleType) -> None:
+        """Test update_open_position_sltp method."""
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "deal": 0,
+            "order": 789012,
+        }
+
+        result = client.update_open_position_sltp(
+            symbol="EURUSD",
+            position_ticket=123456,
+            sl=1.0950,
+            tp=1.1050,
+        )
+
+        assert result["retcode"] == 10009
+        assert result["order"] == 789012
+
+        # Verify the request was built correctly
+        expected_request = {
+            "action": 6,  # TRADE_ACTION_SLTP
+            "symbol": "EURUSD",
+            "position": 123456,
+            "sl": 1.0950,
+            "tp": 1.1050,
+        }
+
+        # Get the actual call to order_send
+        call_args = mock_mt5_import.order_send.call_args
+        assert call_args[0][0]["action"] == expected_request["action"]
+        assert call_args[0][0]["symbol"] == expected_request["symbol"]
+        assert call_args[0][0]["position"] == expected_request["position"]
+        assert call_args[0][0]["sl"] == expected_request["sl"]
+        assert call_args[0][0]["tp"] == expected_request["tp"]
