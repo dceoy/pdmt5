@@ -43,8 +43,7 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbols: Optional symbol or list of symbols to filter positions.
                 If None, all symbols will be considered.
-            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
-                `dry_run` attribute.
+            dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
@@ -73,8 +72,7 @@ class Mt5TradingClient(Mt5DataClient):
 
         Args:
             symbol: Optional symbol filter.
-            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
-                `dry_run` attribute.
+            dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
@@ -120,8 +118,7 @@ class Mt5TradingClient(Mt5DataClient):
 
         Args:
             request: Order request dictionary.
-            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
-                `dry_run` attribute.
+            dry_run: If True, only check the order without sending it.
 
         Returns:
             Dictionary with operation result.
@@ -175,8 +172,7 @@ class Mt5TradingClient(Mt5DataClient):
             order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
             order_time_mode: Order time mode, either "GTC", "DAY", "SPECIFIED",
                 or "SPECIFIED_DAY".
-            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
-                `dry_run` attribute.
+            dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
@@ -213,8 +209,8 @@ class Mt5TradingClient(Mt5DataClient):
             stop_loss: New Stop Loss price. If None, it will not be changed.
             take_profit: New Take Profit price. If None, it will not be changed.
             tickets: List of position tickets to filter positions. If None, all open
-            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
-                `dry_run` attribute.
+                positions for the symbol will be considered.
+            dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
