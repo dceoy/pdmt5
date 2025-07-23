@@ -1514,8 +1514,8 @@ class TestMt5TradingClient:
         # Should return 0 since side is invalid
         assert result == 0.0
 
-    def test_update_open_position_sl_and_tp(self, mock_mt5_import: ModuleType) -> None:
-        """Test update_open_position_sl_and_tp method."""
+    def test_update_open_position_sltp(self, mock_mt5_import: ModuleType) -> None:
+        """Test update_open_position_sltp method."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1531,7 +1531,7 @@ class TestMt5TradingClient:
             "order": 789012,
         }
 
-        result = client.update_open_position_sl_and_tp(
+        result = client.update_open_position_sltp(
             symbol="EURUSD",
             position_ticket=123456,
             sl=1.0950,

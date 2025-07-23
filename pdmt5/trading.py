@@ -199,7 +199,7 @@ class Mt5TradingClient(Mt5DataClient):
             dry_run=(dry_run if dry_run is not None else self.dry_run),
         )
 
-    def update_open_position_sl_and_tp(
+    def update_open_position_sltp(
         self,
         symbol: str,
         position_ticket: int,

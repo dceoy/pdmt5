@@ -172,8 +172,7 @@ Advanced trading operations client that extends Mt5DataClient:
 - **Position Management**:
   - `close_open_positions()` - Close all positions for specified symbol(s)
   - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
-  - `update_open_position_sl_and_tp()` - Modify stop loss and take profit levels for open positions
-  - `send_or_check_order()` - Execute or validate orders based on dry_run mode
+  - `update_open_position_sltp()` - Modify stop loss and take profit levels for open positions
 - **Market Analysis**:
   - `calculate_minimum_order_margins()` - Calculate minimum required margins for buy/sell orders
   - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
@@ -280,7 +279,7 @@ with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
     # Update stop loss and take profit for an open position
     if positions := trader.positions_get_as_df(symbol="EURUSD"):
         position_ticket = positions.iloc[0]['ticket']
-        update_result = trader.update_open_position_sl_and_tp(
+        update_result = trader.update_open_position_sltp(
             symbol="EURUSD",
             position_ticket=position_ticket,
             sl=1.0950,  # New stop loss
