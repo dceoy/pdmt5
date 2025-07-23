@@ -92,7 +92,7 @@ class Mt5TradingClient(Mt5DataClient):
                 f"ORDER_FILLING_{self.order_filling_mode}",
             )
             return [
-                self.send_or_check_order(
+                self._send_or_check_order(
                     request={
                         "action": self.mt5.TRADE_ACTION_DEAL,
                         "symbol": p["symbol"],
@@ -112,7 +112,7 @@ class Mt5TradingClient(Mt5DataClient):
                 for p in positions_dict
             ]
 
-    def send_or_check_order(
+    def _send_or_check_order(
         self,
         request: dict[str, Any],
         dry_run: bool | None = None,
@@ -184,7 +184,7 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             Dictionary with operation result.
         """
-        return self.send_or_check_order(
+        return self._send_or_check_order(
             request={
                 "action": self.mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
@@ -222,7 +222,7 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             Dictionary with operation result.
         """
-        return self.send_or_check_order(
+        return self._send_or_check_order(
             request={
                 "action": self.mt5.TRADE_ACTION_SLTP,
                 "symbol": symbol,

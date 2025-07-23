@@ -456,7 +456,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in dry run mode with success."""
+        """Test _send_or_check_order in dry run mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -475,7 +475,7 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -485,7 +485,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in real mode with success."""
+        """Test _send_or_check_order in real mode with success."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -504,7 +504,7 @@ class TestMt5TradingClient:
             "result": "send_success",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
@@ -514,7 +514,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with trade disabled."""
+        """Test _send_or_check_order with trade disabled."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -533,7 +533,7 @@ class TestMt5TradingClient:
             "comment": "Trade disabled",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10017
 
@@ -541,7 +541,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with market closed."""
+        """Test _send_or_check_order with market closed."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -560,7 +560,7 @@ class TestMt5TradingClient:
             "comment": "Market closed",
         }
 
-        result = client.send_or_check_order(request)
+        result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10018
 
@@ -568,7 +568,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with failure."""
+        """Test _send_or_check_order with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -588,13 +588,13 @@ class TestMt5TradingClient:
         }
 
         with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed and aborted"):
-            client.send_or_check_order(request)
+            client._send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_failure(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order in dry run mode with failure."""
+        """Test _send_or_check_order in dry run mode with failure."""
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -616,13 +616,13 @@ class TestMt5TradingClient:
         with pytest.raises(
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
-            client.send_or_check_order(request)
+            client._send_or_check_order(request)
 
     def test_send_or_check_order_dry_run_override(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with dry_run parameter override."""
+        """Test _send_or_check_order with dry_run parameter override."""
         # Client initialized with dry_run=False
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
         mock_mt5_import.initialize.return_value = True
@@ -643,7 +643,7 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=True
-        result = client.send_or_check_order(request, dry_run=True)
+        result = client._send_or_check_order(request, dry_run=True)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -655,7 +655,7 @@ class TestMt5TradingClient:
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test send_or_check_order with real mode override."""
+        """Test _send_or_check_order with real mode override."""
         # Client initialized with dry_run=True
         client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
         mock_mt5_import.initialize.return_value = True
@@ -676,7 +676,7 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=False
-        result = client.send_or_check_order(request, dry_run=False)
+        result = client._send_or_check_order(request, dry_run=False)
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
