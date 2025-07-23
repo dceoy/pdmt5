@@ -174,9 +174,10 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbol: Symbol for the order.
             volume: Volume of the order.
-            order_side: Side of the order, either "buy" or "sell".
+            order_side: Side of the order, either "BUY" or "SELL".
             order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
-            order_time_mode: Order time mode, either "GTC", "IOC", or "FOK".
+            order_time_mode: Order time mode, either "GTC", "DAY", "SPECIFIED",
+                or "SPECIFIED_DAY".
             dry_run: Optional flag to enable dry run mode. If None, uses the instance's
                 `dry_run` attribute.
             **kwargs: Additional keyword arguments for request parameters.
@@ -455,7 +456,7 @@ class Mt5TradingClient(Mt5DataClient):
 
         Args:
             symbol: Symbol for which to calculate the margin ratio.
-            new_side: Side of the new position, either "buy" or "sell".
+            new_side: Side of the new position, either "BUY" or "SELL".
             new_volume: Volume of the new position.
 
         Returns:
