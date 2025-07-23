@@ -31,7 +31,6 @@ class Mt5TradingClient(Mt5DataClient):
         description="Order filling mode: 'IOC' (Immediate or Cancel), "
         "'FOK' (Fill or Kill), 'RETURN' (Return if not filled)",
     )
-    dry_run: bool = Field(default=False, description="Enable dry run mode for testing.")
 
     def close_open_positions(
         self,
@@ -131,17 +130,15 @@ class Mt5TradingClient(Mt5DataClient):
             Mt5TradingError: If the order operation fails.
         """
         self.logger.debug("request: %s", request)
-        is_dry_run = dry_run if dry_run is not None else self.dry_run
-        self.logger.debug("is_dry_run: %s", is_dry_run)
-        if is_dry_run:
+        if dry_run:
             response = self.order_check_as_dict(request=request)
             order_func = "order_check"
         else:
             response = self.order_send_as_dict(request=request)
             order_func = "order_send"
         retcode = response.get("retcode")
-        if ((not is_dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
-            is_dry_run and retcode == 0
+        if ((not dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
+            dry_run and retcode == 0
         ):
             self.logger.info("response: %s", response)
             return response
@@ -197,43 +194,78 @@ class Mt5TradingClient(Mt5DataClient):
                 "type_time": getattr(self.mt5, f"ORDER_TIME_{order_time_mode.upper()}"),
                 **kwargs,
             },
-            dry_run=(dry_run if dry_run is not None else self.dry_run),
+            dry_run=dry_run,
         )
 
-    def update_open_position_sltp(
+    def update_open_positions_sltp(
         self,
         symbol: str,
-        position_ticket: int,
-        sl: float | None = None,
-        tp: float | None = None,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
+        tickets: list[int] | None = None,
         dry_run: bool | None = None,
         **kwargs: Any,  # noqa: ANN401
-    ) -> dict[str, Any]:
-        """Change open position Stop Loss and Take Profit.
+    ) -> list[dict[str, Any]]:
+        """Change Stop Loss and Take Profit for open positions.
 
         Args:
             symbol: Symbol for the position.
-            position_ticket: Ticket number of the open position.
-            sl: New Stop Loss price.
-            tp: New Take Profit price.
+            stop_loss: New Stop Loss price. If None, it will not be changed.
+            take_profit: New Take Profit price. If None, it will not be changed.
+            tickets: List of position tickets to filter positions. If None, all open
             dry_run: Optional flag to enable dry run mode. If None, uses the instance's
                 `dry_run` attribute.
             **kwargs: Additional keyword arguments for request parameters.
 
         Returns:
-            Dictionary with operation result.
+            List of dictionaries with operation results for each updated position.
         """
-        return self._send_or_check_order(
-            request={
-                "action": self.mt5.TRADE_ACTION_SLTP,
-                "symbol": symbol,
-                "position": position_ticket,
-                "sl": sl,
-                "tp": tp,
-                **kwargs,
-            },
-            dry_run=(dry_run if dry_run is not None else self.dry_run),
-        )
+        symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        positions_df = self.positions_get_as_df(symbol=symbol)
+        if positions_df.empty:
+            self.logger.warning("No open positions found for symbol: %s", symbol)
+            return []
+        elif tickets:
+            filtered_positions_df = positions_df.pipe(
+                lambda d: d[d["ticket"].isin(tickets)]
+            )
+        else:
+            filtered_positions_df = positions_df
+        if filtered_positions_df.empty:
+            self.logger.warning(
+                "No open positions found for symbol: %s with specified tickets: %s",
+                symbol,
+                tickets,
+            )
+            return []
+        else:
+            sl = round(stop_loss, symbol_info["digits"]) if stop_loss else None
+            tp = round(take_profit, symbol_info["digits"]) if take_profit else None
+            order_requests = [
+                {
+                    "action": self.mt5.TRADE_ACTION_SLTP,
+                    "symbol": p["symbol"],
+                    "position": p["ticket"],
+                    "sl": (sl or p["sl"]),
+                    "tp": (tp or p["tp"]),
+                    **kwargs,
+                }
+                for _, p in filtered_positions_df.iterrows()
+                if sl != p["sl"] or tp != p["tp"]
+            ]
+            if order_requests:
+                return [
+                    self._send_or_check_order(request=r, dry_run=dry_run)
+                    for r in order_requests
+                ]
+            else:
+                self.logger.info(
+                    "No positions to update for symbol: %s with SL: %s and TP: %s",
+                    symbol,
+                    sl,
+                    tp,
+                )
+                return []
 
     def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
         """Calculate minimum order margins for a given symbol.

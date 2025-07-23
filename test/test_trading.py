@@ -183,17 +183,14 @@ class TestMt5TradingClient:
         """Test client initialization with default parameters."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         assert client.order_filling_mode == "IOC"
-        assert client.dry_run is False
 
     def test_client_initialization_custom(self, mock_mt5_import: ModuleType) -> None:
         """Test client initialization with custom parameters."""
         client = Mt5TradingClient(
             mt5=mock_mt5_import,
             order_filling_mode="FOK",
-            dry_run=True,
         )
         assert client.order_filling_mode == "FOK"
-        assert client.dry_run is True
 
     def test_client_initialization_invalid_filling_mode(
         self, mock_mt5_import: ModuleType
@@ -250,7 +247,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_position with existing positions in dry run mode."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -263,7 +260,7 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client.close_open_positions("EURUSD")
+        result = client.close_open_positions("EURUSD", dry_run=True)
 
         assert len(result["EURUSD"]) == 1
         assert result["EURUSD"][0]["retcode"] == 0
@@ -276,8 +273,8 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_position with dry_run parameter override."""
-        # Client initialized with dry_run=False
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        # Client initialized without dry_run
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -305,8 +302,8 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_position with real mode override."""
-        # Client initialized with dry_run=True
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        # Client initialized without dry_run
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -425,7 +422,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_open_positions with additional kwargs and dry_run override."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -457,7 +454,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in dry run mode with success."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -475,7 +472,7 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client._send_or_check_order(request)
+        result = client._send_or_check_order(request, dry_run=True)
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -486,7 +483,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in real mode with success."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -515,7 +512,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with trade disabled."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -542,7 +539,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with market closed."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -569,7 +566,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with failure."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -595,7 +592,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in dry run mode with failure."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -616,15 +613,15 @@ class TestMt5TradingClient:
         with pytest.raises(
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
-            client._send_or_check_order(request)
+            client._send_or_check_order(request, dry_run=True)
 
     def test_send_or_check_order_dry_run_override(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with dry_run parameter override."""
-        # Client initialized with dry_run=False
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        # Client initialized without dry_run
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -656,8 +653,8 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with real mode override."""
-        # Client initialized with dry_run=True
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        # Client initialized without dry_run
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -689,7 +686,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test place_market_order method."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -797,7 +794,7 @@ class TestMt5TradingClient:
         mock_position_sell: MockPositionInfo,
     ) -> None:
         """Test _fetch_and_close_position with dry_run parameter."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -826,9 +823,9 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
         mock_position_buy: MockPositionInfo,
     ) -> None:
-        """Test _fetch_and_close_position inherits instance dry_run if not given."""
-        # Client initialized with dry_run=True
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=True)
+        """Test _fetch_and_close_position does not inherit dry_run from instance."""
+        # Client initialized without dry_run
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -840,8 +837,8 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        # Call without specifying dry_run - should use instance's dry_run=True
-        result = client._fetch_and_close_position(symbol="EURUSD")
+        # Call with dry_run=True explicitly
+        result = client._fetch_and_close_position(symbol="EURUSD", dry_run=True)
 
         assert len(result) == 1
         assert result[0]["retcode"] == 0
@@ -1515,13 +1512,39 @@ class TestMt5TradingClient:
         assert result == 0.0
 
     def test_update_open_position_sltp(self, mock_mt5_import: ModuleType) -> None:
-        """Test update_open_position_sltp method."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        """Test update_open_positions_sltp method."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
         # Mock MT5 constants
         mock_mt5_import.TRADE_ACTION_SLTP = 6
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "digits": 5,
+        }
+
+        # Mock positions for the symbol
+        mock_position = MockPositionInfo(
+            ticket=123456,
+            time=123456789,
+            type=0,  # buy
+            magic=0,
+            identifier=123456,
+            reason=0,
+            volume=0.1,
+            price_open=1.1000,
+            sl=1.0900,
+            tp=1.1100,
+            price_current=1.1050,
+            swap=0.0,
+            profit=50.0,
+            symbol="EURUSD",
+            comment="test",
+            external_id="",
+        )
+        mock_mt5_import.positions_get.return_value = [mock_position]
 
         # Mock successful order send
         mock_mt5_import.order_send.return_value.retcode = 10009
@@ -1531,15 +1554,18 @@ class TestMt5TradingClient:
             "order": 789012,
         }
 
-        result = client.update_open_position_sltp(
+        result = client.update_open_positions_sltp(
             symbol="EURUSD",
-            position_ticket=123456,
-            sl=1.0950,
-            tp=1.1050,
+            tickets=[123456],
+            stop_loss=1.0950,
+            take_profit=1.1050,
         )
 
-        assert result["retcode"] == 10009
-        assert result["order"] == 789012
+        # Now returns a list of dictionaries
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]["retcode"] == 10009
+        assert result[0]["order"] == 789012
 
         # Verify the request was built correctly
         expected_request = {
