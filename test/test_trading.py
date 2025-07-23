@@ -684,6 +684,52 @@ class TestMt5TradingClient:
         mock_mt5_import.order_send.assert_called_once_with(request)
         mock_mt5_import.order_check.assert_not_called()
 
+    def test_place_market_order(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test place_market_order method."""
+        client = Mt5TradingClient(mt5=mock_mt5_import, dry_run=False)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock MT5 constants
+        mock_mt5_import.ORDER_TYPE_BUY = 0
+        mock_mt5_import.ORDER_FILLING_IOC = 1
+        mock_mt5_import.ORDER_TIME_GTC = 0
+        mock_mt5_import.TRADE_ACTION_DEAL = 1
+
+        # Mock successful order send
+        mock_mt5_import.order_send.return_value.retcode = 10009
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10009,
+            "deal": 123456,
+            "order": 789012,
+        }
+
+        result = client.place_market_order(
+            symbol="EURUSD",
+            volume=0.1,
+            order_side="BUY",
+            order_filling_mode="IOC",
+            order_time_mode="GTC",
+        )
+
+        assert result["retcode"] == 10009
+        assert result["deal"] == 123456
+        assert result["order"] == 789012
+
+        # Verify the request was built correctly
+        expected_request = {
+            "action": 1,  # TRADE_ACTION_DEAL
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 0,  # ORDER_TYPE_BUY
+            "type_filling": 1,  # ORDER_FILLING_IOC
+            "type_time": 0,  # ORDER_TIME_GTC
+        }
+        mock_mt5_import.order_send.assert_called_once_with(expected_request)
+
     def test_order_filling_mode_constants(
         self,
         mock_mt5_import: ModuleType,
@@ -1315,7 +1361,7 @@ class TestMt5TradingClient:
         }
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="buy", new_volume=0.1
+            symbol="EURUSD", new_side="BUY", new_volume=0.1
         )
 
         assert result == 0.0
@@ -1366,7 +1412,7 @@ class TestMt5TradingClient:
         mock_mt5_import.order_calc_margin.return_value = 1000.0
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="buy", new_volume=0.1
+            symbol="EURUSD", new_side="BUY", new_volume=0.1
         )
 
         # Should return (new_margin + current_margin) / equity
@@ -1401,7 +1447,7 @@ class TestMt5TradingClient:
         mock_mt5_import.order_calc_margin.return_value = 1000.0
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="sell", new_volume=0.1
+            symbol="EURUSD", new_side="SELL", new_volume=0.1
         )
 
         # Should return abs(-new_margin / equity) for sell
@@ -1432,7 +1478,7 @@ class TestMt5TradingClient:
         }
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="buy", new_volume=0
+            symbol="EURUSD", new_side="BUY", new_volume=0
         )
 
         # Should return 0 since new_volume is 0

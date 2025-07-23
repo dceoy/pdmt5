@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run ruff check --fix . && uv run ruff format . && uv run pyright . && uv run pytest"
+            "command": "uv run ruff format . && uv run ruff check --fix . && uv run pyright . && uv run pytest"
           }
         ]
       }

@@ -159,6 +159,46 @@ class Mt5TradingClient(Mt5DataClient):
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
             raise Mt5TradingError(error_message)
 
+    def place_market_order(
+        self,
+        symbol: str,
+        volume: float,
+        order_side: Literal["BUY", "SELL"],
+        order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
+        order_time_mode: Literal["GTC", "DAY", "SPECIFIED", "SPECIFIED_DAY"] = "GTC",
+        dry_run: bool | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> dict[str, Any]:
+        """Send or check an order request to place a market order.
+
+        Args:
+            symbol: Symbol for the order.
+            volume: Volume of the order.
+            order_side: Side of the order, either "buy" or "sell".
+            order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
+            order_time_mode: Order time mode, either "GTC", "IOC", or "FOK".
+            dry_run: Optional flag to enable dry run mode. If None, uses the instance's
+                `dry_run` attribute.
+            **kwargs: Additional keyword arguments for request parameters.
+
+        Returns:
+            Dictionary with operation result.
+        """
+        return self.send_or_check_order(
+            request={
+                "action": self.mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": volume,
+                "type": getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+                "type_filling": getattr(
+                    self.mt5, f"ORDER_FILLING_{order_filling_mode.upper()}"
+                ),
+                "type_time": getattr(self.mt5, f"ORDER_TIME_{order_time_mode.upper()}"),
+                **kwargs,
+            },
+            dry_run=(dry_run if dry_run is not None else self.dry_run),
+        )
+
     def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
         """Calculate minimum order margins for a given symbol.
 
@@ -373,7 +413,7 @@ class Mt5TradingClient(Mt5DataClient):
     def calculate_new_position_margin_ratio(
         self,
         symbol: str,
-        new_side: Literal["buy", "sell"] | None = None,
+        new_side: Literal["BUY", "SELL"] | None = None,
         new_volume: float = 0,
     ) -> float:
         """Calculate the margin ratio for a new position.
@@ -397,14 +437,14 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
             if new_volume == 0:
                 new_signed_margin = 0
-            elif new_side == "buy":
+            elif new_side == "BUY":
                 new_signed_margin = self.order_calc_margin(
                     action=self.mt5.ORDER_TYPE_BUY,
                     symbol=symbol,
                     volume=new_volume,
                     price=symbol_info_tick["ask"],
                 )
-            elif new_side == "sell":
+            elif new_side == "SELL":
                 new_signed_margin = -self.order_calc_margin(
                     action=self.mt5.ORDER_TYPE_SELL,
                     symbol=symbol,
