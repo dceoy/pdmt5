@@ -35,7 +35,7 @@ class Mt5TradingClient(Mt5DataClient):
     def close_open_positions(
         self,
         symbols: str | list[str] | tuple[str, ...] | None = None,
-        dry_run: bool | None = None,
+        dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
@@ -66,7 +66,7 @@ class Mt5TradingClient(Mt5DataClient):
     def _fetch_and_close_position(
         self,
         symbol: str | None = None,
-        dry_run: bool | None = None,
+        dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
         """Close all open positions for a specific symbol.
@@ -114,7 +114,7 @@ class Mt5TradingClient(Mt5DataClient):
     def _send_or_check_order(
         self,
         request: dict[str, Any],
-        dry_run: bool | None = None,
+        dry_run: bool = False,
     ) -> dict[str, Any]:
         """Send or check an order request.
 
@@ -163,7 +163,7 @@ class Mt5TradingClient(Mt5DataClient):
         order_side: Literal["BUY", "SELL"],
         order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
         order_time_mode: Literal["GTC", "DAY", "SPECIFIED", "SPECIFIED_DAY"] = "GTC",
-        dry_run: bool | None = None,
+        dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, Any]:
         """Send or check an order request to place a market order.
@@ -203,7 +203,7 @@ class Mt5TradingClient(Mt5DataClient):
         stop_loss: float | None = None,
         take_profit: float | None = None,
         tickets: list[int] | None = None,
-        dry_run: bool | None = None,
+        dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
         """Change Stop Loss and Take Profit for open positions.
