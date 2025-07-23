@@ -171,10 +171,13 @@ Advanced trading operations client that extends Mt5DataClient:
   - `dry_run` - Test mode flag for simulating trades without execution
 - **Position Management**:
   - `close_open_positions()` - Close all positions for specified symbol(s)
+  - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
+  - `update_open_position_sl_and_tp()` - Modify stop loss and take profit levels for open positions
   - `send_or_check_order()` - Execute or validate orders based on dry_run mode
 - **Market Analysis**:
   - `calculate_minimum_order_margins()` - Calculate minimum required margins for buy/sell orders
   - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
+  - `calculate_new_position_margin_ratio()` - Calculate margin ratio for potential new positions
 - **Simplified Data Access**:
   - `fetch_latest_rates_as_df()` - Get recent OHLC data with timeframe strings (e.g., "M1", "H1", "D1")
   - `fetch_latest_ticks_as_df()` - Get tick data for specified seconds around last tick
@@ -264,18 +267,54 @@ from pdmt5 import Mt5TradingClient
 
 # Create trading client with specific order filling mode
 with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
+    # Place a market buy order
+    order_result = trader.place_market_order(
+        symbol="EURUSD",
+        volume=0.1,
+        order_side="BUY",
+        order_filling_mode="IOC",  # Immediate or Cancel
+        order_time_mode="GTC"      # Good Till Cancelled
+    )
+    print(f"Order placed: {order_result['retcode']}")
+
+    # Update stop loss and take profit for an open position
+    if positions := trader.positions_get_as_df(symbol="EURUSD"):
+        position_ticket = positions.iloc[0]['ticket']
+        update_result = trader.update_open_position_sl_and_tp(
+            symbol="EURUSD",
+            position_ticket=position_ticket,
+            sl=1.0950,  # New stop loss
+            tp=1.1050   # New take profit
+        )
+        print(f"Position updated: {update_result['retcode']}")
+
+    # Calculate margin ratio for a new position
+    margin_ratio = trader.calculate_new_position_margin_ratio(
+        symbol="EURUSD",
+        new_side="SELL",
+        new_volume=0.2
+    )
+    print(f"New position margin ratio: {margin_ratio:.2%}")
+
     # Close all EURUSD positions
     results = trader.close_open_positions(symbols="EURUSD")
 
     if results:
-        for result in results:
-            print(f"Closed position {result['position']} with result: {result['retcode']}")
+        for symbol, close_results in results.items():
+            for result in close_results:
+                print(f"Closed position {result.get('position')} with result: {result['retcode']}")
 
     # Using dry run mode for testing
     trader_dry = Mt5TradingClient(config=config, dry_run=True)
     with trader_dry:
-        # Test closing positions without actual execution
-        test_results = trader_dry.close_open_positions(symbols=["EURUSD", "GBPUSD"])
+        # Test placing an order without actual execution
+        test_order = trader_dry.place_market_order(
+            symbol="GBPUSD",
+            volume=0.1,
+            order_side="SELL",
+            dry_run=True  # Override instance setting
+        )
+        print(f"Test order validation: {test_order['retcode']}")
 ```
 
 ### Market Analysis with Mt5TradingClient
