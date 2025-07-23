@@ -1511,8 +1511,8 @@ class TestMt5TradingClient:
         # Should return 0 since side is invalid
         assert result == 0.0
 
-    def test_update_open_position_sltp(self, mock_mt5_import: ModuleType) -> None:
-        """Test update_open_positions_sltp method."""
+    def test_update_sltp_for_open_positions(self, mock_mt5_import: ModuleType) -> None:
+        """Test update_sltp_for_open_positions method."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1554,7 +1554,7 @@ class TestMt5TradingClient:
             "order": 789012,
         }
 
-        result = client.update_open_positions_sltp(
+        result = client.update_sltp_for_open_positions(
             symbol="EURUSD",
             tickets=[123456],
             stop_loss=1.0950,
@@ -1567,10 +1567,10 @@ class TestMt5TradingClient:
         assert result[0]["retcode"] == 10009
         assert result[0]["order"] == 789012
 
-    def test_update_open_position_sltp_no_positions(
+    def test_update_sltp_for_open_positions_no_positions(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test update_open_positions_sltp when no positions exist for symbol."""
+        """Test update_sltp_for_open_positions when no positions exist for symbol."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1578,7 +1578,7 @@ class TestMt5TradingClient:
         # Mock empty positions result
         mock_mt5_import.positions_get.return_value = []
 
-        result = client.update_open_positions_sltp(
+        result = client.update_sltp_for_open_positions(
             symbol="EURUSD",
             tickets=[123456],
             stop_loss=1.0950,
@@ -1590,10 +1590,10 @@ class TestMt5TradingClient:
         # Verify positions_get was called with correct symbol
         mock_mt5_import.positions_get.assert_called_with(symbol="EURUSD")
 
-    def test_update_open_position_sltp_no_matching_tickets(
+    def test_update_sltp_for_open_positions_no_matching_tickets(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test update_open_positions_sltp when positions exist but no tickets match."""
+        """Test update_sltp_for_open_positions when positions exist but no tickets match."""  # noqa: E501
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1627,7 +1627,7 @@ class TestMt5TradingClient:
         )
         mock_mt5_import.positions_get.return_value = [mock_position]
 
-        result = client.update_open_positions_sltp(
+        result = client.update_sltp_for_open_positions(
             symbol="EURUSD",
             tickets=[123456],  # This ticket doesn't exist
             stop_loss=1.0950,
@@ -1637,10 +1637,10 @@ class TestMt5TradingClient:
         # Should return empty list and log warning
         assert result == []
 
-    def test_update_open_position_sltp_same_sltp_values(
+    def test_update_sltp_for_open_positions_same_sltp_values(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test update_open_positions_sltp when SL/TP values are already the same."""
+        """Test update_sltp_for_open_positions when SL/TP values are already the same."""  # noqa: E501
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1674,7 +1674,7 @@ class TestMt5TradingClient:
         )
         mock_mt5_import.positions_get.return_value = [mock_position]
 
-        result = client.update_open_positions_sltp(
+        result = client.update_sltp_for_open_positions(
             symbol="EURUSD",
             tickets=[123456],
             stop_loss=1.0950,  # Same as position's sl
@@ -1686,10 +1686,10 @@ class TestMt5TradingClient:
         # Verify order_send was NOT called
         mock_mt5_import.order_send.assert_not_called()
 
-    def test_update_open_position_sltp_no_tickets(
+    def test_update_sltp_for_open_positions_no_tickets(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test update_open_positions_sltp without specifying tickets."""
+        """Test update_sltp_for_open_positions without specifying tickets."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -1750,7 +1750,7 @@ class TestMt5TradingClient:
         }
 
         # Call without tickets to update all positions
-        result = client.update_open_positions_sltp(
+        result = client.update_sltp_for_open_positions(
             symbol="EURUSD",
             tickets=None,  # No tickets specified
             stop_loss=1.0950,

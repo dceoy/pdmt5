@@ -197,7 +197,7 @@ class Mt5TradingClient(Mt5DataClient):
             dry_run=dry_run,
         )
 
-    def update_open_positions_sltp(
+    def update_sltp_for_open_positions(
         self,
         symbol: str,
         stop_loss: float | None = None,
