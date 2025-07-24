@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from math import floor
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ConfigDict, Field
@@ -263,41 +264,60 @@ class Mt5TradingClient(Mt5DataClient):
                 )
                 return []
 
-    def calculate_minimum_order_margins(self, symbol: str) -> dict[str, float]:
-        """Calculate minimum order margins for a given symbol.
+    def calculate_minimum_order_margin(
+        self,
+        symbol: str,
+        order_side: Literal["BUY", "SELL"],
+    ) -> dict[str, float]:
+        """Calculate the minimum order margins for a given symbol.
 
         Args:
-            symbol: Symbol for which to calculate minimum order margins.
+            symbol: Symbol for which to calculate the minimum order margins.
+            order_side: Optional side of the order, either "BUY" or "SELL".
 
         Returns:
-            Dictionary with margin information.
-
-        Raises:
-            Mt5TradingError: If margin calculation fails.
+            Dictionary with minimum volume and margin for the specified order side.
         """
         symbol_info = self.symbol_info_as_dict(symbol=symbol)
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        min_ask_order_margin = self.order_calc_margin(
-            action=self.mt5.ORDER_TYPE_BUY,
+        return {
+            "volume": symbol_info["volume_min"],
+            "margin": self.order_calc_margin(
+                action=getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+                symbol=symbol,
+                volume=symbol_info["volume_min"],
+                price=(
+                    symbol_info_tick["bid"]
+                    if order_side == "SELL"
+                    else symbol_info_tick["ask"]
+                ),
+            ),
+        }
+
+    def calculate_volume_by_margin(
+        self,
+        symbol: str,
+        margin: float,
+        order_side: Literal["BUY", "SELL"],
+    ) -> float:
+        """Calculate volume based on margin for a given symbol and order side.
+
+        Args:
+            symbol: Symbol for which to calculate the volume.
+            margin: Margin amount to use for the calculation.
+            order_side: Side of the order, either "BUY" or "SELL".
+
+        Returns:
+            Calculated volume as a float.
+        """
+        min_order_margin_dict = self.calculate_minimum_order_margin(
             symbol=symbol,
-            volume=symbol_info["volume_min"],
-            price=symbol_info_tick["ask"],
+            order_side=order_side,
         )
-        min_bid_order_margin = self.order_calc_margin(
-            action=self.mt5.ORDER_TYPE_SELL,
-            symbol=symbol,
-            volume=symbol_info["volume_min"],
-            price=symbol_info_tick["bid"],
+        return (
+            floor(margin / min_order_margin_dict["margin"])
+            * min_order_margin_dict["volume"]
         )
-        min_order_margins = {"ask": min_ask_order_margin, "bid": min_bid_order_margin}
-        self.logger.info("Minimum order margins for %s: %s", symbol, min_order_margins)
-        if all(min_order_margins.values()):
-            return min_order_margins
-        else:
-            error_message = (
-                f"Failed to calculate minimum order margins for symbol: {symbol}."
-            )
-            raise Mt5TradingError(error_message)
 
     def calculate_spread_ratio(
         self,
@@ -477,15 +497,15 @@ class Mt5TradingClient(Mt5DataClient):
     def calculate_new_position_margin_ratio(
         self,
         symbol: str,
-        new_side: Literal["BUY", "SELL"] | None = None,
-        new_volume: float = 0,
+        new_position_side: Literal["BUY", "SELL"] | None = None,
+        new_position_volume: float = 0,
     ) -> float:
         """Calculate the margin ratio for a new position.
 
         Args:
             symbol: Symbol for which to calculate the margin ratio.
-            new_side: Side of the new position, either "BUY" or "SELL".
-            new_volume: Volume of the new position.
+            new_position_side: Side of the new position, either "BUY" or "SELL".
+            new_position_volume: Volume of the new position.
 
         Returns:
             float: Margin ratio for the new position as a fraction of account equity.
@@ -499,20 +519,20 @@ class Mt5TradingClient(Mt5DataClient):
                 positions_df["signed_margin"].sum() if positions_df.size else 0
             )
             symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-            if new_volume == 0:
+            if not (new_position_side and new_position_volume):
                 new_signed_margin = 0
-            elif new_side == "BUY":
+            elif new_position_side.upper() == "BUY":
                 new_signed_margin = self.order_calc_margin(
                     action=self.mt5.ORDER_TYPE_BUY,
                     symbol=symbol,
-                    volume=new_volume,
+                    volume=new_position_volume,
                     price=symbol_info_tick["ask"],
                 )
-            elif new_side == "SELL":
+            elif new_position_side.upper() == "SELL":
                 new_signed_margin = -self.order_calc_margin(
                     action=self.mt5.ORDER_TYPE_SELL,
                     symbol=symbol,
-                    volume=new_volume,
+                    volume=new_position_volume,
                     price=symbol_info_tick["bid"],
                 )
             else:

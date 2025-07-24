@@ -845,11 +845,11 @@ class TestMt5TradingClient:
         mock_mt5_import.order_check.assert_called_once()
         mock_mt5_import.order_send.assert_not_called()
 
-    def test_calculate_minimum_order_margins_success(
+    def test_calculate_minimum_order_margin_buy_success(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test successful calculation of minimum order margins."""
+        """Test successful calculation of minimum order margin for BUY orders."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -866,33 +866,24 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return successful results
-        mock_mt5_import.order_calc_margin.side_effect = [100.5, 99.8]
+        # Mock order_calc_margin to return successful result
+        mock_mt5_import.order_calc_margin.return_value = 100.5
 
-        result = client.calculate_minimum_order_margins("EURUSD")
+        result = client.calculate_minimum_order_margin("EURUSD", "BUY")
 
-        assert result == {"ask": 100.5, "bid": 99.8}
-        assert mock_mt5_import.order_calc_margin.call_count == 2
+        assert result == {"volume": 0.01, "margin": 100.5}
+        mock_mt5_import.order_calc_margin.assert_called_once_with(
+            mock_mt5_import.ORDER_TYPE_BUY,
+            "EURUSD",
+            0.01,
+            1.1000,
+        )
 
-        # Verify first call (buy order)
-        first_call = mock_mt5_import.order_calc_margin.call_args_list[0]
-        assert first_call[0][0] == mock_mt5_import.ORDER_TYPE_BUY  # action
-        assert first_call[0][1] == "EURUSD"  # symbol
-        assert first_call[0][2] == 0.01  # volume
-        assert first_call[0][3] == 1.1000  # price
-
-        # Verify second call (sell order)
-        second_call = mock_mt5_import.order_calc_margin.call_args_list[1]
-        assert second_call[0][0] == mock_mt5_import.ORDER_TYPE_SELL  # action
-        assert second_call[0][1] == "EURUSD"  # symbol
-        assert second_call[0][2] == 0.01  # volume
-        assert second_call[0][3] == 1.0998  # price
-
-    def test_calculate_minimum_order_margins_failure_ask(
+    def test_calculate_minimum_order_margin_sell_success(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test failed calculation of minimum order margins - ask margin fails."""
+        """Test successful calculation of minimum order margin for SELL orders."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -909,17 +900,24 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return None for ask margin
-        mock_mt5_import.order_calc_margin.side_effect = [None, 99.8]
+        # Mock order_calc_margin to return successful result
+        mock_mt5_import.order_calc_margin.return_value = 99.8
 
-        with pytest.raises(Mt5RuntimeError):
-            client.calculate_minimum_order_margins("EURUSD")
+        result = client.calculate_minimum_order_margin("EURUSD", "SELL")
 
-    def test_calculate_minimum_order_margins_failure_bid(
+        assert result == {"volume": 0.01, "margin": 99.8}
+        mock_mt5_import.order_calc_margin.assert_called_once_with(
+            mock_mt5_import.ORDER_TYPE_SELL,
+            "EURUSD",
+            0.01,
+            1.0998,
+        )
+
+    def test_calculate_volume_by_margin_buy_success(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test failed calculation of minimum order margins - bid margin fails."""
+        """Test successful calculation of volume by margin for BUY orders."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -936,17 +934,20 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return None for bid margin
-        mock_mt5_import.order_calc_margin.side_effect = [100.5, None]
+        # Mock order_calc_margin to return margin for minimum volume
+        mock_mt5_import.order_calc_margin.return_value = 100.5
 
-        with pytest.raises(Mt5RuntimeError):
-            client.calculate_minimum_order_margins("EURUSD")
+        result = client.calculate_volume_by_margin("EURUSD", 1000.0, "BUY")
 
-    def test_calculate_minimum_order_margins_failure_both(
+        # Should return floor(1000 / 100.5) * 0.01 = 9 * 0.01 = 0.09
+        expected_volume = 9 * 0.01
+        assert result == expected_volume
+
+    def test_calculate_volume_by_margin_sell_success(
         self,
         mock_mt5_import: ModuleType,
     ) -> None:
-        """Test failed calculation of minimum order margins - both margins fail."""
+        """Test successful calculation of volume by margin for SELL orders."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -963,11 +964,14 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return 0.0 for both margins (indicates failure)
-        mock_mt5_import.order_calc_margin.side_effect = [0.0, 0.0]
+        # Mock order_calc_margin to return margin for minimum volume
+        mock_mt5_import.order_calc_margin.return_value = 99.8
 
-        with pytest.raises(Mt5TradingError):
-            client.calculate_minimum_order_margins("EURUSD")
+        result = client.calculate_volume_by_margin("EURUSD", 500.0, "SELL")
+
+        # Should return floor(500 / 99.8) * 0.01 = 5 * 0.01 = 0.05
+        expected_volume = 5 * 0.01
+        assert result == expected_volume
 
     def test_calculate_spread_ratio(
         self,
@@ -1358,7 +1362,7 @@ class TestMt5TradingClient:
         }
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="BUY", new_volume=0.1
+            symbol="EURUSD", new_position_side="BUY", new_position_volume=0.1
         )
 
         assert result == 0.0
@@ -1409,7 +1413,7 @@ class TestMt5TradingClient:
         mock_mt5_import.order_calc_margin.return_value = 1000.0
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="BUY", new_volume=0.1
+            symbol="EURUSD", new_position_side="BUY", new_position_volume=0.1
         )
 
         # Should return (new_margin + current_margin) / equity
@@ -1444,7 +1448,7 @@ class TestMt5TradingClient:
         mock_mt5_import.order_calc_margin.return_value = 1000.0
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="SELL", new_volume=0.1
+            symbol="EURUSD", new_position_side="SELL", new_position_volume=0.1
         )
 
         # Should return abs(-new_margin / equity) for sell
@@ -1475,10 +1479,10 @@ class TestMt5TradingClient:
         }
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side="BUY", new_volume=0
+            symbol="EURUSD", new_position_side="BUY", new_position_volume=0
         )
 
-        # Should return 0 since new_volume is 0
+        # Should return 0 since new_position_volume is 0
         assert result == 0.0
 
     def test_calculate_new_position_margin_ratio_invalid_side(
@@ -1505,10 +1509,42 @@ class TestMt5TradingClient:
         }
 
         result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_side=None, new_volume=0.1
+            symbol="EURUSD", new_position_side=None, new_position_volume=0.1
         )
 
         # Should return 0 since side is invalid
+        assert result == 0.0
+
+    def test_calculate_new_position_margin_ratio_invalid_side_string(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test calculating margin ratio with invalid side string."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock account info
+        mock_mt5_import.account_info.return_value._asdict.return_value = {
+            "equity": 10000.0,
+        }
+
+        # Mock empty positions
+        mock_mt5_import.positions_get.return_value = []
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "time": pd.Timestamp("2009-02-14 00:31:30"),
+            "ask": 1.1002,
+            "bid": 1.1000,
+        }
+
+        result = client.calculate_new_position_margin_ratio(
+            symbol="EURUSD",
+            new_position_side="INVALID",  # type: ignore[arg-type]
+            new_position_volume=0.1,
+        )
+
+        # Should return 0 since side is invalid string
         assert result == 0.0
 
     def test_update_sltp_for_open_positions(self, mock_mt5_import: ModuleType) -> None:
