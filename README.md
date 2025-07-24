@@ -19,6 +19,28 @@ Pandas-based data handler for MetaTrader 5
 - 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements
 - 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
+- 💰 **Advanced Trading Operations**: Position management, margin calculations, and risk analysis tools
+- 🧪 **Dry Run Mode**: Test trading strategies without executing real trades
+
+## What's New in v0.1.6
+
+### Enhanced Margin Calculation Methods
+
+- **`calculate_minimum_order_margin()`**: Calculate minimum required margin for specific order side (BUY/SELL)
+- **`calculate_volume_by_margin()`**: Determine maximum volume based on available margin amount
+- **Improved `calculate_new_position_margin_ratio()`**: Better parameter naming for clarity (`new_position_side`, `new_position_volume`)
+
+### Trading Method Improvements
+
+- **Renamed `update_open_positions_sltp()` to `update_sltp_for_open_positions()`**: More descriptive method name
+- **Enhanced parameter validation**: Better type checking and error handling
+- **Improved test coverage**: 100% test coverage achieved for trading module
+
+### Code Quality Enhancements
+
+- **Refactored trading margin calculations**: More focused and maintainable method structure
+- **Updated documentation**: Comprehensive examples and API reference updates
+- **Enhanced type safety**: Stricter typing and validation throughout
 
 ## Requirements
 
@@ -172,9 +194,10 @@ Advanced trading operations client that extends Mt5DataClient:
 - **Position Management**:
   - `close_open_positions()` - Close all positions for specified symbol(s)
   - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
-  - `update_open_position_sltp()` - Modify stop loss and take profit levels for open positions
-- **Market Analysis**:
-  - `calculate_minimum_order_margins()` - Calculate minimum required margins for buy/sell orders
+  - `update_sltp_for_open_positions()` - Modify stop loss and take profit levels for open positions
+- **Margin Calculations**:
+  - `calculate_minimum_order_margin()` - Calculate minimum required margin for a specific order side
+  - `calculate_volume_by_margin()` - Calculate maximum volume for given margin amount
   - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
   - `calculate_new_position_margin_ratio()` - Calculate margin ratio for potential new positions
 - **Simplified Data Access**:
@@ -276,22 +299,20 @@ with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
     )
     print(f"Order placed: {order_result['retcode']}")
 
-    # Update stop loss and take profit for an open position
-    if positions := trader.positions_get_as_df(symbol="EURUSD"):
-        position_ticket = positions.iloc[0]['ticket']
-        update_result = trader.update_open_position_sltp(
-            symbol="EURUSD",
-            position_ticket=position_ticket,
-            sl=1.0950,  # New stop loss
-            tp=1.1050   # New take profit
-        )
-        print(f"Position updated: {update_result['retcode']}")
+    # Update stop loss and take profit for open positions
+    update_results = trader.update_sltp_for_open_positions(
+        symbol="EURUSD",
+        stop_loss=1.0950,   # New stop loss
+        take_profit=1.1050  # New take profit
+    )
+    for result in update_results:
+        print(f"Position updated: {result['retcode']}")
 
     # Calculate margin ratio for a new position
     margin_ratio = trader.calculate_new_position_margin_ratio(
         symbol="EURUSD",
-        new_side="SELL",
-        new_volume=0.2
+        new_position_side="SELL",
+        new_position_volume=0.2
     )
     print(f"New position margin ratio: {margin_ratio:.2%}")
 
@@ -324,10 +345,18 @@ with Mt5TradingClient(config=config) as trader:
     spread_ratio = trader.calculate_spread_ratio("EURUSD")
     print(f"EURUSD spread ratio: {spread_ratio:.5f}")
 
-    # Get minimum order margins
-    margins = trader.calculate_minimum_order_margins("EURUSD")
-    print(f"Minimum ask margin: {margins['ask']}")
-    print(f"Minimum bid margin: {margins['bid']}")
+    # Get minimum order margin for BUY and SELL
+    buy_margin = trader.calculate_minimum_order_margin("EURUSD", "BUY")
+    sell_margin = trader.calculate_minimum_order_margin("EURUSD", "SELL")
+    print(f"Minimum BUY margin: {buy_margin['margin']} (volume: {buy_margin['volume']})")
+    print(f"Minimum SELL margin: {sell_margin['margin']} (volume: {sell_margin['volume']})")
+    
+    # Calculate volume by margin
+    available_margin = 1000.0
+    max_buy_volume = trader.calculate_volume_by_margin("EURUSD", available_margin, "BUY")
+    max_sell_volume = trader.calculate_volume_by_margin("EURUSD", available_margin, "SELL")
+    print(f"Max BUY volume for ${available_margin}: {max_buy_volume}")
+    print(f"Max SELL volume for ${available_margin}: {max_sell_volume}")
 
     # Get recent OHLC data with custom timeframe
     rates_df = trader.fetch_latest_rates_as_df(
