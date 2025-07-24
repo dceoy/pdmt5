@@ -22,26 +22,6 @@ Pandas-based data handler for MetaTrader 5
 - 💰 **Advanced Trading Operations**: Position management, margin calculations, and risk analysis tools
 - 🧪 **Dry Run Mode**: Test trading strategies without executing real trades
 
-## What's New in v0.1.6
-
-### Enhanced Margin Calculation Methods
-
-- **`calculate_minimum_order_margin()`**: Calculate minimum required margin for specific order side (BUY/SELL)
-- **`calculate_volume_by_margin()`**: Determine maximum volume based on available margin amount
-- **Improved `calculate_new_position_margin_ratio()`**: Better parameter naming for clarity (`new_position_side`, `new_position_volume`)
-
-### Trading Method Improvements
-
-- **Renamed `update_open_positions_sltp()` to `update_sltp_for_open_positions()`**: More descriptive method name
-- **Enhanced parameter validation**: Better type checking and error handling
-- **Improved test coverage**: 100% test coverage achieved for trading module
-
-### Code Quality Enhancements
-
-- **Refactored trading margin calculations**: More focused and maintainable method structure
-- **Updated documentation**: Comprehensive examples and API reference updates
-- **Enhanced type safety**: Stricter typing and validation throughout
-
 ## Requirements
 
 - **Operating System**: Windows (required by MetaTrader5 API)
