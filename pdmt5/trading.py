@@ -31,6 +31,7 @@ class Mt5TradingClient(Mt5DataClient):
     def close_open_positions(
         self,
         symbols: str | list[str] | tuple[str, ...] | None = None,
+        order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
@@ -39,6 +40,7 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbols: Optional symbol or list of symbols to filter positions.
                 If None, all symbols will be considered.
+            order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -54,7 +56,12 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_list = self.symbols_get()
         self.logger.info("Fetching and closing positions for symbols: %s", symbol_list)
         return {
-            s: self._fetch_and_close_position(symbol=s, dry_run=dry_run, **kwargs)
+            s: self._fetch_and_close_position(
+                symbol=s,
+                order_filling_mode=order_filling_mode,
+                dry_run=dry_run,
+                **kwargs,
+            )
             for s in symbol_list
         }
 
