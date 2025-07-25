@@ -70,33 +70,34 @@ with client:
 ### Order Filling Modes
 
 ```python
-# Configure different order filling modes
-# IOC (Immediate or Cancel) - default
-client_ioc = Mt5TradingClient(
-    config=config,
-    order_filling_mode="IOC"
-)
+with Mt5TradingClient(config=config) as client:
+    # Use IOC (Immediate or Cancel) - default
+    results_ioc = client.close_open_positions(
+        symbols="EURUSD",
+        order_filling_mode="IOC"
+    )
 
-# FOK (Fill or Kill)
-client_fok = Mt5TradingClient(
-    config=config,
-    order_filling_mode="FOK"
-)
+    # Use FOK (Fill or Kill)
+    results_fok = client.close_open_positions(
+        symbols="GBPUSD",
+        order_filling_mode="FOK"
+    )
 
-# RETURN (Return if not filled)
-client_return = Mt5TradingClient(
-    config=config,
-    order_filling_mode="RETURN"
-)
+    # Use RETURN (Return if not filled)
+    results_return = client.close_open_positions(
+        symbols="USDJPY",
+        order_filling_mode="RETURN"
+    )
 ```
 
 ### Custom Order Parameters
 
 ```python
 with client:
-    # Close positions with custom parameters
+    # Close positions with custom parameters and order filling mode
     results = client.close_open_positions(
         "EURUSD",
+        order_filling_mode="IOC",  # Specify per method call
         comment="Closing all EURUSD positions",
         deviation=10  # Maximum price deviation
     )

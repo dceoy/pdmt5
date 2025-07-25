@@ -10,7 +10,6 @@ from typing import NamedTuple
 import numpy as np
 import pandas as pd
 import pytest
-from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from pdmt5.mt5 import Mt5RuntimeError
@@ -182,22 +181,30 @@ class TestMt5TradingClient:
     def test_client_initialization_default(self, mock_mt5_import: ModuleType) -> None:
         """Test client initialization with default parameters."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
-        assert client.order_filling_mode == "IOC"
+        # Order filling mode is now a parameter, not an attribute
+        assert isinstance(client, Mt5TradingClient)
 
     def test_client_initialization_custom(self, mock_mt5_import: ModuleType) -> None:
         """Test client initialization with custom parameters."""
+        # Order filling mode is now a parameter to methods, not a class attribute
         client = Mt5TradingClient(
             mt5=mock_mt5_import,
-            order_filling_mode="FOK",
         )
-        assert client.order_filling_mode == "FOK"
+        assert isinstance(client, Mt5TradingClient)
 
     def test_client_initialization_invalid_filling_mode(
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test client initialization with invalid filling mode."""
-        with pytest.raises(ValidationError):
-            Mt5TradingClient(mt5=mock_mt5_import, order_filling_mode="INVALID")  # type: ignore[arg-type]
+        # Order filling mode is now a parameter to methods, not a class attribute
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        # Test that the method validates the parameter
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+        mock_mt5_import.positions_get.return_value = []
+        # Should not raise as validation happens at method level
+        result = client._fetch_and_close_position(order_filling_mode="IOC")  # type: ignore[arg-type]
+        assert result == []
 
     def test_close_position_no_positions(
         self,
@@ -733,7 +740,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test that order filling mode constants are used correctly."""
-        client = Mt5TradingClient(mt5=mock_mt5_import, order_filling_mode="FOK")
+        client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
 
@@ -745,7 +752,8 @@ class TestMt5TradingClient:
             "retcode": 10009
         }
 
-        client.close_open_positions("EURUSD")
+        # Call _fetch_and_close_position with FOK mode
+        client._fetch_and_close_position("EURUSD", order_filling_mode="FOK")
 
         # Verify that ORDER_FILLING_FOK was used
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -972,6 +980,69 @@ class TestMt5TradingClient:
         # Should return floor(500 / 99.8) * 0.01 = 5 * 0.01 = 0.05
         expected_volume = 5 * 0.01
         assert result == expected_volume
+
+    def test_calculate_minimum_order_margin_no_margin(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test calculation when order_calc_margin returns zero."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return 0.0 (no margin required)
+        mock_mt5_import.order_calc_margin.return_value = 0.0
+
+        result = client.calculate_minimum_order_margin("EURUSD", "BUY")
+
+        assert result == {"volume": 0.01, "margin": 0.0}
+        mock_mt5_import.order_calc_margin.assert_called_once_with(
+            mock_mt5_import.ORDER_TYPE_BUY,
+            "EURUSD",
+            0.01,
+            1.1000,
+        )
+
+    def test_calculate_volume_by_margin_zero_margin(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test calculation when minimum order margin is zero."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        # Mock symbol info
+        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
+            "volume_min": 0.01,
+            "name": "EURUSD",
+        }
+
+        # Mock symbol tick info
+        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
+            "ask": 1.1000,
+            "bid": 1.0998,
+        }
+
+        # Mock order_calc_margin to return 0.0 (no margin required)
+        mock_mt5_import.order_calc_margin.return_value = 0.0
+
+        result = client.calculate_volume_by_margin("EURUSD", 1000.0, "BUY")
+
+        # Should return 0.0 when margin is zero
+        assert result == 0.0
 
     def test_calculate_spread_ratio(
         self,

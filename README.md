@@ -168,9 +168,6 @@ Extends Mt5Client with pandas DataFrame and dictionary conversions:
 
 Advanced trading operations client that extends Mt5DataClient:
 
-- **Trading Configuration**:
-  - `order_filling_mode` - Order execution mode: "IOC" (default), "FOK", or "RETURN"
-  - `dry_run` - Test mode flag for simulating trades without execution
 - **Position Management**:
   - `close_open_positions()` - Close all positions for specified symbol(s)
   - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
@@ -190,7 +187,6 @@ Advanced trading operations client that extends Mt5DataClient:
   - Comprehensive error handling with `Mt5TradingError`
   - Support for batch operations on multiple symbols
   - Automatic position closing with proper order type reversal
-  - Dry run mode for strategy testing without real trades
 
 ### Configuration
 
@@ -267,8 +263,8 @@ with Mt5DataClient(config=config) as client:
 ```python
 from pdmt5 import Mt5TradingClient
 
-# Create trading client with specific order filling mode
-with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
+# Create trading client
+with Mt5TradingClient(config=config) as trader:
     # Place a market buy order
     order_result = trader.place_market_order(
         symbol="EURUSD",
@@ -296,25 +292,16 @@ with Mt5TradingClient(config=config, order_filling_mode="IOC") as trader:
     )
     print(f"New position margin ratio: {margin_ratio:.2%}")
 
-    # Close all EURUSD positions
-    results = trader.close_open_positions(symbols="EURUSD")
+    # Close all EURUSD positions with specific order filling mode
+    results = trader.close_open_positions(
+        symbols="EURUSD",
+        order_filling_mode="FOK"  # Fill or Kill
+    )
 
     if results:
         for symbol, close_results in results.items():
             for result in close_results:
                 print(f"Closed position {result.get('position')} with result: {result['retcode']}")
-
-    # Using dry run mode for testing
-    trader_dry = Mt5TradingClient(config=config, dry_run=True)
-    with trader_dry:
-        # Test placing an order without actual execution
-        test_order = trader_dry.place_market_order(
-            symbol="GBPUSD",
-            volume=0.1,
-            order_side="SELL",
-            dry_run=True  # Override instance setting
-        )
-        print(f"Test order validation: {test_order['retcode']}")
 ```
 
 ### Market Analysis with Mt5TradingClient

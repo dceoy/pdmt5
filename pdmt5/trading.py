@@ -6,7 +6,7 @@ from datetime import timedelta
 from math import floor
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict
 
 from .dataframe import Mt5DataClient
 from .mt5 import Mt5RuntimeError
@@ -27,15 +27,11 @@ class Mt5TradingClient(Mt5DataClient):
     """
 
     model_config = ConfigDict(frozen=True)
-    order_filling_mode: Literal["IOC", "FOK", "RETURN"] = Field(
-        default="IOC",
-        description="Order filling mode: 'IOC' (Immediate or Cancel), "
-        "'FOK' (Fill or Kill), 'RETURN' (Return if not filled)",
-    )
 
     def close_open_positions(
         self,
         symbols: str | list[str] | tuple[str, ...] | None = None,
+        order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
@@ -44,6 +40,7 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbols: Optional symbol or list of symbols to filter positions.
                 If None, all symbols will be considered.
+            order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -59,13 +56,19 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_list = self.symbols_get()
         self.logger.info("Fetching and closing positions for symbols: %s", symbol_list)
         return {
-            s: self._fetch_and_close_position(symbol=s, dry_run=dry_run, **kwargs)
+            s: self._fetch_and_close_position(
+                symbol=s,
+                order_filling_mode=order_filling_mode,
+                dry_run=dry_run,
+                **kwargs,
+            )
             for s in symbol_list
         }
 
     def _fetch_and_close_position(
         self,
         symbol: str | None = None,
+        order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
@@ -73,6 +76,7 @@ class Mt5TradingClient(Mt5DataClient):
 
         Args:
             symbol: Optional symbol filter.
+            order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -85,10 +89,6 @@ class Mt5TradingClient(Mt5DataClient):
             return []
         else:
             self.logger.info("Closing open positions for symbol: %s", symbol)
-            order_filling_type = getattr(
-                self.mt5,
-                f"ORDER_FILLING_{self.order_filling_mode}",
-            )
             return [
                 self._send_or_check_order(
                     request={
@@ -100,7 +100,10 @@ class Mt5TradingClient(Mt5DataClient):
                             if p["type"] == self.mt5.POSITION_TYPE_BUY
                             else self.mt5.ORDER_TYPE_BUY
                         ),
-                        "type_filling": order_filling_type,
+                        "type_filling": getattr(
+                            self.mt5,
+                            f"ORDER_FILLING_{order_filling_mode}",
+                        ),
                         "type_time": self.mt5.ORDER_TIME_GTC,
                         "position": p["ticket"],
                         **kwargs,
@@ -280,19 +283,25 @@ class Mt5TradingClient(Mt5DataClient):
         """
         symbol_info = self.symbol_info_as_dict(symbol=symbol)
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        return {
-            "volume": symbol_info["volume_min"],
-            "margin": self.order_calc_margin(
-                action=getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
-                symbol=symbol,
-                volume=symbol_info["volume_min"],
-                price=(
-                    symbol_info_tick["bid"]
-                    if order_side == "SELL"
-                    else symbol_info_tick["ask"]
-                ),
+        margin = self.order_calc_margin(
+            action=getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+            symbol=symbol,
+            volume=symbol_info["volume_min"],
+            price=(
+                symbol_info_tick["bid"]
+                if order_side == "SELL"
+                else symbol_info_tick["ask"]
             ),
-        }
+        )
+        if margin:
+            return {"volume": symbol_info["volume_min"], "margin": margin}
+        else:
+            self.logger.warning(
+                "No margin available for symbol: %s with order side: %s",
+                symbol,
+                order_side,
+            )
+            return {"volume": symbol_info["volume_min"], "margin": 0.0}
 
     def calculate_volume_by_margin(
         self,
@@ -314,10 +323,13 @@ class Mt5TradingClient(Mt5DataClient):
             symbol=symbol,
             order_side=order_side,
         )
-        return (
-            floor(margin / min_order_margin_dict["margin"])
-            * min_order_margin_dict["volume"]
-        )
+        if min_order_margin_dict["margin"]:
+            return (
+                floor(margin / min_order_margin_dict["margin"])
+                * min_order_margin_dict["volume"]
+            )
+        else:
+            return 0.0
 
     def calculate_spread_ratio(
         self,
