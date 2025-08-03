@@ -46,7 +46,7 @@ required-environments = ["platform_system == 'Windows'"]
 
 [tool.uv.build-backend]
 source-include = ["pdmt5/**", "LICENSE"]
-source-exclude = ["test/**"]
+source-exclude = ["tests/**"]
 
 [tool.ruff]
 line-length = 88
@@ -126,7 +126,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"test/**/*.py" = [
+"tests/**/*.py" = [
   "DOC201",   # Missing return documentation
   "DOC501",   # Raised exception missing from docstring
   "PLC2701",  # Private name import
@@ -147,6 +147,8 @@ max-public-methods = 40
 
 [tool.pyright]
 exclude = ["build", ".venv"]
+venvPath = "."
+venv = ".venv"
 typeCheckingMode = "strict"
 reportUnknownArgumentType = "none"
 reportUnknownMemberType = "none"
@@ -162,7 +164,7 @@ addopts = [
   "--capture=no",
 ]
 pythonpaths = ["."]
-testpaths = ["test"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -172,7 +174,7 @@ minversion = "6.0"
 source = ["pdmt5"]
 omit = [
   "**/__init__.py",
-  "test/**",
+  "tests/**",
 ]
 
 [tool.coverage.report]

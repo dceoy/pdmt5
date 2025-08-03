@@ -369,7 +369,7 @@ cd pdmt5
 uv sync
 
 # Run tests
-uv run pytest test/ -v
+uv run pytest tests/ -v
 
 # Run type checking
 uv run pyright .
