@@ -26,7 +26,7 @@ uv run pyright .
 
 ```bash
 # Run unit tests with pytest
-uv run pytest test/ -v
+uv run pytest tests/ -v
 
 # Type checking with pyright
 uv run pyright .
@@ -68,7 +68,7 @@ uv run mkdocs gh-deploy
   - `dataframe.py`: MT5 data client with pandas DataFrame conversion (`Mt5Config`, `Mt5DataClient`)
   - `trading.py`: Trading operations client (`Mt5TradingClient`, `Mt5TradingError`)
   - `utils.py`: Utility decorators and functions for time conversion and DataFrame indexing
-- `test/`: Comprehensive test suite (pytest-based)
+- `tests/`: Comprehensive test suite (pytest-based)
   - `test_init.py`, `test_mt5.py`, `test_dataframe.py`, `test_trading.py`, `test_utils.py`
 - `docs/`: MkDocs documentation with API reference
   - `docs/api/`: Auto-generated API documentation for all modules
