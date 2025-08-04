@@ -146,6 +146,7 @@ class Mt5TradingClient(Mt5DataClient):
         elif retcode in {
             self.mt5.TRADE_RETCODE_TRADE_DISABLED,
             self.mt5.TRADE_RETCODE_MARKET_CLOSED,
+            self.mt5.TRADE_RETCODE_NO_CHANGES,
         }:
             self.logger.info("response: %s", response)
             comment = response.get("comment", "Unknown error")
