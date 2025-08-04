@@ -72,6 +72,7 @@ def mock_mt5_import(
         mock_mt5.TRADE_RETCODE_DONE = 10009
         mock_mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
         mock_mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
+        mock_mt5.TRADE_RETCODE_NO_CHANGES = 10025
         mock_mt5.RES_S_OK = 1
         mock_mt5.DEAL_TYPE_BUY = 0
         mock_mt5.DEAL_TYPE_SELL = 1
@@ -567,6 +568,33 @@ class TestMt5TradingClient:
         result = client._send_or_check_order(request)
 
         assert result["retcode"] == 10018
+
+    def test_send_or_check_order_no_changes(
+        self,
+        mock_mt5_import: ModuleType,
+    ) -> None:
+        """Test _send_or_check_order with no changes return code."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+        mock_mt5_import.initialize.return_value = True
+        client.initialize()
+
+        request = {
+            "action": 1,
+            "symbol": "EURUSD",
+            "volume": 0.1,
+            "type": 1,
+        }
+
+        # Mock no changes response
+        mock_mt5_import.order_send.return_value.retcode = 10025
+        mock_mt5_import.order_send.return_value._asdict.return_value = {
+            "retcode": 10025,
+            "comment": "No changes",
+        }
+
+        result = client._send_or_check_order(request)
+
+        assert result["retcode"] == 10025
 
     def test_send_or_check_order_failure(
         self,
