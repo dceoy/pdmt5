@@ -33,8 +33,8 @@ Pandas-based data handler for MetaTrader 5
 ### From GitHub
 
 ```bash
-git clone https://github.com/dceoy/pdmt5.git
-pip install -U --no-cache-dir ./pdmt5
+pip install -U pdmt5
+pip install -U MetaTrader5
 ```
 
 ### Using uv (recommended for development)
