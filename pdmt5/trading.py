@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from functools import cached_property
 from math import floor
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -28,7 +29,7 @@ class Mt5TradingClient(Mt5DataClient):
 
     model_config = ConfigDict(frozen=True)
 
-    @property
+    @cached_property
     def mt5_successful_trade_retcodes(self) -> set[int]:
         """Set of successful trade return codes.
 
@@ -41,7 +42,7 @@ class Mt5TradingClient(Mt5DataClient):
             self.mt5.TRADE_RETCODE_DONE_PARTIAL,  # 10010
         }
 
-    @property
+    @cached_property
     def mt5_failed_trade_retcodes(self) -> set[int]:
         """Set of failed trade return codes.
 
