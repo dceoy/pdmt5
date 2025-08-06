@@ -28,6 +28,67 @@ class Mt5TradingClient(Mt5DataClient):
 
     model_config = ConfigDict(frozen=True)
 
+    @property
+    def mt5_successful_trade_retcodes(self) -> set[int]:
+        """Set of successful trade return codes.
+
+        Returns:
+            Set of successful trade return codes.
+        """
+        return {
+            self.mt5.TRADE_RETCODE_PLACED,  # 10008
+            self.mt5.TRADE_RETCODE_DONE,  # 10009
+            self.mt5.TRADE_RETCODE_DONE_PARTIAL,  # 10010
+        }
+
+    @property
+    def mt5_failed_trade_retcodes(self) -> set[int]:
+        """Set of failed trade return codes.
+
+        Returns:
+            Set of failed trade return codes.
+        """
+        return {
+            self.mt5.TRADE_RETCODE_REQUOTE,  # 10004
+            self.mt5.TRADE_RETCODE_REJECT,  # 10006
+            self.mt5.TRADE_RETCODE_CANCEL,  # 10007
+            self.mt5.TRADE_RETCODE_ERROR,  # 10011
+            self.mt5.TRADE_RETCODE_TIMEOUT,  # 10012
+            self.mt5.TRADE_RETCODE_INVALID,  # 10013
+            self.mt5.TRADE_RETCODE_INVALID_VOLUME,  # 10014
+            self.mt5.TRADE_RETCODE_INVALID_PRICE,  # 10015
+            self.mt5.TRADE_RETCODE_INVALID_STOPS,  # 10016
+            self.mt5.TRADE_RETCODE_TRADE_DISABLED,  # 10017
+            self.mt5.TRADE_RETCODE_MARKET_CLOSED,  # 10018
+            self.mt5.TRADE_RETCODE_NO_MONEY,  # 10019
+            self.mt5.TRADE_RETCODE_PRICE_CHANGED,  # 10020
+            self.mt5.TRADE_RETCODE_PRICE_OFF,  # 10021
+            self.mt5.TRADE_RETCODE_INVALID_EXPIRATION,  # 10022
+            self.mt5.TRADE_RETCODE_ORDER_CHANGED,  # 10023
+            self.mt5.TRADE_RETCODE_TOO_MANY_REQUESTS,  # 10024
+            self.mt5.TRADE_RETCODE_NO_CHANGES,  # 10025
+            self.mt5.TRADE_RETCODE_SERVER_DISABLES_AT,  # 10026
+            self.mt5.TRADE_RETCODE_CLIENT_DISABLES_AT,  # 10027
+            self.mt5.TRADE_RETCODE_LOCKED,  # 10028
+            self.mt5.TRADE_RETCODE_FROZEN,  # 10029
+            self.mt5.TRADE_RETCODE_INVALID_FILL,  # 10030
+            self.mt5.TRADE_RETCODE_CONNECTION,  # 10031
+            self.mt5.TRADE_RETCODE_ONLY_REAL,  # 10032
+            self.mt5.TRADE_RETCODE_LIMIT_ORDERS,  # 10033
+            self.mt5.TRADE_RETCODE_LIMIT_VOLUME,  # 10034
+            self.mt5.TRADE_RETCODE_INVALID_ORDER,  # 10035
+            self.mt5.TRADE_RETCODE_POSITION_CLOSED,  # 10036
+            self.mt5.TRADE_RETCODE_INVALID_CLOSE_VOLUME,  # 10038
+            self.mt5.TRADE_RETCODE_CLOSE_ORDER_EXIST,  # 10039
+            self.mt5.TRADE_RETCODE_LIMIT_POSITIONS,  # 10040
+            self.mt5.TRADE_RETCODE_REJECT_CANCEL,  # 10041
+            self.mt5.TRADE_RETCODE_LONG_ONLY,  # 10042
+            self.mt5.TRADE_RETCODE_SHORT_ONLY,  # 10043
+            self.mt5.TRADE_RETCODE_CLOSE_ONLY,  # 10044
+            self.mt5.TRADE_RETCODE_FIFO_CLOSE,  # 10045
+            self.mt5.TRADE_RETCODE_HEDGE_PROHIBITED,  # 10046
+        }
+
     def close_open_positions(
         self,
         symbols: str | list[str] | tuple[str, ...] | None = None,
@@ -116,12 +177,14 @@ class Mt5TradingClient(Mt5DataClient):
     def _send_or_check_order(
         self,
         request: dict[str, Any],
+        raise_on_error: bool = False,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """Send or check an order request.
 
         Args:
             request: Order request dictionary.
+            raise_on_error: If True, raise an error on operation failure.
             dry_run: If True, only check the order without sending it.
 
         Returns:
@@ -138,25 +201,21 @@ class Mt5TradingClient(Mt5DataClient):
             response = self.order_send_as_dict(request=request)
             order_func = "order_send"
         retcode = response.get("retcode")
-        if ((not dry_run) and retcode == self.mt5.TRADE_RETCODE_DONE) or (
-            dry_run and retcode == 0
+        if (dry_run and retcode == 0) or (
+            not dry_run and retcode in self.mt5_successful_trade_retcodes
         ):
             self.logger.info("response: %s", response)
             return response
-        elif retcode in {
-            self.mt5.TRADE_RETCODE_TRADE_DISABLED,
-            self.mt5.TRADE_RETCODE_MARKET_CLOSED,
-            self.mt5.TRADE_RETCODE_NO_CHANGES,
-        }:
-            self.logger.info("response: %s", response)
-            comment = response.get("comment", "Unknown error")
-            self.logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
-            return response
-        else:
+        elif raise_on_error:
             self.logger.error("response: %s", response)
-            comment = response.get("comment", "Unknown error")
+            comment = response.get("comment")
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
             raise Mt5TradingError(error_message)
+        else:
+            self.logger.warning("response: %s", response)
+            comment = response.get("comment")
+            self.logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
+            return response
 
     def place_market_order(
         self,

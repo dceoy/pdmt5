@@ -20,7 +20,7 @@ Mt5TradingClient.model_rebuild()
 
 
 @pytest.fixture(autouse=True)
-def mock_mt5_import(
+def mock_mt5_import(  # noqa: PLR0915
     request: pytest.FixtureRequest,
     mocker: MockerFixture,
 ) -> Generator[ModuleType | None, None, None]:
@@ -69,10 +69,50 @@ def mock_mt5_import(
         mock_mt5.ORDER_FILLING_FOK = 2
         mock_mt5.ORDER_FILLING_RETURN = 3
         mock_mt5.ORDER_TIME_GTC = 0
+
+        # Trade return codes
+        mock_mt5.TRADE_RETCODE_REQUOTE = 10004
+        mock_mt5.TRADE_RETCODE_REJECT = 10006
+        mock_mt5.TRADE_RETCODE_CANCEL = 10007
+        mock_mt5.TRADE_RETCODE_PLACED = 10008
         mock_mt5.TRADE_RETCODE_DONE = 10009
+        mock_mt5.TRADE_RETCODE_DONE_PARTIAL = 10010
+        mock_mt5.TRADE_RETCODE_ERROR = 10011
+        mock_mt5.TRADE_RETCODE_TIMEOUT = 10012
+        mock_mt5.TRADE_RETCODE_INVALID = 10013
+        mock_mt5.TRADE_RETCODE_INVALID_VOLUME = 10014
+        mock_mt5.TRADE_RETCODE_INVALID_PRICE = 10015
+        mock_mt5.TRADE_RETCODE_INVALID_STOPS = 10016
         mock_mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
         mock_mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
+        mock_mt5.TRADE_RETCODE_NO_MONEY = 10019
+        mock_mt5.TRADE_RETCODE_PRICE_CHANGED = 10020
+        mock_mt5.TRADE_RETCODE_PRICE_OFF = 10021
+        mock_mt5.TRADE_RETCODE_INVALID_EXPIRATION = 10022
+        mock_mt5.TRADE_RETCODE_ORDER_CHANGED = 10023
+        mock_mt5.TRADE_RETCODE_TOO_MANY_REQUESTS = 10024
         mock_mt5.TRADE_RETCODE_NO_CHANGES = 10025
+        mock_mt5.TRADE_RETCODE_SERVER_DISABLES_AT = 10026
+        mock_mt5.TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
+        mock_mt5.TRADE_RETCODE_LOCKED = 10028
+        mock_mt5.TRADE_RETCODE_FROZEN = 10029
+        mock_mt5.TRADE_RETCODE_INVALID_FILL = 10030
+        mock_mt5.TRADE_RETCODE_CONNECTION = 10031
+        mock_mt5.TRADE_RETCODE_ONLY_REAL = 10032
+        mock_mt5.TRADE_RETCODE_LIMIT_ORDERS = 10033
+        mock_mt5.TRADE_RETCODE_LIMIT_VOLUME = 10034
+        mock_mt5.TRADE_RETCODE_INVALID_ORDER = 10035
+        mock_mt5.TRADE_RETCODE_POSITION_CLOSED = 10036
+        mock_mt5.TRADE_RETCODE_INVALID_CLOSE_VOLUME = 10038
+        mock_mt5.TRADE_RETCODE_CLOSE_ORDER_EXIST = 10039
+        mock_mt5.TRADE_RETCODE_LIMIT_POSITIONS = 10040
+        mock_mt5.TRADE_RETCODE_REJECT_CANCEL = 10041
+        mock_mt5.TRADE_RETCODE_LONG_ONLY = 10042
+        mock_mt5.TRADE_RETCODE_SHORT_ONLY = 10043
+        mock_mt5.TRADE_RETCODE_CLOSE_ONLY = 10044
+        mock_mt5.TRADE_RETCODE_FIFO_CLOSE = 10045
+        mock_mt5.TRADE_RETCODE_HEDGE_PROHIBITED = 10046
+
         mock_mt5.RES_S_OK = 1
         mock_mt5.DEAL_TYPE_BUY = 0
         mock_mt5.DEAL_TYPE_SELL = 1
@@ -612,15 +652,15 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock failure response
-        mock_mt5_import.order_send.return_value.retcode = 10004
+        # Mock failure response with error retcode
+        mock_mt5_import.order_send.return_value.retcode = 10006
         mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10004,
+            "retcode": 10006,
             "comment": "Invalid request",
         }
 
         with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed and aborted"):
-            client._send_or_check_order(request)
+            client._send_or_check_order(request, raise_on_error=True)
 
     def test_send_or_check_order_dry_run_failure(
         self,
@@ -638,17 +678,17 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock failure response
-        mock_mt5_import.order_check.return_value.retcode = 10004
+        # Mock failure response with non-zero retcode for dry run
+        mock_mt5_import.order_check.return_value.retcode = 10013
         mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 10004,
+            "retcode": 10013,
             "comment": "Invalid request",
         }
 
         with pytest.raises(
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
-            client._send_or_check_order(request, dry_run=True)
+            client._send_or_check_order(request, raise_on_error=True, dry_run=True)
 
     def test_send_or_check_order_dry_run_override(
         self,
@@ -1896,3 +1936,79 @@ class TestMt5TradingClient:
         assert isinstance(result, list)
         assert len(result) == 2
         assert all(r["retcode"] == 10009 for r in result)
+
+    def test_mt5_successful_trade_retcodes_property(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test mt5_successful_trade_retcodes property returns correct set of codes."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+
+        # Get the property value
+        retcodes = client.mt5_successful_trade_retcodes
+
+        # Verify it's a set
+        assert isinstance(retcodes, set)
+
+        # Verify the expected codes are present
+        assert retcodes == {
+            mock_mt5_import.TRADE_RETCODE_PLACED,  # 10008
+            mock_mt5_import.TRADE_RETCODE_DONE,  # 10009
+            mock_mt5_import.TRADE_RETCODE_DONE_PARTIAL,  # 10010
+        }
+
+    def test_mt5_failed_trade_retcodes_property(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test mt5_failed_trade_retcodes property returns correct set of codes."""
+        client = Mt5TradingClient(mt5=mock_mt5_import)
+
+        # Get the property value
+        retcodes = client.mt5_failed_trade_retcodes
+
+        # Verify it's a set
+        assert isinstance(retcodes, set)
+
+        # Verify it contains the expected codes
+        expected_codes = {
+            mock_mt5_import.TRADE_RETCODE_REQUOTE,  # 10004
+            mock_mt5_import.TRADE_RETCODE_REJECT,  # 10006
+            mock_mt5_import.TRADE_RETCODE_CANCEL,  # 10007
+            mock_mt5_import.TRADE_RETCODE_ERROR,  # 10011
+            mock_mt5_import.TRADE_RETCODE_TIMEOUT,  # 10012
+            mock_mt5_import.TRADE_RETCODE_INVALID,  # 10013
+            mock_mt5_import.TRADE_RETCODE_INVALID_VOLUME,  # 10014
+            mock_mt5_import.TRADE_RETCODE_INVALID_PRICE,  # 10015
+            mock_mt5_import.TRADE_RETCODE_INVALID_STOPS,  # 10016
+            mock_mt5_import.TRADE_RETCODE_TRADE_DISABLED,  # 10017
+            mock_mt5_import.TRADE_RETCODE_MARKET_CLOSED,  # 10018
+            mock_mt5_import.TRADE_RETCODE_NO_MONEY,  # 10019
+            mock_mt5_import.TRADE_RETCODE_PRICE_CHANGED,  # 10020
+            mock_mt5_import.TRADE_RETCODE_PRICE_OFF,  # 10021
+            mock_mt5_import.TRADE_RETCODE_INVALID_EXPIRATION,  # 10022
+            mock_mt5_import.TRADE_RETCODE_ORDER_CHANGED,  # 10023
+            mock_mt5_import.TRADE_RETCODE_TOO_MANY_REQUESTS,  # 10024
+            mock_mt5_import.TRADE_RETCODE_NO_CHANGES,  # 10025
+            mock_mt5_import.TRADE_RETCODE_SERVER_DISABLES_AT,  # 10026
+            mock_mt5_import.TRADE_RETCODE_CLIENT_DISABLES_AT,  # 10027
+            mock_mt5_import.TRADE_RETCODE_LOCKED,  # 10028
+            mock_mt5_import.TRADE_RETCODE_FROZEN,  # 10029
+            mock_mt5_import.TRADE_RETCODE_INVALID_FILL,  # 10030
+            mock_mt5_import.TRADE_RETCODE_CONNECTION,  # 10031
+            mock_mt5_import.TRADE_RETCODE_ONLY_REAL,  # 10032
+            mock_mt5_import.TRADE_RETCODE_LIMIT_ORDERS,  # 10033
+            mock_mt5_import.TRADE_RETCODE_LIMIT_VOLUME,  # 10034
+            mock_mt5_import.TRADE_RETCODE_INVALID_ORDER,  # 10035
+            mock_mt5_import.TRADE_RETCODE_POSITION_CLOSED,  # 10036
+            mock_mt5_import.TRADE_RETCODE_INVALID_CLOSE_VOLUME,  # 10038
+            mock_mt5_import.TRADE_RETCODE_CLOSE_ORDER_EXIST,  # 10039
+            mock_mt5_import.TRADE_RETCODE_LIMIT_POSITIONS,  # 10040
+            mock_mt5_import.TRADE_RETCODE_REJECT_CANCEL,  # 10041
+            mock_mt5_import.TRADE_RETCODE_LONG_ONLY,  # 10042
+            mock_mt5_import.TRADE_RETCODE_SHORT_ONLY,  # 10043
+            mock_mt5_import.TRADE_RETCODE_CLOSE_ONLY,  # 10044
+            mock_mt5_import.TRADE_RETCODE_FIFO_CLOSE,  # 10045
+            mock_mt5_import.TRADE_RETCODE_HEDGE_PROHIBITED,  # 10046
+        }
+
+        # Verify all expected codes are present
+        assert retcodes == expected_codes
