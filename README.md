@@ -30,14 +30,14 @@ Pandas-based data handler for MetaTrader 5
 
 ## Installation
 
-### Using pip (recommended for production)
+### Using pip
 
 ```bash
 pip install -U pdmt5
 pip install -U MetaTrader5
 ```
 
-### Using uv (recommended for development)
+### Using uv
 
 ```bash
 git clone https://github.com/dceoy/pdmt5.git
