@@ -33,8 +33,7 @@ Pandas-based data handler for MetaTrader 5
 ### Using pip
 
 ```bash
-pip install -U pdmt5
-pip install -U MetaTrader5
+pip install -U pdmt5 MetaTrader5
 ```
 
 ### Using uv
