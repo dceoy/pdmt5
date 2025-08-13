@@ -243,6 +243,7 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             Dictionary with operation result.
         """
+        self.logger.info("Placing market order: %s %s %s", order_side, volume, symbol)
         return self._send_or_check_order(
             request={
                 "action": self.mt5.TRADE_ACTION_DEAL,
@@ -315,6 +316,13 @@ class Mt5TradingClient(Mt5DataClient):
                 if sl != p["sl"] or tp != p["tp"]
             ]
             if order_requests:
+                self.logger.info(
+                    "Updating SL/TP for %d positions for %s: %s/%s",
+                    len(order_requests),
+                    symbol,
+                    sl,
+                    tp,
+                )
                 return [
                     self._send_or_check_order(request=r, dry_run=dry_run)
                     for r in order_requests
@@ -354,15 +362,20 @@ class Mt5TradingClient(Mt5DataClient):
                 else symbol_info_tick["ask"]
             ),
         )
+        result = {"volume": symbol_info["volume_min"], "margin": margin}
         if margin:
-            return {"volume": symbol_info["volume_min"], "margin": margin}
+            self.logger.info(
+                "Calculated minimum order margin for %s: %s",
+                symbol,
+                result,
+            )
         else:
             self.logger.warning(
-                "No margin available for symbol: %s with order side: %s",
+                "Calculated minimum order margin for %s: %s",
                 symbol,
-                order_side,
+                result,
             )
-            return {"volume": symbol_info["volume_min"], "margin": 0.0}
+        return result
 
     def calculate_volume_by_margin(
         self,
@@ -385,12 +398,14 @@ class Mt5TradingClient(Mt5DataClient):
             order_side=order_side,
         )
         if min_order_margin_dict["margin"]:
-            return (
+            result = (
                 floor(margin / min_order_margin_dict["margin"])
                 * min_order_margin_dict["volume"]
             )
         else:
-            return 0.0
+            result = 0.0
+        self.logger.info("Calculated volume by margin for %s: %s", symbol, result)
+        return result
 
     def calculate_spread_ratio(
         self,
@@ -405,11 +420,13 @@ class Mt5TradingClient(Mt5DataClient):
             Spread ratio as a float.
         """
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
-        return (
+        result = (
             (symbol_info_tick["ask"] - symbol_info_tick["bid"])
             / (symbol_info_tick["ask"] + symbol_info_tick["bid"])
             * 2
         )
+        self.logger.info("Calculated spread ratio for %s: %s", symbol, result)
+        return result
 
     def fetch_latest_rates_as_df(
         self,
@@ -440,13 +457,19 @@ class Mt5TradingClient(Mt5DataClient):
             )
             raise Mt5TradingError(error_message) from e
         else:
-            return self.copy_rates_from_pos_as_df(
+            result = self.copy_rates_from_pos_as_df(
                 symbol=symbol,
                 timeframe=timeframe,
                 start_pos=0,
                 count=count,
                 index_keys=index_keys,
             )
+            self.logger.info(
+                "Fetched latest rates for %s: %d rows",
+                symbol,
+                result.shape[0],
+            )
+            return result
 
     def fetch_latest_ticks_as_df(
         self,
@@ -465,13 +488,19 @@ class Mt5TradingClient(Mt5DataClient):
             pd.DataFrame: Tick data with time index.
         """
         last_tick_time = self.symbol_info_tick_as_dict(symbol=symbol)["time"]
-        return self.copy_ticks_range_as_df(
+        result = self.copy_ticks_range_as_df(
             symbol=symbol,
             date_from=(last_tick_time - timedelta(seconds=seconds)),
             date_to=(last_tick_time + timedelta(seconds=seconds)),
             flags=self.mt5.COPY_TICKS_ALL,
             index_keys=index_keys,
         )
+        self.logger.info(
+            "Fetched latest ticks for %s: %d rows",
+            symbol,
+            result.shape[0],
+        )
+        return result
 
     def collect_entry_deals_as_df(
         self,
@@ -497,14 +526,20 @@ class Mt5TradingClient(Mt5DataClient):
             index_keys=index_keys,
         )
         if deals_df.empty:
-            return deals_df
+            result = deals_df
         else:
-            return deals_df.pipe(
+            result = deals_df.pipe(
                 lambda d: d[
                     d["entry"]
                     & d["type"].isin({self.mt5.DEAL_TYPE_BUY, self.mt5.DEAL_TYPE_SELL})
                 ]
             )
+        self.logger.info(
+            "Collected entry deals for %s: %d rows",
+            symbol,
+            result.shape[0],
+        )
+        return result
 
     def fetch_positions_with_metrics_as_df(
         self,
@@ -520,7 +555,7 @@ class Mt5TradingClient(Mt5DataClient):
         """
         positions_df = self.positions_get_as_df(symbol=symbol)
         if positions_df.empty:
-            return positions_df
+            result = positions_df
         else:
             symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
             ask_margin = self.order_calc_margin(
@@ -535,7 +570,7 @@ class Mt5TradingClient(Mt5DataClient):
                 volume=1,
                 price=symbol_info_tick["bid"],
             )
-            return (
+            result = (
                 positions_df.assign(
                     elapsed_seconds=lambda d: (
                         symbol_info_tick["time"] - d["time"]
@@ -566,6 +601,12 @@ class Mt5TradingClient(Mt5DataClient):
                 )
                 .drop(columns=["buy_i", "sell_i", "sign", "underlier_increase_ratio"])
             )
+        self.logger.info(
+            "Fetched positions with metrics for %s: %d rows",
+            symbol,
+            result.shape[0],
+        )
+        return result
 
     def calculate_new_position_margin_ratio(
         self,
@@ -585,7 +626,7 @@ class Mt5TradingClient(Mt5DataClient):
         """
         account_info = self.account_info_as_dict()
         if not account_info["equity"]:
-            return 0.0
+            result = 0.0
         else:
             positions_df = self.fetch_positions_with_metrics_as_df(symbol=symbol)
             current_signed_margin = (
@@ -610,6 +651,12 @@ class Mt5TradingClient(Mt5DataClient):
                 )
             else:
                 new_signed_margin = 0
-            return abs(
+            result = abs(
                 (new_signed_margin + current_signed_margin) / account_info["equity"]
             )
+        self.logger.info(
+            "Calculated new position margin ratio for %s: %s",
+            symbol,
+            result,
+        )
+        return result
