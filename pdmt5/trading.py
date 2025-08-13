@@ -365,13 +365,15 @@ class Mt5TradingClient(Mt5DataClient):
         result = {"volume": symbol_info["volume_min"], "margin": margin}
         if margin:
             self.logger.info(
-                "Calculated minimum order margin for %s: %s",
+                "Calculated minimum %s order margin for %s: %s",
+                order_side,
                 symbol,
                 result,
             )
         else:
             self.logger.warning(
-                "Calculated minimum order margin for %s: %s",
+                "Calculated minimum order margin to %s %s: %s",
+                order_side,
                 symbol,
                 result,
             )
@@ -404,7 +406,12 @@ class Mt5TradingClient(Mt5DataClient):
             )
         else:
             result = 0.0
-        self.logger.info("Calculated volume by margin for %s: %s", symbol, result)
+        self.logger.info(
+            "Calculated volume by margin to %s %s: %s",
+            order_side,
+            symbol,
+            result,
+        )
         return result
 
     def calculate_spread_ratio(
@@ -465,7 +472,8 @@ class Mt5TradingClient(Mt5DataClient):
                 index_keys=index_keys,
             )
             self.logger.info(
-                "Fetched latest rates for %s: %d rows",
+                "Fetched latest %s rates for %s: %d rows",
+                granularity,
                 symbol,
                 result.shape[0],
             )
