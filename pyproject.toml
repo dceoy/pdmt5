@@ -150,6 +150,7 @@ exclude = ["build", ".venv"]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
+threads = 0
 reportUnknownArgumentType = "none"
 reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"
