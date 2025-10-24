@@ -7,7 +7,7 @@ maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">= 3.11"
+requires-python = ">= 3.11, < 3.14"
 dependencies = [
   "MetaTrader5 >= 5.0.4424; sys_platform == 'win32'",
   "pandas >= 2.2.2",
