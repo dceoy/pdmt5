@@ -58,7 +58,6 @@ jobs:
     with:
       package-path: .
       create-releases: ${{ github.event_name == 'workflow_dispatch' && inputs.workflow == 'release' }}
-      python-version: 3.x
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
