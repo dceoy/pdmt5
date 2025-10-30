@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Repository Guidelines
 
 ## Commands
 
@@ -111,9 +109,18 @@ Uses MkDocs with Material theme for API documentation built from Google-style do
 3. Build: `uv run mkdocs build`
 4. Deploy: `uv run mkdocs gh-deploy`
 
+## Serena MCP Usage (Prioritize When Available)
+
+- **If Serena MCP is available, use it first.** Treat Serena MCP tools as the primary interface over local commands or ad-hoc scripts.
+- **Glance at the Serena MCP docs/help before calling a tool** to confirm tool names, required args, and limits.
+- **Use the MCP-exposed tools for supported actions** (e.g., reading/writing files, running tasks, fetching data) instead of re-implementing workflows.
+- **Never hardcode secrets.** Reference environment variables or the MCP’s configured credential store; avoid printing tokens or sensitive paths.
+- **If Serena MCP isn’t enabled or lacks a needed capability, say so and propose a safe fallback.** Mention enabling it via `.mcp.json` when relevant.
+- **Be explicit and reproducible.** Name the exact MCP tool and arguments you intend to use in your steps.
+
 ## Web Search Instructions
 
-For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tools (WebFetch and WebSearch).
+For tasks requiring web search, always use Gemini CLI (`gemini` command) instead of the built-in web search tools.
 Gemini CLI is an AI workflow tool that provides reliable web search capabilities.
 
 ### Usage
