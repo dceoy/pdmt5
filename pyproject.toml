@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "0.2.0"
+version = "0.2.1"
 description = "Pandas-based data handler for MetaTrader 5"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
@@ -28,7 +28,10 @@ classifiers = [
 Repository = "https://github.com/dceoy/pdmt5.git"
 
 [tool.uv]
-dev-dependencies = [
+required-environments = ["platform_system == 'Windows'"]
+
+[dependency-groups]
+dev = [
   "ruff >= 0.11.0",
   "pyright >= 1.1.402",
   "pytest >= 8.0.0",
@@ -42,7 +45,6 @@ dev-dependencies = [
   "mkdocs-material >= 9.6.15",
   "mkdocstrings[python] >= 0.29.1",
 ]
-required-environments = ["platform_system == 'Windows'"]
 
 [tool.uv.build-backend]
 source-include = ["pdmt5/**", "LICENSE"]

@@ -131,6 +131,7 @@ class Mt5TradingClient(Mt5DataClient):
         self,
         symbol: str | None = None,
         order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
+        raise_on_error: bool = False,
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
@@ -139,6 +140,7 @@ class Mt5TradingClient(Mt5DataClient):
         Args:
             symbol: Optional symbol filter.
             order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
+            raise_on_error: If True, raise an exception on error.
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -170,6 +172,7 @@ class Mt5TradingClient(Mt5DataClient):
                         "position": p["ticket"],
                         **kwargs,
                     },
+                    raise_on_error=raise_on_error,
                     dry_run=dry_run,
                 )
                 for p in positions_dict
@@ -225,6 +228,7 @@ class Mt5TradingClient(Mt5DataClient):
         order_side: Literal["BUY", "SELL"],
         order_filling_mode: Literal["IOC", "FOK", "RETURN"] = "IOC",
         order_time_mode: Literal["GTC", "DAY", "SPECIFIED", "SPECIFIED_DAY"] = "GTC",
+        raise_on_error: bool = False,
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, Any]:
@@ -237,6 +241,7 @@ class Mt5TradingClient(Mt5DataClient):
             order_filling_mode: Order filling mode, either "IOC", "FOK", or "RETURN".
             order_time_mode: Order time mode, either "GTC", "DAY", "SPECIFIED",
                 or "SPECIFIED_DAY".
+            raise_on_error: If True, raise an error on operation failure.
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -256,6 +261,7 @@ class Mt5TradingClient(Mt5DataClient):
                 "type_time": getattr(self.mt5, f"ORDER_TIME_{order_time_mode.upper()}"),
                 **kwargs,
             },
+            raise_on_error=raise_on_error,
             dry_run=dry_run,
         )
 
@@ -265,6 +271,7 @@ class Mt5TradingClient(Mt5DataClient):
         stop_loss: float | None = None,
         take_profit: float | None = None,
         tickets: list[int] | None = None,
+        raise_on_error: bool = False,
         dry_run: bool = False,
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
@@ -276,6 +283,7 @@ class Mt5TradingClient(Mt5DataClient):
             take_profit: New Take Profit price. If None, it will not be changed.
             tickets: List of position tickets to filter positions. If None, all open
                 positions for the symbol will be considered.
+            raise_on_error: If True, raise an error on operation failure.
             dry_run: If True, only check the order without sending it.
             **kwargs: Additional keyword arguments for request parameters.
 
@@ -324,7 +332,9 @@ class Mt5TradingClient(Mt5DataClient):
                     tp,
                 )
                 return [
-                    self._send_or_check_order(request=r, dry_run=dry_run)
+                    self._send_or_check_order(
+                        request=r, raise_on_error=raise_on_error, dry_run=dry_run
+                    )
                     for r in order_requests
                 ]
             else:
