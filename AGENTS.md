@@ -85,6 +85,7 @@ uv run mkdocs gh-deploy
 - Type hints required (pyright strict mode)
 - Comprehensive linting with 35+ rule categories (ruff)
 - Test coverage tracking with 90% minimum (branch coverage enabled)
+- Parametrized tests for input/result matrices using `pytest.mark.parametrize` (pytest)
 - Professional financial software standards
 - Pydantic models for data validation and configuration
 - Context manager support for resource management

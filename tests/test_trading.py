@@ -5,7 +5,7 @@
 
 from collections.abc import Generator
 from types import ModuleType
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -555,11 +555,18 @@ class TestMt5TradingClient:
         assert result["result"] == "send_success"
         mock_mt5_import.order_send.assert_called_once_with(request)
 
-    def test_send_or_check_order_trade_disabled(
-        self,
-        mock_mt5_import: ModuleType,
+    @pytest.mark.parametrize(
+        ("retcode", "comment"),
+        [
+            (10017, "Trade disabled"),
+            (10018, "Market closed"),
+            (10025, "No changes"),
+        ],
+    )
+    def test_send_or_check_order_non_error_retcodes(
+        self, mock_mt5_import: ModuleType, retcode: int, comment: str
     ) -> None:
-        """Test _send_or_check_order with trade disabled."""
+        """Test _send_or_check_order with non-error retcodes."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -571,70 +578,15 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock trade disabled response
-        mock_mt5_import.order_send.return_value.retcode = 10017
+        mock_mt5_import.order_send.return_value.retcode = retcode
         mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10017,
-            "comment": "Trade disabled",
+            "retcode": retcode,
+            "comment": comment,
         }
 
         result = client._send_or_check_order(request)
 
-        assert result["retcode"] == 10017
-
-    def test_send_or_check_order_market_closed(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test _send_or_check_order with market closed."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
-
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 1,
-        }
-
-        # Mock market closed response
-        mock_mt5_import.order_send.return_value.retcode = 10018
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10018,
-            "comment": "Market closed",
-        }
-
-        result = client._send_or_check_order(request)
-
-        assert result["retcode"] == 10018
-
-    def test_send_or_check_order_no_changes(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test _send_or_check_order with no changes return code."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
-
-        request = {
-            "action": 1,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 1,
-        }
-
-        # Mock no changes response
-        mock_mt5_import.order_send.return_value.retcode = 10025
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10025,
-            "comment": "No changes",
-        }
-
-        result = client._send_or_check_order(request)
-
-        assert result["retcode"] == 10025
+        assert result["retcode"] == retcode
 
     def test_send_or_check_order_failure(
         self,
@@ -921,11 +873,22 @@ class TestMt5TradingClient:
         mock_mt5_import.order_check.assert_called_once()
         mock_mt5_import.order_send.assert_not_called()
 
-    def test_calculate_minimum_order_margin_buy_success(
+    @pytest.mark.parametrize(
+        ("order_side", "order_type_attr", "price_key", "expected_margin"),
+        [
+            ("BUY", "ORDER_TYPE_BUY", "ask", 100.5),
+            ("SELL", "ORDER_TYPE_SELL", "bid", 99.8),
+        ],
+    )
+    def test_calculate_minimum_order_margin_success(
         self,
         mock_mt5_import: ModuleType,
+        order_side: Literal["BUY", "SELL"],
+        order_type_attr: str,
+        price_key: str,
+        expected_margin: float,
     ) -> None:
-        """Test successful calculation of minimum order margin for BUY orders."""
+        """Test successful calculation of minimum order margin."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -942,24 +905,35 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return successful result
-        mock_mt5_import.order_calc_margin.return_value = 100.5
+        mock_mt5_import.order_calc_margin.return_value = expected_margin
 
-        result = client.calculate_minimum_order_margin("EURUSD", "BUY")
+        result = client.calculate_minimum_order_margin("EURUSD", order_side)
 
-        assert result == {"volume": 0.01, "margin": 100.5}
+        assert result == {"volume": 0.01, "margin": expected_margin}
+        tick_info = mock_mt5_import.symbol_info_tick.return_value._asdict.return_value
         mock_mt5_import.order_calc_margin.assert_called_once_with(
-            mock_mt5_import.ORDER_TYPE_BUY,
+            getattr(mock_mt5_import, order_type_attr),
             "EURUSD",
             0.01,
-            1.1000,
+            tick_info[price_key],
         )
 
-    def test_calculate_minimum_order_margin_sell_success(
+    @pytest.mark.parametrize(
+        ("order_side", "budget", "order_calc_margin_return", "expected_volume"),
+        [
+            ("BUY", 1000.0, 100.5, 0.09),
+            ("SELL", 500.0, 99.8, 0.05),
+        ],
+    )
+    def test_calculate_volume_by_margin_success(
         self,
         mock_mt5_import: ModuleType,
+        order_side: Literal["BUY", "SELL"],
+        budget: float,
+        order_calc_margin_return: float,
+        expected_volume: float,
     ) -> None:
-        """Test successful calculation of minimum order margin for SELL orders."""
+        """Test successful calculation of volume by margin."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
         client.initialize()
@@ -976,77 +950,10 @@ class TestMt5TradingClient:
             "bid": 1.0998,
         }
 
-        # Mock order_calc_margin to return successful result
-        mock_mt5_import.order_calc_margin.return_value = 99.8
+        mock_mt5_import.order_calc_margin.return_value = order_calc_margin_return
 
-        result = client.calculate_minimum_order_margin("EURUSD", "SELL")
+        result = client.calculate_volume_by_margin("EURUSD", budget, order_side)
 
-        assert result == {"volume": 0.01, "margin": 99.8}
-        mock_mt5_import.order_calc_margin.assert_called_once_with(
-            mock_mt5_import.ORDER_TYPE_SELL,
-            "EURUSD",
-            0.01,
-            1.0998,
-        )
-
-    def test_calculate_volume_by_margin_buy_success(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test successful calculation of volume by margin for BUY orders."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "volume_min": 0.01,
-            "name": "EURUSD",
-        }
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "ask": 1.1000,
-            "bid": 1.0998,
-        }
-
-        # Mock order_calc_margin to return margin for minimum volume
-        mock_mt5_import.order_calc_margin.return_value = 100.5
-
-        result = client.calculate_volume_by_margin("EURUSD", 1000.0, "BUY")
-
-        # Should return floor(1000 / 100.5) * 0.01 = 9 * 0.01 = 0.09
-        expected_volume = 9 * 0.01
-        assert result == expected_volume
-
-    def test_calculate_volume_by_margin_sell_success(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test successful calculation of volume by margin for SELL orders."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "volume_min": 0.01,
-            "name": "EURUSD",
-        }
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "ask": 1.1000,
-            "bid": 1.0998,
-        }
-
-        # Mock order_calc_margin to return margin for minimum volume
-        mock_mt5_import.order_calc_margin.return_value = 99.8
-
-        result = client.calculate_volume_by_margin("EURUSD", 500.0, "SELL")
-
-        # Should return floor(500 / 99.8) * 0.01 = 5 * 0.01 = 0.05
-        expected_volume = 5 * 0.01
         assert result == expected_volume
 
     def test_calculate_minimum_order_margin_no_margin(

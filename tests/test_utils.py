@@ -2,6 +2,7 @@
 
 # pyright: reportPrivateUsage=false
 
+from collections.abc import Callable
 from typing import Any
 
 import pandas as pd
@@ -18,167 +19,211 @@ from pdmt5.utils import (
 class TestConvertTimeValuesInDict:
     """Test _convert_time_values_in_dict function."""
 
-    def test_convert_time_values_basic(self) -> None:
-        """Test basic time value conversion."""
-        input_dict = {
-            "time": 1704067200,  # 2024-01-01 00:00:00 UTC
-            "price": 100.5,
-            "volume": 1000,
-        }
-        result = _convert_time_values_in_dict(input_dict)
+    @pytest.mark.parametrize(
+        ("input_factory", "expected"),
+        [
+            pytest.param(
+                lambda: {
+                    "time": 1704067200,  # 2024-01-01 00:00:00 UTC
+                    "price": 100.5,
+                    "volume": 1000,
+                },
+                {
+                    "time": pd.Timestamp("2024-01-01 00:00:00"),
+                    "price": 100.5,
+                    "volume": 1000,
+                },
+                id="seconds",
+            ),
+            pytest.param(
+                lambda: {
+                    "time_msc": 1704067200000,
+                    "time_setup_msc": 1704067200500,
+                    "other_data": "test",
+                },
+                {
+                    "time_msc": pd.Timestamp("2024-01-01 00:00:00"),
+                    "time_setup_msc": pd.Timestamp("2024-01-01 00:00:00.500"),
+                    "other_data": "test",
+                },
+                id="milliseconds",
+            ),
+            pytest.param(
+                lambda: {
+                    "time_setup": 1704067200,
+                    "time_done": 1704067260,
+                    "time_expiration": 1704067320,
+                    "status": "complete",
+                },
+                {
+                    "time_setup": pd.Timestamp("2024-01-01 00:00:00"),
+                    "time_done": pd.Timestamp("2024-01-01 00:01:00"),
+                    "time_expiration": pd.Timestamp("2024-01-01 00:02:00"),
+                    "status": "complete",
+                },
+                id="prefixed-seconds",
+            ),
+            pytest.param(
+                lambda: {
+                    "time": "not a timestamp",
+                    "time_text": "2024-01-01",
+                    "time_none": None,
+                },
+                {
+                    "time": "not a timestamp",
+                    "time_text": "2024-01-01",
+                    "time_none": None,
+                },
+                id="non-numeric",
+            ),
+            pytest.param(dict, {}, id="empty"),
+            pytest.param(
+                lambda: {"price": 100.5, "volume": 1000, "symbol": "EURUSD"},
+                {"price": 100.5, "volume": 1000, "symbol": "EURUSD"},
+                id="no-time-fields",
+            ),
+            pytest.param(
+                lambda: {
+                    "time_setup_msc": 1640995200000,
+                    "time_done_msc": 1640995210000,
+                    "regular_field": "unchanged",
+                    "numeric_field": 123.45,
+                },
+                {
+                    "time_setup_msc": pd.Timestamp("2022-01-01 00:00:00"),
+                    "time_done_msc": pd.Timestamp("2022-01-01 00:00:10"),
+                    "regular_field": "unchanged",
+                    "numeric_field": 123.45,
+                },
+                id="additional-milliseconds",
+            ),
+            pytest.param(
+                lambda: {
+                    "time": 1640995200,
+                    "time_setup": 1640995210,
+                    "time_update": 1640995220,
+                    "regular_field": "unchanged",
+                    "string_field": "not_time",
+                },
+                {
+                    "time": pd.Timestamp("2022-01-01 00:00:00"),
+                    "time_setup": pd.Timestamp("2022-01-01 00:00:10"),
+                    "time_update": pd.Timestamp("2022-01-01 00:00:20"),
+                    "regular_field": "unchanged",
+                    "string_field": "not_time",
+                },
+                id="additional-seconds",
+            ),
+        ],
+    )
+    def test_convert_time_values_in_dict(
+        self,
+        input_factory: Callable[[], dict[str, Any]],
+        expected: dict[str, Any],
+    ) -> None:
+        """Test multiple time value conversion scenarios."""
+        result = _convert_time_values_in_dict(input_factory())
 
-        assert isinstance(result["time"], pd.Timestamp)
-        assert result["time"] == pd.Timestamp("2024-01-01 00:00:00")
-        assert result["price"] == 100.5
-        assert result["volume"] == 1000
-
-    def test_convert_time_values_with_msc(self) -> None:
-        """Test conversion of millisecond time values."""
-        input_dict = {
-            "time_msc": 1704067200000,  # 2024-01-01 00:00:00 UTC in milliseconds
-            "time_setup_msc": 1704067200500,
-            "other_data": "test",
-        }
-        result = _convert_time_values_in_dict(input_dict)
-
-        assert isinstance(result["time_msc"], pd.Timestamp)
-        assert result["time_msc"] == pd.Timestamp("2024-01-01 00:00:00")
-        assert result["time_setup_msc"] == pd.Timestamp("2024-01-01 00:00:00.500")
-        assert result["other_data"] == "test"
-
-    def test_convert_time_values_with_time_prefix(self) -> None:
-        """Test conversion of time-prefixed fields."""
-        input_dict = {
-            "time_setup": 1704067200,
-            "time_done": 1704067260,
-            "time_expiration": 1704067320,
-            "status": "complete",
-        }
-        result = _convert_time_values_in_dict(input_dict)
-
-        assert isinstance(result["time_setup"], pd.Timestamp)
-        assert isinstance(result["time_done"], pd.Timestamp)
-        assert isinstance(result["time_expiration"], pd.Timestamp)
-        assert result["status"] == "complete"
-
-    def test_convert_time_values_non_numeric(self) -> None:
-        """Test that non-numeric values are not converted."""
-        input_dict = {
-            "time": "not a timestamp",
-            "time_text": "2024-01-01",
-            "time_none": None,
-        }
-        result = _convert_time_values_in_dict(input_dict)
-
-        assert result["time"] == "not a timestamp"
-        assert result["time_text"] == "2024-01-01"
-        assert result["time_none"] is None
-
-    def test_convert_time_values_empty_dict(self) -> None:
-        """Test conversion of empty dictionary."""
-        result = _convert_time_values_in_dict({})
-        assert result == {}
-
-    def test_convert_time_values_no_time_fields(self) -> None:
-        """Test dictionary with no time fields."""
-        input_dict = {"price": 100.5, "volume": 1000, "symbol": "EURUSD"}
-        result = _convert_time_values_in_dict(input_dict)
-        assert result == input_dict
-
-    def test_convert_time_values_in_dict_with_time_msc_additional(self) -> None:
-        """Test _convert_time_values_in_dict with time_msc fields."""
-        test_dict = {
-            "time_setup_msc": 1640995200000,
-            "time_done_msc": 1640995210000,
-            "regular_field": "unchanged",
-            "numeric_field": 123.45,
-        }
-
-        result = _convert_time_values_in_dict(test_dict)
-
-        assert isinstance(result["time_setup_msc"], pd.Timestamp)
-        assert isinstance(result["time_done_msc"], pd.Timestamp)
-        assert result["regular_field"] == "unchanged"
-        assert result["numeric_field"] == 123.45
-
-    def test_convert_time_values_in_dict_with_time_fields_additional(self) -> None:
-        """Test _convert_time_values_in_dict with regular time fields."""
-        test_dict = {
-            "time": 1640995200,
-            "time_setup": 1640995210,
-            "time_update": 1640995220,
-            "regular_field": "unchanged",
-            "string_field": "not_time",
-        }
-
-        result = _convert_time_values_in_dict(test_dict)
-
-        assert isinstance(result["time"], pd.Timestamp)
-        assert isinstance(result["time_setup"], pd.Timestamp)
-        assert isinstance(result["time_update"], pd.Timestamp)
-        assert result["regular_field"] == "unchanged"
-        assert result["string_field"] == "not_time"
+        assert set(result.keys()) == set(expected.keys())
+        for key, expected_value in expected.items():
+            if isinstance(expected_value, pd.Timestamp):
+                assert isinstance(result[key], pd.Timestamp)
+            assert result[key] == expected_value
 
 
 class TestConvertTimeColumnsInDf:
     """Test _convert_time_columns_in_df function."""
 
-    def test_convert_time_columns_basic(self) -> None:
-        """Test basic time column conversion."""
-        data_df = pd.DataFrame({
-            "time": [1704067200, 1704067260, 1704067320],
-            "price": [100.5, 100.6, 100.7],
-        })
+    @pytest.mark.parametrize(
+        ("data_factory", "expected_dtypes", "expected_values", "expect_unchanged"),
+        [
+            pytest.param(
+                lambda: pd.DataFrame({
+                    "time": [1704067200, 1704067260, 1704067320],
+                    "price": [100.5, 100.6, 100.7],
+                }),
+                {"time": "datetime64[ns]", "price": float},
+                [("time", 0, pd.Timestamp("2024-01-01 00:00:00"))],
+                False,
+                id="seconds",
+            ),
+            pytest.param(
+                lambda: pd.DataFrame({
+                    "time_msc": [1704067200000, 1704067200500],
+                    "time_setup_msc": [1704067201000, 1704067201500],
+                    "volume": [100, 200],
+                }),
+                {
+                    "time_msc": "datetime64[ns]",
+                    "time_setup_msc": "datetime64[ns]",
+                },
+                [
+                    ("time_msc", 0, pd.Timestamp("2024-01-01 00:00:00")),
+                    ("time_setup_msc", 1, pd.Timestamp("2024-01-01 00:00:01.500")),
+                ],
+                False,
+                id="milliseconds",
+            ),
+            pytest.param(
+                lambda: pd.DataFrame({
+                    "time_setup": [1704067200, 1704067260],
+                    "time_done": [1704067260, 1704067320],
+                    "status": ["pending", "complete"],
+                }),
+                {
+                    "time_setup": "datetime64[ns]",
+                    "time_done": "datetime64[ns]",
+                    "status": object,
+                },
+                [],
+                False,
+                id="prefixed-seconds",
+            ),
+            pytest.param(
+                pd.DataFrame,
+                {},
+                [],
+                True,
+                id="empty",
+            ),
+            pytest.param(
+                lambda: pd.DataFrame({
+                    "price": [100.5, 100.6],
+                    "volume": [1000, 2000],
+                    "symbol": ["EURUSD", "GBPUSD"],
+                }),
+                {},
+                [],
+                True,
+                id="no-time-columns",
+            ),
+        ],
+    )
+    def test_convert_time_columns_in_df(
+        self,
+        data_factory: Callable[[], pd.DataFrame],
+        expected_dtypes: dict[str, Any],
+        expected_values: list[tuple[str, int, Any]],
+        expect_unchanged: bool,
+    ) -> None:
+        """Test multiple time column conversion scenarios."""
+        data_df = data_factory()
+        original_df = data_df.copy(deep=True)
+
         result = _convert_time_columns_in_df(data_df)
 
-        assert result["time"].dtype == "datetime64[ns]"
-        assert result["time"].iloc[0] == pd.Timestamp("2024-01-01 00:00:00")
-        assert result["price"].dtype == float
+        if expect_unchanged:
+            pd.testing.assert_frame_equal(result, original_df)
+            return
 
-    def test_convert_time_columns_with_msc(self) -> None:
-        """Test conversion of millisecond time columns."""
-        data_df = pd.DataFrame({
-            "time_msc": [1704067200000, 1704067200500],
-            "time_setup_msc": [1704067201000, 1704067201500],
-            "volume": [100, 200],
-        })
-        result = _convert_time_columns_in_df(data_df)
+        for column, expected_dtype in expected_dtypes.items():
+            assert result[column].dtype == expected_dtype
 
-        assert result["time_msc"].dtype == "datetime64[ns]"
-        assert result["time_setup_msc"].dtype == "datetime64[ns]"
-        assert result["time_msc"].iloc[0] == pd.Timestamp("2024-01-01 00:00:00")
-        assert result["time_setup_msc"].iloc[1] == pd.Timestamp(
-            "2024-01-01 00:00:01.500"
-        )
-
-    def test_convert_time_columns_with_time_prefix(self) -> None:
-        """Test conversion of time-prefixed columns."""
-        data_df = pd.DataFrame({
-            "time_setup": [1704067200, 1704067260],
-            "time_done": [1704067260, 1704067320],
-            "status": ["pending", "complete"],
-        })
-        result = _convert_time_columns_in_df(data_df)
-
-        assert result["time_setup"].dtype == "datetime64[ns]"
-        assert result["time_done"].dtype == "datetime64[ns]"
-        assert result["status"].dtype == object
-
-    def test_convert_time_columns_empty_df(self) -> None:
-        """Test conversion of empty DataFrame."""
-        empty_df = pd.DataFrame()
-        result = _convert_time_columns_in_df(empty_df)
-        assert result.empty
-
-    def test_convert_time_columns_no_time_columns(self) -> None:
-        """Test DataFrame with no time columns."""
-        data_df = pd.DataFrame({
-            "price": [100.5, 100.6],
-            "volume": [1000, 2000],
-            "symbol": ["EURUSD", "GBPUSD"],
-        })
-        result = _convert_time_columns_in_df(data_df)
-        pd.testing.assert_frame_equal(result, data_df)
+        for column, index, expected_value in expected_values:
+            value = result[column].iloc[index]
+            if isinstance(expected_value, pd.Timestamp):
+                assert isinstance(value, pd.Timestamp)
+            assert value == expected_value
 
 
 class TestDetectAndConvertTimeToDatetime:
