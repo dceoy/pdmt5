@@ -76,7 +76,7 @@ uv run mkdocs gh-deploy
 
 - **Ruff**: Comprehensive linting with 40+ rule categories enabled
 - **Pyright**: Strict type checking mode
-- **pytest**: Testing with coverage reporting (50% minimum)
+- **pytest**: Testing with coverage reporting (branch coverage enabled)
 - **Google-style docstrings**: Documentation convention
 - **Line length**: 88 characters
 
@@ -84,11 +84,28 @@ uv run mkdocs gh-deploy
 
 - Type hints required (pyright strict mode)
 - Comprehensive linting with 35+ rule categories (ruff)
-- Test coverage tracking with 90% minimum (branch coverage enabled)
+- Test coverage tracking with 100% (pytest-cov)
 - Parametrized tests for input/result matrices using `pytest.mark.parametrize` (pytest)
 - Professional financial software standards
 - Pydantic models for data validation and configuration
 - Context manager support for resource management
+
+### Test Desiderata
+
+Desirable properties of tests:
+
+- **Isolated**: results never depend on test order or shared state.
+- **Composable**: validate dimensions separately and combine results.
+- **Deterministic**: same inputs produce the same outcome.
+- **Fast**: keep runtime short to encourage frequent execution.
+- **Writable**: cheap to create relative to code value.
+- **Readable**: intent and motivation are obvious to reviewers.
+- **Behavioral**: sensitive to user-visible behavior changes.
+- **Structure-insensitive**: refactors shouldn’t flip results.
+- **Automated**: run without human intervention.
+- **Specific**: failures point clearly to the cause.
+- **Predictive**: passing suite signals production readiness.
+- **Inspiring**: green builds build team confidence.
 
 ## Documentation with MkDocs
 
