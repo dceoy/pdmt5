@@ -521,29 +521,26 @@ class TestMt5DataClient:
 
         mock_mt5_import.shutdown.assert_called_once()
 
-    def test_orders_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test orders_get method with empty result."""
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method"),
+        [
+            ("orders_get_as_df", "orders_get"),
+            ("positions_get_as_df", "positions_get"),
+        ],
+    )
+    def test_orders_positions_get_empty(
+        self, mock_mt5_import: ModuleType | None, client_method: str, mt5_method: str
+    ) -> None:
+        """Test orders_get/positions_get methods with empty result."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_get.return_value = []
+        getattr(mock_mt5_import, mt5_method).return_value = []
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        orders_df = client.orders_get_as_df()
-        assert orders_df.empty
-        assert isinstance(orders_df, pd.DataFrame)
-
-    def test_positions_get_empty(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test positions_get method with empty result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_get.return_value = []
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        positions_df = client.positions_get_as_df()
-        assert positions_df.empty
-        assert isinstance(positions_df, pd.DataFrame)
+        df_result = getattr(client, client_method)()
+        assert df_result.empty
+        assert isinstance(df_result, pd.DataFrame)
 
     def test_error_handling_without_mt5(self) -> None:
         """Test error handling when an invalid mt5 module is provided."""
@@ -711,40 +708,30 @@ class TestMt5DataClient:
         assert "time" in df_result.columns
         assert "time_msc" in df_result.columns
 
-    def test_login_success(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test login method success."""
+    @pytest.mark.parametrize(
+        ("timeout", "expected_kwargs"),
+        [
+            (None, {"password": "password", "server": "server.com"}),
+            (30000, {"password": "password", "server": "server.com", "timeout": 30000}),
+        ],
+    )
+    def test_login_success(
+        self,
+        mock_mt5_import: ModuleType | None,
+        timeout: int | None,
+        expected_kwargs: dict[str, Any],
+    ) -> None:
+        """Test login method success with and without timeout."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.login.return_value = True
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        result = client.login(123456, "password", "server.com")
+        result = client.login(123456, "password", "server.com", timeout=timeout)
 
         assert result is True
-        mock_mt5_import.login.assert_called_once_with(
-            123456,
-            password="password",
-            server="server.com",
-        )
-
-    def test_login_with_timeout(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test login method with timeout."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.login.return_value = True
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.login(123456, "password", "server.com", timeout=30000)
-
-        assert result is True
-        mock_mt5_import.login.assert_called_once_with(
-            123456,
-            password="password",
-            server="server.com",
-            timeout=30000,
-        )
+        mock_mt5_import.login.assert_called_once_with(123456, **expected_kwargs)
 
     def test_login_failure(self, mock_mt5_import: ModuleType | None) -> None:
         """Test login method failure."""
@@ -758,212 +745,103 @@ class TestMt5DataClient:
 
         assert result is False
 
-    def test_orders_total(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test orders_total method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_total.return_value = 5
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.orders_total()
-
-        assert result == 5
-
-    def test_orders_total_none_result(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test orders_total method with None result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_total.return_value = None
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.orders_total()
-
-        assert result is None
-
-    def test_positions_total(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test positions_total method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_total.return_value = 3
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.positions_total()
-
-        assert result == 3
-
-    def test_positions_total_none_result(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "return_value"),
+        [
+            ("orders_total", "orders_total", 5),
+            ("orders_total", "orders_total", None),
+            ("positions_total", "positions_total", 3),
+            ("positions_total", "positions_total", None),
+            ("symbols_total", "symbols_total", 1000),
+            ("symbols_total", "symbols_total", None),
+        ],
+    )
+    def test_total_methods(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        return_value: int | None,
     ) -> None:
-        """Test positions_total method with None result."""
+        """Test total-returning methods with values and None."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_total.return_value = None
+        getattr(mock_mt5_import, mt5_method).return_value = return_value
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        result = client.positions_total()
+        result = getattr(client, client_method)()
 
-        assert result is None
+        assert result == return_value
 
-    def test_history_orders_total(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test history_orders_total method."""
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "return_value"),
+        [
+            ("history_orders_total", "history_orders_total", 10),
+            ("history_orders_total", "history_orders_total", 0),
+            ("history_orders_total", "history_orders_total", None),
+            ("history_deals_total", "history_deals_total", 15),
+            ("history_deals_total", "history_deals_total", 0),
+            ("history_deals_total", "history_deals_total", None),
+        ],
+    )
+    def test_history_totals_methods(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        return_value: int | None,
+    ) -> None:
+        """Test history total methods with varied return values."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_total.return_value = 10
+        getattr(mock_mt5_import, mt5_method).return_value = return_value
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        result = client.history_orders_total(
+        result = getattr(client, client_method)(
             datetime(2022, 1, 1, tzinfo=UTC),
             datetime(2022, 1, 2, tzinfo=UTC),
         )
 
-        assert result == 10
+        assert result == return_value
 
-    def test_history_orders_total_invalid_dates(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        ("volume", "price", "last_error"),
+        [
+            (0.1, 1.1300, None),
+            (0.0, 1.1300, "Invalid volume"),
+            (0.1, 0.0, "Invalid price"),
+            (0.1, 1.1300, "Order calc margin failed"),
+        ],
+    )
+    def test_order_calc_margin(
+        self,
+        mock_mt5_import: ModuleType | None,
+        volume: float,
+        price: float,
+        last_error: str | None,
     ) -> None:
-        """Test history_orders_total method with invalid dates."""
+        """Test order_calc_margin with success and failure paths."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_total.return_value = 0
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        # Method doesn't validate dates, just passes them to MT5
-        result = client.history_orders_total(
-            datetime(2022, 1, 2, tzinfo=UTC),
-            datetime(2022, 1, 1, tzinfo=UTC),
+        mock_mt5_import.order_calc_margin.return_value = (
+            100.0 if last_error is None else None
         )
-        assert result == 0
-
-    def test_history_orders_total_none_result(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_orders_total method with None result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_total.return_value = None
+        if last_error is not None:
+            mock_mt5_import.last_error.return_value = (1, last_error)
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         client.initialize()
-        result = client.history_orders_total(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
 
-        assert result is None
-
-    def test_history_deals_total(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test history_deals_total method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_total.return_value = 15
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.history_deals_total(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-        assert result == 15
-
-    def test_history_deals_total_invalid_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_total method with invalid dates."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_total.return_value = 0
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        # Method doesn't validate dates, just passes them to MT5
-        result = client.history_deals_total(
-            datetime(2022, 1, 2, tzinfo=UTC),
-            datetime(2022, 1, 1, tzinfo=UTC),
-        )
-        assert result == 0
-
-    def test_history_deals_total_none_result(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_total method with None result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_total.return_value = None
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.history_deals_total(
-            datetime(2022, 1, 1, tzinfo=UTC),
-            datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-        assert result is None
-
-    def test_order_calc_margin(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_calc_margin method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_margin.return_value = 100.0
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        result = client.order_calc_margin(0, "EURUSD", 0.1, 1.1300)
-
-        assert result == 100.0
-
-    def test_order_calc_margin_invalid_volume(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test order_calc_margin method with invalid volume."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_margin.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid volume")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
-        ):
-            client.order_calc_margin(0, "EURUSD", 0.0, 1.1300)
-
-    def test_order_calc_margin_invalid_price(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test order_calc_margin method with invalid price."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_margin.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid price")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
-        ):
-            client.order_calc_margin(0, "EURUSD", 0.1, 0.0)
-
-    def test_order_calc_margin_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_calc_margin method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_margin.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Order calc margin failed")
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        client.initialize()
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"MT5 order_calc_margin returned None",
-        ):
-            client.order_calc_margin(0, "EURUSD", 0.1, 1.1300)
+        if last_error is None:
+            result = client.order_calc_margin(0, "EURUSD", volume, price)
+            assert result == 100.0
+        else:
+            with pytest.raises(
+                Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
+            ):
+                client.order_calc_margin(0, "EURUSD", volume, price)
 
     def test_order_calc_profit(self, mock_mt5_import: ModuleType | None) -> None:
         """Test order_calc_profit method."""

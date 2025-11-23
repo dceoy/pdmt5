@@ -176,14 +176,28 @@ class TestMt5Client:
 
         assert result is None
 
-    def test_symbols_total(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test symbols_total method."""
-        mock_mt5.symbols_total.return_value = 100
+    @pytest.mark.parametrize(
+        ("method_name", "return_value"),
+        [
+            ("symbols_total", 100),
+            ("orders_total", 5),
+            ("positions_total", 3),
+        ],
+    )
+    def test_totals_methods(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        return_value: int,
+    ) -> None:
+        """Test simple total-returning methods."""
+        getattr(mock_mt5, method_name).return_value = return_value
 
-        result = initialized_client.symbols_total()
+        result = getattr(initialized_client, method_name)()
 
-        assert result == 100
-        mock_mt5.symbols_total.assert_called_once()
+        assert result == return_value
+        getattr(mock_mt5, method_name).assert_called_once()
 
     def test_symbols_get(
         self,
@@ -252,27 +266,17 @@ class TestMt5Client:
         assert result is True
         mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # noqa: FBT003
 
-    def test_market_book_add(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize("method_name", ["market_book_add", "market_book_release"])
+    def test_market_book_actions(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
     ) -> None:
-        """Test market_book_add method."""
-        mock_mt5.market_book_add.return_value = True
+        """Test market_book add/release methods."""
+        getattr(mock_mt5, method_name).return_value = True
 
-        result = initialized_client.market_book_add("EURUSD")
+        result = getattr(initialized_client, method_name)("EURUSD")
 
         assert result is True
-        mock_mt5.market_book_add.assert_called_once_with("EURUSD")
-
-    def test_market_book_release(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test market_book_release method."""
-        mock_mt5.market_book_release.return_value = True
-
-        result = initialized_client.market_book_release("EURUSD")
-
-        assert result is True
-        mock_mt5.market_book_release.assert_called_once_with("EURUSD")
+        getattr(mock_mt5, method_name).assert_called_once_with("EURUSD")
 
     def test_market_book_get(
         self,
