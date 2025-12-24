@@ -316,7 +316,7 @@ with Mt5TradingClient(config=config) as trader:
     sell_margin = trader.calculate_minimum_order_margin("EURUSD", "SELL")
     print(f"Minimum BUY margin: {buy_margin['margin']} (volume: {buy_margin['volume']})")
     print(f"Minimum SELL margin: {sell_margin['margin']} (volume: {sell_margin['volume']})")
-    
+
     # Calculate volume by margin
     available_margin = 1000.0
     max_buy_volume = trader.calculate_volume_by_margin("EURUSD", available_margin, "BUY")

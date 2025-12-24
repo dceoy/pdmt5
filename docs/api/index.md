@@ -7,14 +7,16 @@ This section contains the complete API documentation for pdmt5.
 The pdmt5 package consists of the following modules:
 
 ### [Mt5Client](mt5.md)
+
 Base client class for MetaTrader 5 operations with connection management, low-level API access, and error handling (`Mt5RuntimeError`).
 
 ### [Mt5DataClient & Mt5Config](dataframe.md)
+
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
 ### [Mt5TradingClient](trading.md)
-Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
 
+Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
 
 ## Architecture Overview
 

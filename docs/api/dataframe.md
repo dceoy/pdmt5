@@ -9,19 +9,20 @@ The dataframe module extends the base Mt5Client with pandas-friendly functionali
 ## Classes
 
 ### Mt5Config
+
 ::: pdmt5.dataframe.Mt5Config
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Configuration class for MetaTrader 5 connection parameters using pydantic for validation.
 
 ### Mt5DataClient
+
 ::: pdmt5.dataframe.Mt5DataClient
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Extended client class that inherits from `Mt5Client` and provides a pandas-friendly interface to MetaTrader 5 functions with automatic DataFrame conversion.
-
 
 ## Usage Examples
 
@@ -62,7 +63,7 @@ with client:
         date_from=datetime(2024, 1, 1),
         count=1000
     )
-    
+
     # Get tick data
     ticks_df = client.copy_ticks_from(
         symbol="EURUSD",
@@ -78,10 +79,10 @@ with client:
 with client:
     # Get all symbols
     symbols_df = client.symbols_get()
-    
+
     # Get specific symbol info
     symbol_info_df = client.symbol_info("EURUSD")
-    
+
     # Get current tick
     tick_df = client.symbol_info_tick("EURUSD")
 ```
@@ -98,7 +99,7 @@ with client:
         date_to=datetime(2024, 1, 31),
         symbol="EURUSD"
     )
-    
+
     # Get historical deals
     deals_df = client.history_deals_get(
         date_from=datetime(2024, 1, 1),
@@ -112,7 +113,7 @@ with client:
 with client:
     # Get current positions
     positions_df = client.positions_get()
-    
+
     # Get current orders
     orders_df = client.orders_get(symbol="EURUSD")
 ```

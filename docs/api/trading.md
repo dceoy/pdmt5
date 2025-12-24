@@ -9,16 +9,18 @@ The trading module extends Mt5DataClient with advanced trading operations includ
 ## Classes
 
 ### Mt5TradingClient
+
 ::: pdmt5.trading.Mt5TradingClient
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Advanced trading client class that inherits from `Mt5DataClient` and provides specialized trading functionality.
 
 ### Mt5TradingError
+
 ::: pdmt5.trading.Mt5TradingError
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Custom runtime exception for trading-specific errors.
 
@@ -153,6 +155,7 @@ prod_client = Mt5TradingClient(config=config, dry_run=False)
 ```
 
 In dry run mode:
+
 - Orders are validated using `order_check()` instead of `order_send()`
 - No actual trades are executed
 - Full validation of margin requirements and order parameters

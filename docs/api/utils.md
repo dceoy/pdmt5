@@ -9,16 +9,18 @@ The utils module provides internal utility functions and decorators used through
 ## Functions
 
 ### detect_and_convert_time_to_datetime
+
 ::: pdmt5.utils.detect_and_convert_time_to_datetime
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Decorator that automatically converts time values to datetime objects based on the result type.
 
 ### set_index_if_possible
+
 ::: pdmt5.utils.set_index_if_possible
-    options:
-      show_bases: false
+options:
+show_bases: false
 
 Decorator that sets DataFrame index if specified and the DataFrame is not empty.
 
@@ -26,10 +28,12 @@ Decorator that sets DataFrame index if specified and the DataFrame is not empty.
 
 These functions are used internally by the decorators:
 
-### _convert_time_values_in_dict
+### \_convert_time_values_in_dict
+
 Converts Unix timestamp values in dictionaries to pandas datetime objects. Handles both seconds and milliseconds based on field naming conventions.
 
-### _convert_time_columns_in_df
+### \_convert_time_columns_in_df
+
 Converts time columns in pandas DataFrames to datetime format. Automatically detects time columns by name patterns.
 
 ## Usage
