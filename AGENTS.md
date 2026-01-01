@@ -9,39 +9,37 @@
 uv sync
 ```
 
-### Code Quality
+### Code Quality and Testing
+
+**IMPORTANT: Run these checks on every code change before committing.**
 
 ```bash
-# Run all linting and formatting
-uv run ruff check --fix .
-uv run ruff format .
+# Run all quality checks (formatting, linting, type checking, tests)
+uv run ruff format . && uv run ruff check --fix . && uv run pyright . && uv run pytest tests/ -v
 
-# Type checking
-uv run pyright .
-```
-
-### Testing
-
-```bash
-# Run unit tests with pytest
-uv run pytest tests/ -v
-
-# Type checking with pyright
-uv run pyright .
+# Individual commands (if needed):
+uv run ruff format .        # Format code
+uv run ruff check --fix .   # Lint code
+uv run pyright .            # Type check
+uv run pytest tests/ -v     # Run tests only
 ```
 
 ### Documentation
 
+**IMPORTANT: Update documentation after any public API changes.**
+
 ```bash
-# Build documentation with MkDocs
-uv run mkdocs build
-
-# Serve documentation locally with live reload
-uv run mkdocs serve
-
-# Deploy documentation to GitHub Pages
-uv run mkdocs gh-deploy
+uv run mkdocs build         # Build documentation with MkDocs
+uv run mkdocs serve         # Serve documentation locally with live reload
+uv run mkdocs gh-deploy     # Deploy documentation to GitHub Pages
 ```
+
+## Commit & Pull Request Guidelines
+
+- Commit messages are short, imperative, sentence-case.
+- Branch names use appropriate prefixes on creation (e.g., `feature/short-description`, `bugfix/short-description`).
+- PRs should include: a clear summary, relevant context or linked issue.
+- When instructed to create a PR, create it as a draft with appropriate labels by default.
 
 ## Architecture
 
