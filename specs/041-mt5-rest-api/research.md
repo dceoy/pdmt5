@@ -17,16 +17,19 @@ This document provides research-backed decisions for the technical implementatio
 ### Rationale
 
 **Performance:**
+
 - FastAPI achieves **20,000+ requests/second** with async/Uvicorn
 - Flask achieves 4,000-5,000 req/s with Gunicorn
 - **5-10x performance advantage** for FastAPI, critical for high-frequency trading data
 
 **Native Async Support:**
+
 - First-class async/await built on Starlette/ASGI
 - Flask requires third-party workarounds for async handling
 - Perfect for concurrent API requests to MT5 data
 
 **Pydantic Integration:**
+
 - Project already uses Pydantic 2.9.0+
 - Automatic request validation using Pydantic models
 - Automatic OpenAPI documentation generation from type hints
@@ -34,17 +37,20 @@ This document provides research-backed decisions for the technical implementatio
 - Zero-config serialization/deserialization
 
 **Automatic Documentation:**
+
 - Swagger UI at `/docs` auto-generated from code
 - ReDoc at `/redoc` for detailed API docs
 - Always synchronized with actual implementation
 - No manual OpenAPI spec maintenance required
 
 **Industry Adoption:**
+
 - FastAPI usage: 29% → 38% among Python developers (2024-2025)
 - 78,000+ GitHub stars
 - Clear choice for new financial/data APIs
 
 **Alignment with Project:**
+
 - Perfect fit with existing Pydantic usage
 - Supports pandas DataFrame serialization
 - Compatible with strict type checking (pyright)
@@ -83,32 +89,38 @@ async def get_symbol_info(symbol: str, client: Mt5DataClient = Depends(get_mt5_c
 ### Rationale
 
 **Performance:**
+
 - **2-5x faster** than fastparquet for large datasets (>1GB)
 - Outperforms fastparquet in 80% of benchmarks
 - Multi-threaded C++ backend vs fastparquet's Cython
 
 **Pandas Integration:**
+
 - Default engine for `pd.read_parquet()` since Pandas 1.2+
 - Project uses pandas 2.2.2+ which prefers PyArrow
 - Seamless integration with existing DataFrame code
 
 **Parallelism:**
+
 - Multi-threading for I/O operations
 - Critical for large historical data exports
 - fastparquet limited by Python's GIL
 
 **Industry Backing:**
+
 - Apache Foundation project
 - Supported by Meta, AWS, Google
 - 500+ contributors vs fastparquet's ~50
 - Monthly releases and active maintenance
 
 **Memory Efficiency:**
+
 - Arrow's columnar in-memory format
 - Reduces data copying between Python and C++
 - Important for large financial datasets (100k+ ticks)
 
 **Trade-offs:**
+
 - Larger installation size (~50MB vs 5MB)
 - Negligible for production deployments
 - Worth it for performance gains
@@ -154,17 +166,20 @@ async def get_rates(...):
 ### Rationale for API Keys (Current)
 
 **Simplicity:**
+
 - Perfect for read-only API
 - Minimal implementation complexity
 - Easy rotation and revocation
 - FastAPI's `APIKeyHeader` dependency
 
 **Performance:**
+
 - Zero overhead (no token parsing)
 - No cryptographic validation per request
 - Direct key lookup from environment/database
 
 **Use Case Alignment:**
+
 - Service-to-service communication
 - Trusted client scenarios
 - No need for fine-grained permissions (read-only)
@@ -198,18 +213,21 @@ async def get_symbols(...):
 ### Rationale for JWT (Future)
 
 **When to Migrate:**
+
 - Adding write operations (order placement)
 - Multiple users with different permissions
 - Need for token expiration
 - OAuth2 scopes for fine-grained access
 
 **Benefits:**
+
 - Stateless authentication
 - Short-lived access tokens (15-30 min)
 - Refresh token pattern
 - Industry standard for modern APIs
 
 **Migration Path:**
+
 ```python
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -252,6 +270,7 @@ MetaTrader5 Python API is synchronous and blocking. Running blocking I/O in asyn
 ### Solution A: `asyncio.to_thread()` (Recommended)
 
 **Benefits:**
+
 - Standard library (Python 3.9+, project uses 3.11+)
 - Propagates `contextvars.Context` automatically
 - Clean and simple API
@@ -283,6 +302,7 @@ async def get_rates(symbol: str, timeframe: int, count: int):
 ### Solution B: `starlette.concurrency.run_in_threadpool()`
 
 **Benefits:**
+
 - FastAPI/Starlette native approach
 - Optimized for ASGI applications
 - Used internally by FastAPI for `def` endpoints
@@ -313,6 +333,7 @@ def get_rates(symbol: str):  # Note: def, not async def
 ```
 
 FastAPI automatically runs all `def` endpoints in a `ThreadPoolExecutor`, but this approach:
+
 - ✅ Simpler code
 - ❌ Less explicit control
 - ❌ Thread pool can be exhausted under high load
@@ -321,6 +342,7 @@ FastAPI automatically runs all `def` endpoints in a `ThreadPoolExecutor`, but th
 ### Recommended Approach
 
 **Use `async def` with `asyncio.to_thread()`**:
+
 - Maintains explicit control
 - Enables mixing MT5 calls with other async operations
 - Clear indication that blocking operations are offloaded
@@ -402,6 +424,7 @@ async def get_symbols(request: Request, group: str | None = None):
 ```
 
 **Benefits:**
+
 - RESTful and HTTP-compliant
 - Clean URLs (no format pollution)
 - Proper semantic meaning
@@ -474,6 +497,7 @@ curl -H "Accept: application/json" \
 ### Development/Simple Deployments: slowapi
 
 **Benefits:**
+
 - Simple decorator-based API (familiar from flask-limiter)
 - In-memory by default (no external dependencies)
 - Redis support available for distributed systems
@@ -500,6 +524,7 @@ async def get_rates(request: Request, symbol: str):
 ### Production/Distributed Systems: fastapi-limiter
 
 **Benefits:**
+
 - Redis-backed (required for distributed systems)
 - FastAPI dependency injection pattern
 - Lua scripts for atomic operations
@@ -531,6 +556,7 @@ async def get_rates(symbol: str):
 ### Rate Limiting Strategies
 
 **Per-IP Limits** (before authentication):
+
 ```python
 from slowapi.util import get_remote_address
 
@@ -540,6 +566,7 @@ async def public_endpoint(request: Request):
 ```
 
 **Per-User Limits** (after authentication):
+
 ```python
 def get_api_key(request: Request) -> str:
     return request.headers.get("X-API-Key", "anonymous")
@@ -550,6 +577,7 @@ async def authenticated_endpoint(request: Request):
 ```
 
 **Per-Endpoint Limits**:
+
 ```python
 # Expensive operations
 @limiter.limit("10/hour")  # Historical data exports
@@ -575,11 +603,13 @@ Based on typical MT5 usage patterns:
 ### Implementation Recommendation
 
 **Phase 1** (MVP): Use slowapi with in-memory limits
+
 - Simple setup
 - Good for single-instance deployment
 - Sufficient for development and testing
 
 **Phase 2** (Production): Migrate to fastapi-limiter with Redis
+
 - When deploying multiple instances behind load balancer
 - When needing persistent rate limit counters
 - When scaling beyond single server
@@ -595,14 +625,14 @@ Based on typical MT5 usage patterns:
 
 ## Summary of Decisions
 
-| Decision | Recommendation | Key Benefit |
-|----------|----------------|-------------|
-| **Framework** | FastAPI | 5-10x faster, native async, Pydantic integration |
-| **Parquet Library** | PyArrow | 2-5x faster, pandas default, better parallelism |
-| **Authentication** | API Keys (now), JWT (later) | Simple for read-only, scalable for future |
-| **Async Handling** | `asyncio.to_thread()` | Standard library, clean, explicit control |
-| **Content Negotiation** | Accept header + query fallback | HTTP standard + user convenience |
-| **Rate Limiting** | slowapi (dev), fastapi-limiter (prod) | Simple start, Redis-backed for scale |
+| Decision                | Recommendation                        | Key Benefit                                      |
+| ----------------------- | ------------------------------------- | ------------------------------------------------ |
+| **Framework**           | FastAPI                               | 5-10x faster, native async, Pydantic integration |
+| **Parquet Library**     | PyArrow                               | 2-5x faster, pandas default, better parallelism  |
+| **Authentication**      | API Keys (now), JWT (later)           | Simple for read-only, scalable for future        |
+| **Async Handling**      | `asyncio.to_thread()`                 | Standard library, clean, explicit control        |
+| **Content Negotiation** | Accept header + query fallback        | HTTP standard + user convenience                 |
+| **Rate Limiting**       | slowapi (dev), fastapi-limiter (prod) | Simple start, Redis-backed for scale             |
 
 ---
 
@@ -625,6 +655,7 @@ api = [
 ```
 
 Install with:
+
 ```bash
 pip install pdmt5[api]
 # or for development

@@ -398,23 +398,27 @@ uvicorn pdmt5.api.main:app --reload
 ### Quick API Examples
 
 **Health Check** (no authentication):
+
 ```bash
 curl http://localhost:8000/api/v1/health
 ```
 
 **Get Symbols** (with API key):
+
 ```bash
 curl -H "X-API-Key: your-secret-key-here" \
      http://localhost:8000/api/v1/symbols?group=*USD*
 ```
 
 **Get Historical Rates** (JSON format):
+
 ```bash
 curl -H "X-API-Key: your-secret-key-here" \
      "http://localhost:8000/api/v1/rates/from?symbol=EURUSD&timeframe=60&date_from=2024-01-01T00:00:00Z&count=100"
 ```
 
 **Get Data in Parquet Format** (50-80% smaller):
+
 ```bash
 curl -H "X-API-Key: your-secret-key-here" \
      -H "Accept: application/parquet" \
@@ -423,6 +427,7 @@ curl -H "X-API-Key: your-secret-key-here" \
 ```
 
 **Python Client**:
+
 ```python
 import httpx
 import pandas as pd
@@ -452,25 +457,30 @@ df = pd.DataFrame(rates_data["data"])
 The API provides the following endpoint groups:
 
 **System**:
+
 - `GET /api/v1/health` - Health check and MT5 connection status
 - `GET /api/v1/version` - MT5 terminal version
 
 **Symbols**:
+
 - `GET /api/v1/symbols` - List all available symbols (with optional group filter)
 - `GET /api/v1/symbols/{symbol}` - Get detailed symbol information
 - `GET /api/v1/symbols/{symbol}/tick` - Get latest tick data
 
 **Market Data**:
+
 - `GET /api/v1/rates/from` - Get OHLCV data from specific date
 - `GET /api/v1/rates/range` - Get OHLCV data for date range
 - `GET /api/v1/ticks/from` - Get tick data from specific date
 - `GET /api/v1/ticks/range` - Get tick data for date range
 
 **Account & Terminal**:
+
 - `GET /api/v1/account` - Get account information
 - `GET /api/v1/terminal` - Get terminal status
 
 **Trading History**:
+
 - `GET /api/v1/positions` - Get current open positions
 - `GET /api/v1/orders` - Get pending orders
 - `GET /api/v1/history/orders` - Get historical orders
@@ -479,6 +489,7 @@ The API provides the following endpoint groups:
 ### Interactive Documentation
 
 Once the API is running, access:
+
 - **Swagger UI**: http://localhost:8000/docs (try endpoints interactively)
 - **ReDoc**: http://localhost:8000/redoc (detailed documentation)
 - **OpenAPI Spec**: http://localhost:8000/openapi.json

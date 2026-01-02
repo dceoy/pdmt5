@@ -8,6 +8,7 @@
 Create a FastAPI-based REST API that exposes all read-only functionality from the `Mt5DataClient` class, enabling remote access to MetaTrader 5 market data, account information, and trading history. The API will support both JSON and Apache Parquet response formats, with content negotiation via Accept headers or query parameters. This implementation follows a read-only approach for security, excluding trading operations in the initial version.
 
 **Technical Approach**:
+
 - Use FastAPI framework for high-performance async HTTP server with automatic OpenAPI documentation
 - Implement singleton pattern for Mt5DataClient to prevent multiple terminal connections
 - Create FastAPI dependency injection for format negotiation (JSON/Parquet)
@@ -19,6 +20,7 @@ Create a FastAPI-based REST API that exposes all read-only functionality from th
 
 **Language/Version**: Python 3.11+ (matching existing pdmt5 project)
 **Primary Dependencies**:
+
 - FastAPI 0.109+ (async web framework with OpenAPI)
 - uvicorn[standard] (ASGI server)
 - pydantic 2.0+ (already used in pdmt5)
@@ -33,12 +35,14 @@ Create a FastAPI-based REST API that exposes all read-only functionality from th
 **Target Platform**: Windows 10/11 (MetaTrader5 API limitation)
 **Project Type**: Single web API service (no frontend, pure REST API)
 **Performance Goals**:
+
 - Health check response <500ms
 - Market data queries <2s for typical datasets (<1000 records)
 - Support 100 concurrent requests without degradation
 - Parquet compression achieving 50-80% size reduction vs JSON
 
 **Constraints**:
+
 - Windows-only deployment (MT5 limitation)
 - Must run on same machine as MT5 terminal (local socket connection)
 - Read-only operations only (no trading)
@@ -46,6 +50,7 @@ Create a FastAPI-based REST API that exposes all read-only functionality from th
 - Must maintain compatibility with existing pdmt5 library
 
 **Scale/Scope**:
+
 - 15-20 REST endpoints covering all Mt5DataClient read methods
 - Support for 100+ concurrent API consumers
 - Dataset sizes from single records to 100k+ ticks/candles
@@ -56,6 +61,7 @@ Create a FastAPI-based REST API that exposes all read-only functionality from th
 _GATE: Constitution file not yet defined for this project. Skipping constitution check._
 
 **Note**: Project should consider establishing constitution covering:
+
 - TDD requirements
 - Code quality standards (already enforced via ruff, pyright, pytest)
 - Deployment practices
@@ -151,6 +157,7 @@ N/A - No constitution violations. Implementation follows standard REST API patte
 ### Research Approach
 
 For each question, research will:
+
 - Review official documentation and best practices
 - Examine FastAPI examples and production patterns
 - Consider performance implications
@@ -164,6 +171,7 @@ For each question, research will:
 ### 1. Data Model (`data-model.md`)
 
 Will define:
+
 - **Request Models**: Pydantic models for all endpoint parameters
   - `SymbolRequest`: symbol, group filters
   - `RatesRequest`: symbol, timeframe, date_from, date_to, count
@@ -185,6 +193,7 @@ Will define:
 ### 2. API Contracts (`contracts/openapi.yaml`)
 
 Will generate OpenAPI 3.1 specification including:
+
 - All REST endpoints with HTTP methods (GET primarily)
 - Request parameters (path, query, headers)
 - Response schemas for 200, 400, 404, 500, 503 status codes
@@ -196,6 +205,7 @@ Will generate OpenAPI 3.1 specification including:
 ### 3. Quickstart Guide (`quickstart.md`)
 
 Will document:
+
 - **Installation**: `pip install pdmt5[api]` (with optional API dependencies)
 - **Configuration**: Environment variables for API keys, MT5 connection
 - **Running the API**: `uvicorn pdmt5.api.main:app --host 0.0.0.0 --port 8000`
@@ -208,6 +218,7 @@ Will document:
 ### 4. Agent Context Update
 
 Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
+
 - FastAPI web framework knowledge
 - Apache Parquet format handling
 - REST API design patterns
@@ -222,6 +233,7 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 ### Development Phases
 
 **Phase 1: Core Infrastructure (P1)**
+
 1. Setup FastAPI application structure
 2. Implement MT5 client singleton dependency
 3. Create health check endpoint
@@ -229,6 +241,7 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 5. Setup pytest with async test client
 
 **Phase 2: Format Support (P1)**
+
 1. Implement JSON response formatter (default)
 2. Implement Parquet response formatter
 3. Create format negotiation dependency
@@ -236,6 +249,7 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 5. Test both format conversions
 
 **Phase 3: Market Data Endpoints (P1)**
+
 1. Symbols list endpoint (GET /api/v1/symbols)
 2. Symbol info endpoint (GET /api/v1/symbols/{symbol})
 3. Symbol tick endpoint (GET /api/v1/symbols/{symbol}/tick)
@@ -243,18 +257,21 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 5. Ticks endpoints (GET /api/v1/ticks/from, /range)
 
 **Phase 4: Account & Terminal (P2)**
+
 1. Account info endpoint (GET /api/v1/account)
 2. Terminal info endpoint (GET /api/v1/terminal)
 3. Version endpoint (GET /api/v1/version)
 4. Market book endpoint (GET /api/v1/market-book/{symbol})
 
 **Phase 5: History & Positions (P2)**
+
 1. Current positions endpoint (GET /api/v1/positions)
 2. Current orders endpoint (GET /api/v1/orders)
 3. Historical orders endpoint (GET /api/v1/history/orders)
 4. Historical deals endpoint (GET /api/v1/history/deals)
 
 **Phase 6: Security & Production (P3)**
+
 1. Implement API key authentication
 2. Add rate limiting middleware
 3. Configure CORS if needed
@@ -264,12 +281,14 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 ### Testing Strategy
 
 **Unit Tests**:
+
 - Test each formatter (JSON, Parquet) independently
 - Test pydantic model validation
 - Test error handlers
 - Test authentication logic
 
 **Integration Tests**:
+
 - Mock Mt5DataClient responses
 - Test full request/response cycle
 - Test format negotiation
@@ -277,11 +296,13 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 - Test authentication flows
 
 **Contract Tests**:
+
 - Validate OpenAPI spec matches actual endpoints
 - Test all status codes documented
 - Verify response schemas match models
 
 **Manual Testing**:
+
 - Test against live MT5 terminal
 - Verify Parquet file downloads correctly
 - Test concurrent request handling
@@ -340,6 +361,7 @@ Will run `.specify/scripts/bash/update-agent-context.sh claude` to add:
 ## Success Criteria
 
 Implementation will be considered complete when:
+
 - ✅ All 15+ Mt5DataClient read methods exposed as REST endpoints
 - ✅ JSON and Parquet formats both functional with automatic content negotiation
 - ✅ Comprehensive test suite with >90% coverage

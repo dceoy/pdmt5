@@ -104,7 +104,7 @@ As an active trader, I want to retrieve current open positions and pending order
 
 ### Functional Requirements
 
-- **FR-001**: System MUST provide HTTP REST endpoints that expose all read-only methods from `Mt5DataClient` class (version, account_info, terminal_info, symbols_get, symbol_info, symbol_info_tick, market_book_get, copy_rates_*, copy_ticks_*, orders_get, positions_get, history_orders_get, history_deals_get)
+- **FR-001**: System MUST provide HTTP REST endpoints that expose all read-only methods from `Mt5DataClient` class (version, account*info, terminal_info, symbols_get, symbol_info, symbol_info_tick, market_book_get, copy_rates*_, copy*ticks*_, orders_get, positions_get, history_orders_get, history_deals_get)
 - **FR-002**: System MUST support both JSON and Apache Parquet response formats for all data endpoints
 - **FR-003**: System MUST allow clients to specify response format via Accept header (`application/json`, `application/parquet`) or query parameter (`format=json` or `format=parquet`)
 - **FR-004**: System MUST validate all input parameters (symbols, dates, counts, positions) before passing to MT5 client
