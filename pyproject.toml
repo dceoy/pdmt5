@@ -177,7 +177,7 @@ addopts = [
   "--doctest-modules",
   "--capture=no",
 ]
-pythonpaths = ["."]
+pythonpath = ["."]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
