@@ -14,8 +14,7 @@ info:
 
     ## Authentication
     All endpoints (except /health and /docs) require API key authentication via:
-    - `X-API-Key` header (recommended)
-    - `api_key` query parameter (less secure)
+    - `X-API-Key` header
 
     ## Format Selection
     Choose response format via:
