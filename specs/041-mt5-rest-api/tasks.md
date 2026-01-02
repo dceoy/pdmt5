@@ -23,10 +23,10 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create API package structure in pdmt5/api/ directory
-- [ ] T002 Update pyproject.toml with api extras dependencies (FastAPI, uvicorn, pyarrow, etc.)
-- [ ] T003 [P] Create test structure in tests/test_api/ directory
-- [ ] T004 [P] Update README.md with API installation and usage section
+- [X] T001 Create API package structure in pdmt5/api/ directory
+- [X] T002 Update pyproject.toml with api extras dependencies (FastAPI, uvicorn, pyarrow, etc.)
+- [X] T003 [P] Create test structure in tests/test_api/ directory
+- [X] T004 [P] Update README.md with API installation and usage section
 
 ---
 
