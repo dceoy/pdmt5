@@ -59,6 +59,7 @@ nav:
     - DataFrame: api/dataframe.md
     - Trading: api/trading.md
     - Utilities: api/utils.md
+    - REST API: api/rest-api.md
 
 markdown_extensions:
   - admonition
