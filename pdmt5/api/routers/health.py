@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
 from pdmt5.api.auth import verify_api_key
 from pdmt5.api.dependencies import get_mt5_client, run_in_threadpool
 from pdmt5.api.models import HealthResponse
-
-if TYPE_CHECKING:
-    from pdmt5.dataframe import Mt5DataClient
+from pdmt5.dataframe import Mt5DataClient  # noqa: TC001
 
 router = APIRouter(prefix="/api/v1", tags=["health"])
 

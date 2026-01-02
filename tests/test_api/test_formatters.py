@@ -29,6 +29,21 @@ def test_format_dataframe_to_json_returns_data_response() -> None:
     assert result.data[0]["symbol"] == "EURUSD"
 
 
+def test_format_dataframe_to_json_with_index_orientation() -> None:
+    """Test DataFrame to JSON formatting with non-records orientation."""
+    dataframe = pd.DataFrame(
+        [
+            {"symbol": "EURUSD", "bid": 1.08500},
+            {"symbol": "GBPUSD", "bid": 1.25000},
+        ],
+        index=["first", "second"],
+    )
+
+    result = format_dataframe_to_json(dataframe, orient="index")
+
+    assert isinstance(result.data, dict)
+
+
 def test_format_dict_to_json_returns_data_response() -> None:
     """Test dictionary to JSON formatting."""
     data = {"version": "5.0.4321", "build": 4321}
@@ -96,6 +111,24 @@ def test_get_response_format_defaults_to_json() -> None:
     from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
 
     result = get_response_format(accept=None, format_param=None)
+
+    assert result == ResponseFormat.JSON
+
+
+def test_get_response_format_from_accept_header_json() -> None:
+    """Test format negotiation via JSON Accept header."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    result = get_response_format(accept="application/json", format_param=None)
+
+    assert result == ResponseFormat.JSON
+
+
+def test_get_response_format_from_unrecognized_accept_header() -> None:
+    """Test format negotiation defaults to JSON for unknown Accept header."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    result = get_response_format(accept="text/plain", format_param=None)
 
     assert result == ResponseFormat.JSON
 

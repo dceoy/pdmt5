@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
@@ -42,3 +44,42 @@ def test_version_endpoint_returns_mt5_version(
     assert data["version"] == "5.0.4321"
     assert data["build"] == 4321
     assert "release_date" in data
+
+
+@pytest.mark.asyncio
+async def test_get_health_handles_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test get_health handles MT5 runtime errors gracefully."""
+    from pdmt5.api.routers import health  # noqa: PLC0415
+
+    def raise_runtime_error() -> None:
+        error_message = "MT5 unavailable"
+        raise RuntimeError(error_message)
+
+    monkeypatch.setattr(health, "get_mt5_client", raise_runtime_error)
+
+    response = await health.get_health()
+
+    assert response.mt5_connected is False
+
+
+@pytest.mark.asyncio
+async def test_get_health_handles_empty_version_dict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test get_health handles empty version info."""
+    from pdmt5.api.routers import health  # noqa: PLC0415
+
+    class DummyClient:
+        def version_as_dict(self) -> dict[str, str]:
+            return {}
+
+    def get_client() -> DummyClient:
+        return DummyClient()
+
+    monkeypatch.setattr(health, "get_mt5_client", get_client)
+
+    response = await health.get_health()
+
+    assert response.mt5_version is None

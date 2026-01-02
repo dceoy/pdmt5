@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
@@ -42,3 +44,15 @@ def test_version_endpoint_accepts_valid_api_key(
     response = client.get("/api/v1/version", headers=api_headers)
 
     assert response.status_code == 200
+
+
+def test_get_api_key_missing_env_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test get_api_key raises when environment variable is missing."""
+    from pdmt5.api.auth import get_api_key  # noqa: PLC0415
+
+    monkeypatch.delenv("MT5_API_KEY", raising=False)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        get_api_key()
+
+    assert "MT5_API_KEY environment variable not set" in str(excinfo.value)

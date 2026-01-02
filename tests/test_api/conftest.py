@@ -161,9 +161,7 @@ def client(mock_mt5_client: Mock, monkeypatch: pytest.MonkeyPatch) -> TestClient
     from pdmt5.api.main import app  # noqa: PLC0415
     from pdmt5.api.routers import health  # noqa: PLC0415
 
-    # Patch get_mt5_client in all places it's imported
-    # This handles both direct calls and dependency injection
-    monkeypatch.setattr(dependencies, "get_mt5_client", lambda: mock_mt5_client)
+    # Patch get_mt5_client where it's called directly
     monkeypatch.setattr(health, "get_mt5_client", lambda: mock_mt5_client)
 
     # Clear any existing overrides
