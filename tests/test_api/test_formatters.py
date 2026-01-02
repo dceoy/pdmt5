@@ -1,0 +1,112 @@
+"""Tests for response formatters and format negotiation."""
+
+from __future__ import annotations
+
+import pandas as pd
+
+from pdmt5.api.formatters import (
+    format_dataframe_to_json,
+    format_dataframe_to_parquet,
+    format_dict_to_json,
+    format_dict_to_parquet,
+)
+from pdmt5.api.models import ResponseFormat
+
+
+def test_format_dataframe_to_json_returns_data_response() -> None:
+    """Test DataFrame to JSON formatting."""
+    dataframe = pd.DataFrame([
+        {"symbol": "EURUSD", "bid": 1.08500, "ask": 1.08520},
+        {"symbol": "GBPUSD", "bid": 1.25000, "ask": 1.25020},
+    ])
+
+    result = format_dataframe_to_json(dataframe)
+
+    assert result.count == 2
+    assert result.format == ResponseFormat.JSON
+    assert isinstance(result.data, list)
+    assert len(result.data) == 2
+    assert result.data[0]["symbol"] == "EURUSD"
+
+
+def test_format_dict_to_json_returns_data_response() -> None:
+    """Test dictionary to JSON formatting."""
+    data = {"version": "5.0.4321", "build": 4321}
+
+    result = format_dict_to_json(data)
+
+    assert result.count == 1
+    assert result.format == ResponseFormat.JSON
+    assert isinstance(result.data, dict)
+    assert result.data["version"] == "5.0.4321"
+
+
+def test_format_dataframe_to_parquet_returns_binary() -> None:
+    """Test DataFrame to Parquet formatting."""
+    dataframe = pd.DataFrame([
+        {"symbol": "EURUSD", "bid": 1.08500, "ask": 1.08520},
+        {"symbol": "GBPUSD", "bid": 1.25000, "ask": 1.25020},
+    ])
+
+    response = format_dataframe_to_parquet(dataframe)
+
+    assert response.media_type == "application/parquet"
+    assert "data.parquet" in response.headers.get("Content-Disposition", "")
+
+    # Verify StreamingResponse - async generator tested in integration
+    assert hasattr(response, "body_iterator")
+
+
+def test_format_dict_to_parquet_returns_binary() -> None:
+    """Test dictionary to Parquet formatting."""
+    data = {"version": "5.0.4321", "build": 4321}
+
+    response = format_dict_to_parquet(data)
+
+    assert response.media_type == "application/parquet"
+
+    # Verify StreamingResponse - async generator tested in integration
+    assert hasattr(response, "body_iterator")
+
+
+def test_get_response_format_from_query_parameter() -> None:
+    """Test format negotiation via query parameter."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    # Query parameter takes priority
+    result = get_response_format(
+        accept="application/json",
+        format_param=ResponseFormat.PARQUET,
+    )
+
+    assert result == ResponseFormat.PARQUET
+
+
+def test_get_response_format_from_accept_header() -> None:
+    """Test format negotiation via Accept header."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    result = get_response_format(accept="application/parquet", format_param=None)
+
+    assert result == ResponseFormat.PARQUET
+
+
+def test_get_response_format_defaults_to_json() -> None:
+    """Test format negotiation defaults to JSON."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    result = get_response_format(accept=None, format_param=None)
+
+    assert result == ResponseFormat.JSON
+
+
+def test_get_response_format_handles_complex_accept_header() -> None:
+    """Test format negotiation with complex Accept header."""
+    from pdmt5.api.dependencies import get_response_format  # noqa: PLC0415
+
+    result = get_response_format(
+        accept="text/html, application/parquet;q=0.9, */*;q=0.8",
+        format_param=None,
+    )
+
+    assert result == ResponseFormat.PARQUET
