@@ -41,6 +41,7 @@ pip install -e ".[api]"
 ### Dependencies installed
 
 The `[api]` extra installs:
+
 - FastAPI 0.109+
 - uvicorn[standard]
 - pyarrow (Parquet support)
@@ -111,6 +112,7 @@ curl http://localhost:8000/api/v1/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -155,6 +157,7 @@ curl http://localhost:8000/api/v1/health
 ```
 
 Response:
+
 ```json
 {
   "status": "healthy",
@@ -198,6 +201,7 @@ curl -H "X-API-Key: YOUR_KEY" \
 ```
 
 Response:
+
 ```json
 {
   "data": {
@@ -231,6 +235,7 @@ curl -H "X-API-Key: YOUR_KEY" \
 ```
 
 Response:
+
 ```json
 {
   "data": [
@@ -267,6 +272,7 @@ curl -H "X-API-Key: YOUR_KEY" \
 ```
 
 Flags:
+
 - `2` = COPY_TICKS_INFO (only price changes)
 - `4` = COPY_TICKS_TRADE (only trades)
 - `6` = COPY_TICKS_ALL (all ticks, default)
@@ -279,6 +285,7 @@ curl -H "X-API-Key: YOUR_KEY" \
 ```
 
 Response:
+
 ```json
 {
   "data": {
@@ -535,6 +542,7 @@ http GET localhost:8000/api/v1/symbols/EURUSD \
 
 **Problem**: `"mt5_connected": false` in health check
 **Solution**:
+
 1. Ensure MT5 terminal is running
 2. Login to MT5 with valid credentials
 3. Check MT5_LOGIN, MT5_PASSWORD, MT5_SERVER in .env
@@ -547,6 +555,7 @@ http GET localhost:8000/api/v1/symbols/EURUSD \
 
 **Problem**: `401 Unauthorized`
 **Solution**:
+
 - Check API key is correct in request header
 - Verify X-API-Key header name (case-sensitive)
 - Ensure API_KEY environment variable is set
@@ -555,12 +564,14 @@ http GET localhost:8000/api/v1/symbols/EURUSD \
 
 **Problem**: Slow responses for large datasets
 **Solution**:
+
 - Use Parquet format for datasets >1000 records
 - Reduce count parameter in requests
 - Consider pagination for very large queries
 
 **Problem**: Timeout errors
 **Solution**:
+
 - Increase client timeout (default 30s)
 - Request smaller date ranges
 - Check MT5 terminal is responsive

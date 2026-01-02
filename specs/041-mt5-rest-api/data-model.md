@@ -24,6 +24,7 @@ class ResponseFormat(str, Enum):
 ```
 
 **Usage**: Query parameter or Accept header mapping
+
 - `?format=json` or `Accept: application/json` → ResponseFormat.JSON
 - `?format=parquet` or `Accept: application/parquet` → ResponseFormat.PARQUET
 
@@ -34,6 +35,7 @@ class ResponseFormat(str, Enum):
 ### Health & System Endpoints
 
 #### No request model needed
+
 - `GET /api/v1/health` - No parameters
 - `GET /api/v1/version` - No parameters
 
@@ -272,6 +274,7 @@ class TerminalInfoRequest(BaseModel):
 ```
 
 **Maps to**:
+
 - `Mt5DataClient.account_info_as_df()`
 - `Mt5DataClient.terminal_info_as_df()`
 
@@ -538,6 +541,7 @@ def dataframe_to_parquet(df: pd.DataFrame) -> bytes:
 ```
 
 **Headers for Parquet response**:
+
 ```
 Content-Type: application/parquet
 Content-Disposition: attachment; filename="data.parquet"
@@ -547,25 +551,25 @@ Content-Disposition: attachment; filename="data.parquet"
 
 ## Model Mapping Summary
 
-| Endpoint | HTTP Method | Request Model | Mt5DataClient Method |
-|----------|-------------|---------------|---------------------|
-| `/health` | GET | None | `version()` |
-| `/version` | GET | None | `version_as_df()` |
-| `/symbols` | GET | SymbolsRequest | `symbols_get_as_df(group)` |
-| `/symbols/{symbol}` | GET | SymbolInfoRequest | `symbol_info_as_df(symbol)` |
-| `/symbols/{symbol}/tick` | GET | SymbolTickRequest | `symbol_info_tick_as_df(symbol)` |
-| `/rates/from` | GET | RatesFromRequest | `copy_rates_from_as_df(...)` |
-| `/rates/from-pos` | GET | RatesFromPosRequest | `copy_rates_from_pos_as_df(...)` |
-| `/rates/range` | GET | RatesRangeRequest | `copy_rates_range_as_df(...)` |
-| `/ticks/from` | GET | TicksFromRequest | `copy_ticks_from_as_df(...)` |
-| `/ticks/range` | GET | TicksRangeRequest | `copy_ticks_range_as_df(...)` |
-| `/market-book/{symbol}` | GET | MarketBookRequest | `market_book_get_as_df(symbol)` |
-| `/account` | GET | AccountInfoRequest | `account_info_as_df()` |
-| `/terminal` | GET | TerminalInfoRequest | `terminal_info_as_df()` |
-| `/positions` | GET | PositionsRequest | `positions_get_as_df(...)` |
-| `/orders` | GET | OrdersRequest | `orders_get_as_df(...)` |
-| `/history/orders` | GET | HistoryOrdersRequest | `history_orders_get_as_df(...)` |
-| `/history/deals` | GET | HistoryDealsRequest | `history_deals_get_as_df(...)` |
+| Endpoint                 | HTTP Method | Request Model        | Mt5DataClient Method             |
+| ------------------------ | ----------- | -------------------- | -------------------------------- |
+| `/health`                | GET         | None                 | `version()`                      |
+| `/version`               | GET         | None                 | `version_as_df()`                |
+| `/symbols`               | GET         | SymbolsRequest       | `symbols_get_as_df(group)`       |
+| `/symbols/{symbol}`      | GET         | SymbolInfoRequest    | `symbol_info_as_df(symbol)`      |
+| `/symbols/{symbol}/tick` | GET         | SymbolTickRequest    | `symbol_info_tick_as_df(symbol)` |
+| `/rates/from`            | GET         | RatesFromRequest     | `copy_rates_from_as_df(...)`     |
+| `/rates/from-pos`        | GET         | RatesFromPosRequest  | `copy_rates_from_pos_as_df(...)` |
+| `/rates/range`           | GET         | RatesRangeRequest    | `copy_rates_range_as_df(...)`    |
+| `/ticks/from`            | GET         | TicksFromRequest     | `copy_ticks_from_as_df(...)`     |
+| `/ticks/range`           | GET         | TicksRangeRequest    | `copy_ticks_range_as_df(...)`    |
+| `/market-book/{symbol}`  | GET         | MarketBookRequest    | `market_book_get_as_df(symbol)`  |
+| `/account`               | GET         | AccountInfoRequest   | `account_info_as_df()`           |
+| `/terminal`              | GET         | TerminalInfoRequest  | `terminal_info_as_df()`          |
+| `/positions`             | GET         | PositionsRequest     | `positions_get_as_df(...)`       |
+| `/orders`                | GET         | OrdersRequest        | `orders_get_as_df(...)`          |
+| `/history/orders`        | GET         | HistoryOrdersRequest | `history_orders_get_as_df(...)`  |
+| `/history/deals`         | GET         | HistoryDealsRequest  | `history_deals_get_as_df(...)`   |
 
 ---
 

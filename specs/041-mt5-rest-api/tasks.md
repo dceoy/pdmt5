@@ -23,10 +23,10 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 **Purpose**: Project initialization and basic structure
 
-- [X] T001 Create API package structure in pdmt5/api/ directory
-- [X] T002 Update pyproject.toml with api extras dependencies (FastAPI, uvicorn, pyarrow, etc.)
-- [X] T003 [P] Create test structure in tests/test_api/ directory
-- [X] T004 [P] Update README.md with API installation and usage section
+- [x] T001 Create API package structure in pdmt5/api/ directory
+- [x] T002 Update pyproject.toml with api extras dependencies (FastAPI, uvicorn, pyarrow, etc.)
+- [x] T003 [P] Create test structure in tests/test_api/ directory
+- [x] T004 [P] Update README.md with API installation and usage section
 
 ---
 
@@ -186,7 +186,7 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 - [ ] T071 [P] Create deployment guide for Windows service in docs/api/deployment.md
 - [ ] T072 [P] Add MkDocs page for API documentation in docs/api/index.md
-- [ ] T073 [P] Update pdmt5/__init__.py to export API classes if needed
+- [ ] T073 [P] Update pdmt5/**init**.py to export API classes if needed
 - [ ] T074 Verify quickstart.md examples work end-to-end
 - [ ] T075 [P] Add performance benchmarks (health check <500ms, concurrent requests)
 - [ ] T076 [P] Security audit (check for injection vulnerabilities, secure defaults)
