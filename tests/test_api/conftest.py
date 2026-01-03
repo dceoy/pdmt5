@@ -50,6 +50,9 @@ def mock_mt5_client() -> Mock:
         "free_margin": 10000.0,
         "profit": 500.0,
     }
+    client.account_info_as_df.return_value = pd.DataFrame([
+        client.account_info_as_dict.return_value
+    ])
 
     # Mock terminal info
     client.terminal_info_as_dict.return_value = {
@@ -58,6 +61,9 @@ def mock_mt5_client() -> Mock:
         "tradeapi_disabled": False,
         "email_enabled": True,
     }
+    client.terminal_info_as_df.return_value = pd.DataFrame([
+        client.terminal_info_as_dict.return_value
+    ])
 
     # Mock symbol info
     client.symbol_info_as_dict.return_value = {
@@ -68,6 +74,9 @@ def mock_mt5_client() -> Mock:
         "volume_min": 0.01,
         "volume_max": 500.0,
     }
+    client.symbol_info_as_df.return_value = pd.DataFrame([
+        client.symbol_info_as_dict.return_value
+    ])
 
     # Mock symbol tick
     client.symbol_info_tick_as_dict.return_value = {
@@ -77,12 +86,16 @@ def mock_mt5_client() -> Mock:
         "last": 1.08510,
         "volume": 100,
     }
+    client.symbol_info_tick_as_df.return_value = pd.DataFrame([
+        client.symbol_info_tick_as_dict.return_value
+    ])
 
     # Mock symbols_get returning DataFrame
     client.symbols_get.return_value = pd.DataFrame([
         {"name": "EURUSD", "visible": True, "spread": 20},
         {"name": "GBPUSD", "visible": True, "spread": 25},
     ])
+    client.symbols_get_as_df.return_value = client.symbols_get.return_value
 
     # Mock copy_rates_from returning DataFrame
     client.copy_rates_from.return_value = pd.DataFrame([
@@ -103,6 +116,9 @@ def mock_mt5_client() -> Mock:
             "volume": 1200,
         },
     ])
+    client.copy_rates_from_as_df.return_value = client.copy_rates_from.return_value
+    client.copy_rates_from_pos_as_df.return_value = client.copy_rates_from.return_value
+    client.copy_rates_range_as_df.return_value = client.copy_rates_from.return_value
 
     # Mock copy_ticks_from returning DataFrame
     client.copy_ticks_from.return_value = pd.DataFrame([
@@ -113,6 +129,14 @@ def mock_mt5_client() -> Mock:
             "last": 1.08510,
             "volume": 100,
         },
+    ])
+    client.copy_ticks_from_as_df.return_value = client.copy_ticks_from.return_value
+    client.copy_ticks_range_as_df.return_value = client.copy_ticks_from.return_value
+
+    # Mock market book returning DataFrame
+    client.market_book_get_as_df.return_value = pd.DataFrame([
+        {"type": 1, "price": 1.08500, "volume": 1.0},
+        {"type": 2, "price": 1.08520, "volume": 1.5},
     ])
 
     # Mock positions_get returning DataFrame
@@ -126,6 +150,7 @@ def mock_mt5_client() -> Mock:
             "profit": 10.0,
         },
     ])
+    client.positions_get_as_df.return_value = client.positions_get.return_value
 
     # Mock orders_get returning DataFrame
     client.orders_get.return_value = pd.DataFrame([
@@ -137,10 +162,13 @@ def mock_mt5_client() -> Mock:
             "price_open": 1.25000,
         },
     ])
+    client.orders_get_as_df.return_value = client.orders_get.return_value
 
     # Mock history methods returning DataFrames
     client.history_orders_get.return_value = pd.DataFrame([])
     client.history_deals_get.return_value = pd.DataFrame([])
+    client.history_orders_get_as_df.return_value = pd.DataFrame([])
+    client.history_deals_get_as_df.return_value = pd.DataFrame([])
 
     return client
 

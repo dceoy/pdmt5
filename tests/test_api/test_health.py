@@ -40,10 +40,36 @@ def test_version_endpoint_returns_mt5_version(
 
     assert response.status_code == 200
 
-    data = response.json()
+    payload = response.json()
+    assert payload["format"] == "json"
+    assert payload["count"] == 1
+
+    data = payload["data"]
     assert data["version"] == "5.0.4321"
     assert data["build"] == 4321
     assert "release_date" in data
+
+
+def test_version_endpoint_returns_parquet(
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    """Test version endpoint returns Parquet when requested."""
+    headers = {**api_headers, "Accept": "application/parquet"}
+    response = client.get("/api/v1/version", headers=headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/parquet")
+
+
+def test_docs_and_openapi_available(client: TestClient) -> None:
+    """Docs and OpenAPI endpoints should be available."""
+    docs_response = client.get("/docs")
+    assert docs_response.status_code == 200
+
+    openapi_response = client.get("/openapi.json")
+    assert openapi_response.status_code == 200
+    assert "paths" in openapi_response.json()
 
 
 @pytest.mark.asyncio

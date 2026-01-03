@@ -76,6 +76,8 @@ paths:
       summary: Get MT5 version
       description: Get MetaTrader 5 terminal version information
       operationId: getVersion
+      parameters:
+        - $ref: '#/components/parameters/FormatParam'
       responses:
         '200':
           description: MT5 version information
@@ -83,6 +85,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+            application/parquet:
+              schema:
+                type: string
+                format: binary
         '503':
           $ref: '#/components/responses/MT5Disconnected'
 
