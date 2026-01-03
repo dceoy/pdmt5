@@ -70,9 +70,13 @@ jobs:
     if: >
       github.event_name == 'pull_request'
       && github.event.pull_request.draft == false
-      && (! endswith(github.event.pull_request.user.login, '[bot]'))
+      && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
       && (! startsWith(github.head_ref, 'dependabot/'))
       && (! startsWith(github.head_ref, 'renovate/'))
+      && (! (failure() || cancelled()))
+    needs:
+      - python-lint-and-scan
+      - python-test
     permissions:
       contents: read
       pull-requests: write
