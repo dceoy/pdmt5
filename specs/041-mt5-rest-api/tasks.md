@@ -36,21 +36,21 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create FastAPI application instance in pdmt5/api/main.py with lifespan management
-- [ ] T006 [P] Implement Mt5DataClient singleton dependency in pdmt5/api/dependencies.py
-- [ ] T007 [P] Create base Pydantic models (ResponseFormat enum, ErrorResponse) in pdmt5/api/models.py
-- [ ] T008 Implement error handling middleware in pdmt5/api/middleware.py
-- [ ] T009 [P] Create format negotiation dependency in pdmt5/api/dependencies.py
-- [ ] T010 [P] Implement JSON formatter in pdmt5/api/formatters.py
-- [ ] T011 [P] Implement Parquet formatter in pdmt5/api/formatters.py
-- [ ] T012 [P] Create async MT5 wrapper using asyncio.to_thread() in pdmt5/api/dependencies.py
-- [ ] T013 Create pytest fixtures for test client and mocked MT5Client in tests/test_api/conftest.py
-- [ ] T014 Create health router in pdmt5/api/routers/health.py with /health endpoint
-- [ ] T015 Write tests for health endpoint in tests/test_api/test_health.py
-- [ ] T016 [P] Implement API key authentication in pdmt5/api/auth.py
-- [ ] T017 [P] Write tests for authentication in tests/test_api/test_auth.py
-- [ ] T018 Write tests for format negotiation in tests/test_api/test_formatters.py
-- [ ] T019 Run quality checks (ruff format, ruff check, pyright, pytest)
+- [x] T005 Create FastAPI application instance in pdmt5/api/main.py with lifespan management
+- [x] T006 [P] Implement Mt5DataClient singleton dependency in pdmt5/api/dependencies.py
+- [x] T007 [P] Create base Pydantic models (ResponseFormat enum, ErrorResponse) in pdmt5/api/models.py
+- [x] T008 Implement error handling middleware in pdmt5/api/middleware.py
+- [x] T009 [P] Create format negotiation dependency in pdmt5/api/dependencies.py
+- [x] T010 [P] Implement JSON formatter in pdmt5/api/formatters.py
+- [x] T011 [P] Implement Parquet formatter in pdmt5/api/formatters.py
+- [x] T012 [P] Create async MT5 wrapper using asyncio.to_thread() in pdmt5/api/dependencies.py
+- [x] T013 Create pytest fixtures for test client and mocked MT5Client in tests/test_api/conftest.py
+- [x] T014 Create health router in pdmt5/api/routers/health.py with /health endpoint
+- [x] T015 Write tests for health endpoint in tests/test_api/test_health.py
+- [x] T016 [P] Implement API key authentication in pdmt5/api/auth.py
+- [x] T017 [P] Write tests for authentication in tests/test_api/test_auth.py
+- [x] T018 Write tests for format negotiation in tests/test_api/test_formatters.py
+- [x] T019 Run quality checks (ruff format, ruff check, pyright, pytest)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -66,27 +66,27 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation (TDD)**
 
-- [ ] T020 [P] [US1] Write contract tests for symbols endpoints in tests/test_api/test_symbols.py
-- [ ] T021 [P] [US1] Write contract tests for market data endpoints in tests/test_api/test_market.py
-- [ ] T022 [P] [US1] Write integration tests for symbol retrieval journey in tests/test_api/test_integration.py
+- [x] T020 [P] [US1] Write contract tests for symbols endpoints in tests/test_api/test_symbols.py
+- [x] T021 [P] [US1] Write contract tests for market data endpoints in tests/test_api/test_market.py
+- [x] T022 [P] [US1] Write integration tests for symbol retrieval journey in tests/test_api/test_integration.py
 
 ### Implementation for User Story 1
 
-- [ ] T023 [P] [US1] Create request models (SymbolsRequest, SymbolInfoRequest, SymbolTickRequest) in pdmt5/api/models.py
-- [ ] T024 [P] [US1] Create request models (RatesFromRequest, RatesFromPosRequest, RatesRangeRequest) in pdmt5/api/models.py
-- [ ] T025 [P] [US1] Create request models (TicksFromRequest, TicksRangeRequest, MarketBookRequest) in pdmt5/api/models.py
-- [ ] T026 [US1] Implement symbols router with GET /api/v1/symbols endpoint in pdmt5/api/routers/symbols.py
-- [ ] T027 [US1] Implement GET /api/v1/symbols/{symbol} endpoint in pdmt5/api/routers/symbols.py
-- [ ] T028 [US1] Implement GET /api/v1/symbols/{symbol}/tick endpoint in pdmt5/api/routers/symbols.py
-- [ ] T029 [US1] Implement market router with GET /api/v1/rates/from endpoint in pdmt5/api/routers/market.py
-- [ ] T030 [US1] Implement GET /api/v1/rates/from-pos endpoint in pdmt5/api/routers/market.py
-- [ ] T031 [US1] Implement GET /api/v1/rates/range endpoint in pdmt5/api/routers/market.py
-- [ ] T032 [US1] Implement GET /api/v1/ticks/from endpoint in pdmt5/api/routers/market.py
-- [ ] T033 [US1] Implement GET /api/v1/ticks/range endpoint in pdmt5/api/routers/market.py
-- [ ] T034 [US1] Implement GET /api/v1/market-book/{symbol} endpoint in pdmt5/api/routers/market.py
-- [ ] T035 [US1] Register symbols and market routers in pdmt5/api/main.py
-- [ ] T036 [US1] Run tests and verify all US1 endpoints work with both JSON and Parquet formats
-- [ ] T037 [US1] Run quality checks (ruff format, ruff check, pyright, pytest)
+- [x] T023 [P] [US1] Create request models (SymbolsRequest, SymbolInfoRequest, SymbolTickRequest) in pdmt5/api/models.py
+- [x] T024 [P] [US1] Create request models (RatesFromRequest, RatesFromPosRequest, RatesRangeRequest) in pdmt5/api/models.py
+- [x] T025 [P] [US1] Create request models (TicksFromRequest, TicksRangeRequest, MarketBookRequest) in pdmt5/api/models.py
+- [x] T026 [US1] Implement symbols router with GET /api/v1/symbols endpoint in pdmt5/api/routers/symbols.py
+- [x] T027 [US1] Implement GET /api/v1/symbols/{symbol} endpoint in pdmt5/api/routers/symbols.py
+- [x] T028 [US1] Implement GET /api/v1/symbols/{symbol}/tick endpoint in pdmt5/api/routers/symbols.py
+- [x] T029 [US1] Implement market router with GET /api/v1/rates/from endpoint in pdmt5/api/routers/market.py
+- [x] T030 [US1] Implement GET /api/v1/rates/from-pos endpoint in pdmt5/api/routers/market.py
+- [x] T031 [US1] Implement GET /api/v1/rates/range endpoint in pdmt5/api/routers/market.py
+- [x] T032 [US1] Implement GET /api/v1/ticks/from endpoint in pdmt5/api/routers/market.py
+- [x] T033 [US1] Implement GET /api/v1/ticks/range endpoint in pdmt5/api/routers/market.py
+- [x] T034 [US1] Implement GET /api/v1/market-book/{symbol} endpoint in pdmt5/api/routers/market.py
+- [x] T035 [US1] Register symbols and market routers in pdmt5/api/main.py
+- [x] T036 [US1] Run tests and verify all US1 endpoints work with both JSON and Parquet formats
+- [x] T037 [US1] Run quality checks (ruff format, ruff check, pyright, pytest)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - clients can retrieve market data via HTTP
 
@@ -100,18 +100,18 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 ### Tests for User Story 2
 
-- [ ] T038 [P] [US2] Write contract tests for account endpoint in tests/test_api/test_account.py
-- [ ] T039 [P] [US2] Write integration tests for account monitoring in tests/test_api/test_integration.py
+- [x] T038 [P] [US2] Write contract tests for account endpoint in tests/test_api/test_account.py
+- [x] T039 [P] [US2] Write integration tests for account monitoring in tests/test_api/test_integration.py
 
 ### Implementation for User Story 2
 
-- [ ] T040 [P] [US2] Create request models (AccountInfoRequest, TerminalInfoRequest) in pdmt5/api/models.py
-- [ ] T041 [US2] Implement account router with GET /api/v1/account endpoint in pdmt5/api/routers/account.py
-- [ ] T042 [US2] Implement GET /api/v1/terminal endpoint in pdmt5/api/routers/account.py
-- [ ] T043 [US2] Implement GET /api/v1/version endpoint in pdmt5/api/routers/account.py
-- [ ] T044 [US2] Register account router in pdmt5/api/main.py
-- [ ] T045 [US2] Run tests and verify all US2 endpoints work with both formats
-- [ ] T046 [US2] Run quality checks (ruff format, ruff check, pyright, pytest)
+- [x] T040 [P] [US2] Create request models (AccountInfoRequest, TerminalInfoRequest) in pdmt5/api/models.py
+- [x] T041 [US2] Implement account router with GET /api/v1/account endpoint in pdmt5/api/routers/account.py
+- [x] T042 [US2] Implement GET /api/v1/terminal endpoint in pdmt5/api/routers/account.py
+- [x] T043 [US2] Implement GET /api/v1/version endpoint in pdmt5/api/routers/account.py
+- [x] T044 [US2] Register account router in pdmt5/api/main.py
+- [x] T045 [US2] Run tests and verify all US2 endpoints work with both formats
+- [x] T046 [US2] Run quality checks (ruff format, ruff check, pyright, pytest)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -125,18 +125,18 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 ### Tests for User Story 4
 
-- [ ] T047 [P] [US4] Write contract tests for history endpoints in tests/test_api/test_history.py
-- [ ] T048 [P] [US4] Write integration tests for historical data retrieval in tests/test_api/test_integration.py
+- [x] T047 [P] [US4] Write contract tests for history endpoints in tests/test_api/test_history.py
+- [x] T048 [P] [US4] Write integration tests for historical data retrieval in tests/test_api/test_integration.py
 
 ### Implementation for User Story 4
 
-- [ ] T049 [P] [US4] Create request models (HistoryOrdersRequest, HistoryDealsRequest) in pdmt5/api/models.py
-- [ ] T050 [US4] Implement history router with GET /api/v1/history/orders endpoint in pdmt5/api/routers/history.py
-- [ ] T051 [US4] Implement GET /api/v1/history/deals endpoint in pdmt5/api/routers/history.py
-- [ ] T052 [US4] Add request validation for date range or ticket/position requirement in pdmt5/api/models.py
-- [ ] T053 [US4] Register history router in pdmt5/api/main.py
-- [ ] T054 [US4] Run tests and verify all US4 endpoints work with both formats
-- [ ] T055 [US4] Run quality checks (ruff format, ruff check, pyright, pytest)
+- [x] T049 [P] [US4] Create request models (HistoryOrdersRequest, HistoryDealsRequest) in pdmt5/api/models.py
+- [x] T050 [US4] Implement history router with GET /api/v1/history/orders endpoint in pdmt5/api/routers/history.py
+- [x] T051 [US4] Implement GET /api/v1/history/deals endpoint in pdmt5/api/routers/history.py
+- [x] T052 [US4] Add request validation for date range or ticket/position requirement in pdmt5/api/models.py
+- [x] T053 [US4] Register history router in pdmt5/api/main.py
+- [x] T054 [US4] Run tests and verify all US4 endpoints work with both formats
+- [x] T055 [US4] Run quality checks (ruff format, ruff check, pyright, pytest)
 
 **Checkpoint**: Historical data retrieval should be functional independently
 
@@ -150,16 +150,16 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 ### Tests for User Story 5
 
-- [ ] T056 [P] [US5] Write contract tests for positions/orders endpoints in tests/test_api/test_history.py
-- [ ] T057 [P] [US5] Write integration tests for position monitoring in tests/test_api/test_integration.py
+- [x] T056 [P] [US5] Write contract tests for positions/orders endpoints in tests/test_api/test_history.py
+- [x] T057 [P] [US5] Write integration tests for position monitoring in tests/test_api/test_integration.py
 
 ### Implementation for User Story 5
 
-- [ ] T058 [P] [US5] Create request models (PositionsRequest, OrdersRequest) in pdmt5/api/models.py
-- [ ] T059 [US5] Implement GET /api/v1/positions endpoint in pdmt5/api/routers/history.py
-- [ ] T060 [US5] Implement GET /api/v1/orders endpoint in pdmt5/api/routers/history.py
-- [ ] T061 [US5] Run tests and verify all US5 endpoints work with both formats
-- [ ] T062 [US5] Run quality checks (ruff format, ruff check, pyright, pytest)
+- [x] T058 [P] [US5] Create request models (PositionsRequest, OrdersRequest) in pdmt5/api/models.py
+- [x] T059 [US5] Implement GET /api/v1/positions endpoint in pdmt5/api/routers/history.py
+- [x] T060 [US5] Implement GET /api/v1/orders endpoint in pdmt5/api/routers/history.py
+- [x] T061 [US5] Run tests and verify all US5 endpoints work with both formats
+- [x] T062 [US5] Run quality checks (ruff format, ruff check, pyright, pytest)
 
 **Checkpoint**: All core user stories should now be independently functional
 
@@ -169,14 +169,14 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 **Purpose**: Add production-grade security and operational features
 
-- [ ] T063 [P] Implement rate limiting using slowapi in pdmt5/api/middleware.py
-- [ ] T064 [P] Add CORS middleware configuration in pdmt5/api/main.py
-- [ ] T065 [P] Configure structured logging in pdmt5/api/main.py
-- [ ] T066 [P] Write tests for rate limiting in tests/test_api/test_middleware.py
-- [ ] T067 [P] Add API usage examples to docs/api/rest-api.md
-- [ ] T068 Validate OpenAPI spec generation at /docs endpoint
-- [ ] T069 Run comprehensive integration tests across all endpoints
-- [ ] T070 Run quality checks (ruff format, ruff check, pyright, pytest) with 100% coverage verification
+- [x] T063 [P] Implement rate limiting using slowapi in pdmt5/api/middleware.py
+- [x] T064 [P] Add CORS middleware configuration in pdmt5/api/main.py
+- [x] T065 [P] Configure structured logging in pdmt5/api/main.py
+- [x] T066 [P] Write tests for rate limiting in tests/test_api/test_middleware.py
+- [x] T067 [P] Add API usage examples to docs/api/rest-api.md
+- [x] T068 Validate OpenAPI spec generation at /docs endpoint
+- [x] T069 Run comprehensive integration tests across all endpoints
+- [x] T070 Run quality checks (ruff format, ruff check, pyright, pytest) with 100% coverage verification
 
 ---
 
@@ -184,14 +184,14 @@ Single project structure: `pdmt5/` (library), `tests/` at repository root, `docs
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T071 [P] Create deployment guide for Windows service in docs/api/deployment.md
-- [ ] T072 [P] Add MkDocs page for API documentation in docs/api/index.md
-- [ ] T073 [P] Update pdmt5/**init**.py to export API classes if needed
-- [ ] T074 Verify quickstart.md examples work end-to-end
-- [ ] T075 [P] Add performance benchmarks (health check <500ms, concurrent requests)
-- [ ] T076 [P] Security audit (check for injection vulnerabilities, secure defaults)
-- [ ] T077 Final quality check across all code (ruff format, ruff check, pyright, pytest)
-- [ ] T078 Build and test documentation with mkdocs build
+- [x] T071 [P] Create deployment guide for Windows service in docs/api/deployment.md
+- [x] T072 [P] Add MkDocs page for API documentation in docs/api/index.md
+- [x] T073 [P] Update pdmt5/**init**.py to export API classes if needed
+- [x] T074 Verify quickstart.md examples work end-to-end
+- [x] T075 [P] Add performance benchmarks (health check <500ms, concurrent requests)
+- [x] T076 [P] Security audit (check for injection vulnerabilities, secure defaults)
+- [x] T077 Final quality check across all code (ruff format, ruff check, pyright, pytest)
+- [x] T078 Build and test documentation with mkdocs build
 
 ---
 

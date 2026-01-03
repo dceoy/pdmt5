@@ -66,11 +66,14 @@ MT5_PATH=C:\Program Files\MetaTrader 5\terminal64.exe
 # API Configuration
 API_HOST=0.0.0.0
 API_PORT=8000
-API_KEY=your-secret-api-key-here  # Change this!
+MT5_API_KEY=your-secret-api-key-here  # Change this!
 API_LOG_LEVEL=INFO
 
 # Optional: Rate limiting
 API_RATE_LIMIT=100  # requests per minute
+
+# Optional: CORS
+API_CORS_ORIGINS=*
 ```
 
 ### Generate API Key
@@ -79,7 +82,7 @@ API_RATE_LIMIT=100  # requests per minute
 # Generate a secure API key
 import secrets
 api_key = secrets.token_urlsafe(32)
-print(f"API_KEY={api_key}")
+print(f"MT5_API_KEY={api_key}")
 ```
 
 Output: `API_KEY=xK9vP2mN8hQ5wR7tY4uI0oL3jF6gH1sA2zX`
@@ -139,12 +142,6 @@ All API endpoints (except `/health` and `/docs`) require authentication via API 
 ```bash
 curl -H "X-API-Key: your-secret-api-key-here" \
      http://localhost:8000/api/v1/symbols
-```
-
-### Using Query Parameter (less secure, avoid in production)
-
-```bash
-curl "http://localhost:8000/api/v1/symbols?api_key=your-secret-api-key-here"
 ```
 
 ## Basic Usage Examples

@@ -1,15 +1,19 @@
-"""Error handling, logging, and CORS middleware."""
+"""Error handling, logging, and rate limiting middleware."""
 
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import TYPE_CHECKING
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from starlette.middleware.cors import CORSMiddleware
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from pdmt5.mt5 import Mt5RuntimeError
 
@@ -127,9 +131,10 @@ async def logging_middleware(
 
     # Log request
     logger.info(
-        "Request: %s %s from %s",
+        "Request: %s %s params=%s from %s",
         request.method,
         request.url.path,
+        dict(request.query_params),
         request.client.host if request.client else "unknown",
     )
 
@@ -152,21 +157,58 @@ async def logging_middleware(
     return response
 
 
+def _build_default_rate_limit() -> str:
+    """Build the default rate limit string from environment config.
+
+    Returns:
+        Default rate limit string in slowapi format.
+    """
+    raw_limit = os.getenv("API_RATE_LIMIT", "100")
+
+    try:
+        limit_value = max(1, int(raw_limit))
+    except ValueError:
+        limit_value = 100
+
+    return f"{limit_value}/minute"
+
+
 def add_middleware(app: FastAPI) -> None:
-    """Add all middleware to the FastAPI application.
+    """Add middleware and error handlers to the FastAPI application.
 
     Args:
         app: FastAPI application instance.
     """
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+    # Configure rate limiting
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=[_build_default_rate_limit()],
     )
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     # Add custom middleware
     app.middleware("http")(error_handler_middleware)
     app.middleware("http")(logging_middleware)
+
+
+def _rate_limit_exceeded_handler(
+    request: Request,  # noqa: ARG001
+    exc: Exception,  # noqa: ARG001
+) -> JSONResponse:
+    """Handle rate limiting errors.
+
+    Returns:
+        JSON response describing the rate limit error.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={
+            "type": "/errors/rate-limit",
+            "title": "Rate Limit Exceeded",
+            "status": status.HTTP_429_TOO_MANY_REQUESTS,
+            "detail": "Too many requests. Please slow down.",
+            "instance": None,
+        },
+    )

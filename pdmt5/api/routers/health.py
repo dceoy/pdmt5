@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends
 
 from pdmt5.api.auth import verify_api_key
-from pdmt5.api.dependencies import get_mt5_client, run_in_threadpool
-from pdmt5.api.models import HealthResponse
+from pdmt5.api.dependencies import (
+    get_mt5_client,
+    get_response_format,
+    run_in_threadpool,
+)
+from pdmt5.api.formatters import format_dict_to_json, format_dict_to_parquet
+from pdmt5.api.models import DataResponse, HealthResponse, ResponseFormat
 from pdmt5.dataframe import Mt5DataClient  # noqa: TC001
+
+if TYPE_CHECKING:
+    from fastapi.responses import Response
 
 router = APIRouter(prefix="/api/v1", tags=["health"])
 
@@ -58,21 +66,28 @@ async def get_health() -> HealthResponse:
 
 @router.get(
     "/version",
+    response_model=DataResponse,
     summary="Get MT5 version",
     description="Get MetaTrader 5 terminal version information",
 )
 async def get_version(
     mt5_client: Annotated[Mt5DataClient, Depends(get_mt5_client)],
     api_key: Annotated[str, Depends(verify_api_key)],  # noqa: ARG001
-) -> dict[str, int | str]:
+    response_format: Annotated[ResponseFormat, Depends(get_response_format)],
+) -> DataResponse | Response:
     """Get MT5 terminal version information.
 
     Args:
         mt5_client: MT5 data client dependency.
         api_key: API key for authentication (validated, unused in function).
+        response_format: Negotiated response format.
 
     Returns:
-        Dictionary with MT5 version details.
+        DataResponse for JSON requests, or a Parquet response.
     """
     version_dict = await run_in_threadpool(mt5_client.version_as_dict)
-    return version_dict
+
+    if response_format == ResponseFormat.PARQUET:
+        return format_dict_to_parquet(version_dict)
+
+    return format_dict_to_json(version_dict)
