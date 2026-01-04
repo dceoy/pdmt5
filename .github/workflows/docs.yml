@@ -21,6 +21,8 @@ on:
 
 jobs:
   deploy-docs:
+    permissions:
+      contents: write
     uses: ./.github/workflows/docs-deploy.yml
     with:
       python-version: ${{ inputs.python-version }}

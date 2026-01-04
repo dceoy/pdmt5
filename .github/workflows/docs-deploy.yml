@@ -28,21 +28,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
       - name: Setup uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39
       - name: uv sync
         working-directory: ${{ inputs.working-directory }}
         shell: bash
+        env:
+          UV_SYNC_ARGS: ${{ inputs.uv-sync-args }}
         run: |
           set -euo pipefail
-          uv sync ${{ inputs.uv-sync-args }}
+          if [[ -n "${UV_SYNC_ARGS}" ]]; then
+            read -r -a uv_sync_args <<< "${UV_SYNC_ARGS}"
+          else
+            uv_sync_args=()
+          fi
+          uv sync "${uv_sync_args[@]}"
       - name: Deploy MkDocs
         working-directory: ${{ inputs.working-directory }}
         shell: bash
+        env:
+          MKDOCS_CONFIG: ${{ inputs.mkdocs-config }}
+          MKDOCS_ARGS: ${{ inputs.mkdocs-args }}
         run: |
           set -euo pipefail
-          uv run mkdocs gh-deploy --force -f ${{ inputs.mkdocs-config }} ${{ inputs.mkdocs-args }}
+          if [[ -n "${MKDOCS_ARGS}" ]]; then
+            read -r -a mkdocs_args <<< "${MKDOCS_ARGS}"
+          else
+            mkdocs_args=()
+          fi
+          uv run mkdocs gh-deploy --force -f "${MKDOCS_CONFIG}" "${mkdocs_args[@]}"
