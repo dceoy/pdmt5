@@ -1,6 +1,23 @@
-name: Deploy Docs
+name: Docs
 
 on:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        type: string
+        default: "3.12"
+      working-directory:
+        type: string
+        default: "."
+      mkdocs-config:
+        type: string
+        default: "mkdocs.yml"
+      uv-sync-args:
+        type: string
+        default: ""
+      mkdocs-args:
+        type: string
+        default: ""
   workflow_call:
     inputs:
       python-version:
