@@ -19,6 +19,7 @@ on:
         type: choice
         options:
           - lint-and-test
+          - docs-deploy
           - release
         description: Choose the workflow to run
         default: lint-and-test
@@ -49,6 +50,21 @@ jobs:
     with:
       package-path: .
       runs-on: windows-latest
+  python-docs-deploy:
+    if: >
+      github.event_name == 'push'
+      || (
+        github.event_name == 'workflow_dispatch'
+        && (inputs.workflow == 'docs-deploy' || inputs.workflow == 'release')
+      )
+    permissions:
+      contents: write
+    uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-mkdocs-gh-deploy.yml@main
+    with:
+      package-path: .
+      runs-on: ubuntu-slim
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   python-package-release:
     if: >
       github.event_name == 'push'
