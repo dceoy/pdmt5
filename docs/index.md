@@ -87,4 +87,4 @@ This project follows strict code quality standards:
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](https://github.com/dceoy/pdmt5/blob/main/LICENSE) file for details.
