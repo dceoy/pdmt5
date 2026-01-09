@@ -2,7 +2,8 @@
 
 **Feature Branch**: `049-api-routing-models`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API request validation models and routing for MT5 endpoints"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -75,6 +76,11 @@ As a user, I want endpoints organized by domain (market, symbols, account, histo
 - **RequestModel**: Represents typed and validated inputs for each endpoint.
 - **RouteGroup**: Represents a domain grouping of API routes.
 - **ValidationError**: Represents a standardized error returned on invalid input.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 

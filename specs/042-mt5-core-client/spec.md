@@ -2,7 +2,8 @@
 
 **Feature Branch**: `042-mt5-core-client`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "Mt5 core client for MT5 terminal connection and core operations"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -81,6 +82,10 @@ As a Python user, I want to access orders, positions, and historical data throug
 - **Order**: Represents a pending order in the terminal.
 - **Position**: Represents an open position.
 - **Deal**: Represents a historical trade execution.
+
+## Dependencies
+
+- None.
 
 ## Success Criteria _(mandatory)_
 

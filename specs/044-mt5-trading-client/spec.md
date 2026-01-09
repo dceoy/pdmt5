@@ -2,7 +2,8 @@
 
 **Feature Branch**: `044-mt5-trading-client`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "Mt5 trading client with order management, dry run, and position tools"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -77,6 +78,11 @@ As a trader, I want access to trading metrics (margin, volume, spread, and posit
 - **TradeResult**: Represents per-order execution or validation outcomes.
 - **PositionMetrics**: Represents computed metrics for open positions.
 - **SymbolGroup**: Represents a symbol or set of symbols targeted for trading actions.
+
+## Dependencies
+
+- [specs/043-mt5-dataframe-client/spec.md](specs/043-mt5-dataframe-client/spec.md)
+- [specs/045-mt5-utils/spec.md](specs/045-mt5-utils/spec.md)
 
 ## Success Criteria _(mandatory)_
 

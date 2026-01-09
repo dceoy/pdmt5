@@ -2,7 +2,8 @@
 
 **Feature Branch**: `052-api-dependencies`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API dependency injection and MT5 client lifecycle"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -75,6 +76,13 @@ As an API client, I want to specify a response format per request so I can choos
 - **Mt5ClientInstance**: Represents the shared MT5 client used by the API.
 - **ThreadpoolTask**: Represents an MT5 call executed off the event loop.
 - **ResponseFormatPreference**: Represents the per-request output format selection.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/042-mt5-core-client/spec.md](specs/042-mt5-core-client/spec.md)
+- [specs/043-mt5-dataframe-client/spec.md](specs/043-mt5-dataframe-client/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 

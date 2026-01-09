@@ -2,7 +2,8 @@
 
 **Feature Branch**: `043-mt5-dataframe-client`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "Mt5 data client with pandas DataFrame conversions and validation"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -79,6 +80,11 @@ As a Python user, I want consistent empty DataFrame results and validation for d
 - **TickSeries**: Represents tick-level time-series data.
 - **AccountSnapshot**: Represents current account state in tabular form.
 - **SymbolSnapshot**: Represents symbol metadata and tick state in tabular form.
+
+## Dependencies
+
+- [specs/042-mt5-core-client/spec.md](specs/042-mt5-core-client/spec.md)
+- [specs/045-mt5-utils/spec.md](specs/045-mt5-utils/spec.md)
 
 ## Success Criteria _(mandatory)_
 
