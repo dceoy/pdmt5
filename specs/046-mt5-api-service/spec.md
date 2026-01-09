@@ -2,7 +2,8 @@
 
 **Feature Branch**: `046-mt5-api-service`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "FastAPI REST service for MT5 data and trading endpoints"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -78,6 +79,20 @@ As an operator, I want health and error responses to be consistent so I can moni
 - **AuthContext**: Represents authorization details for API access.
 - **ErrorEnvelope**: Represents a standard error response structure.
 - **HealthStatus**: Represents service readiness and version information.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/042-mt5-core-client/spec.md](specs/042-mt5-core-client/spec.md)
+- [specs/043-mt5-dataframe-client/spec.md](specs/043-mt5-dataframe-client/spec.md)
+- [specs/044-mt5-trading-client/spec.md](specs/044-mt5-trading-client/spec.md)
+- [specs/045-mt5-utils/spec.md](specs/045-mt5-utils/spec.md)
+- [specs/047-api-auth-rate-limit/spec.md](specs/047-api-auth-rate-limit/spec.md)
+- [specs/048-api-response-format/spec.md](specs/048-api-response-format/spec.md)
+- [specs/049-api-routing-models/spec.md](specs/049-api-routing-models/spec.md)
+- [specs/050-api-runtime-deploy/spec.md](specs/050-api-runtime-deploy/spec.md)
+- [specs/051-api-error-logging/spec.md](specs/051-api-error-logging/spec.md)
+- [specs/052-api-dependencies/spec.md](specs/052-api-dependencies/spec.md)
 
 ## Success Criteria _(mandatory)_
 

@@ -2,7 +2,8 @@
 
 **Feature Branch**: `051-api-error-logging`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API error handling and logging middleware"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -75,6 +76,11 @@ As an API client, I want a process timing header so I can measure server-side la
 - **ErrorResponse**: Represents a standardized problem-details error payload.
 - **RequestLogEntry**: Represents logged request metadata and timing.
 - **ResponseLogEntry**: Represents logged response status and timing.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 

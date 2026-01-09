@@ -2,7 +2,8 @@
 
 **Feature Branch**: `045-mt5-utils`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "Utility decorators for time conversion and DataFrame index management"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -75,6 +76,10 @@ As a library user, I want these utilities to fail loudly on invalid types and be
 - **TimeConversionRule**: Represents the field naming conventions for time conversion.
 - **IndexKey**: Represents a DataFrame column name used for indexing.
 - **ConvertedResult**: Represents a dict or DataFrame with converted time fields.
+
+## Dependencies
+
+- None.
 
 ## Success Criteria _(mandatory)_
 

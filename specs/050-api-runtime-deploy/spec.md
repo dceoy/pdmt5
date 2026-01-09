@@ -2,7 +2,8 @@
 
 **Feature Branch**: `050-api-runtime-deploy`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API runtime configuration and deployment entrypoint"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -74,6 +75,11 @@ As an operator, I want a documented path to deploy the API as a Windows service 
 - **RuntimeConfig**: Represents resolved host, port, and log level values.
 - **Entrypoint**: Represents the module entrypoint used to start the API.
 - **DeploymentGuide**: Represents documentation for Windows service deployment.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 

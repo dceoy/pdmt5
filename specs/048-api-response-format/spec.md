@@ -2,7 +2,8 @@
 
 **Feature Branch**: `048-api-response-format`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API response formatting and data serialization"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -77,6 +78,11 @@ As an API client, I want consistent response metadata (count and format) so I ca
 - **DataResponse**: Represents JSON response metadata and payload.
 - **ParquetResponse**: Represents a binary Parquet response for tabular data.
 - **SerializedPayload**: Represents the serialized form of DataFrame or dict outputs.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 

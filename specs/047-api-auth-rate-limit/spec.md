@@ -2,7 +2,8 @@
 
 **Feature Branch**: `047-api-auth-rate-limit`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Implemented  
+**Implementation**: Existing code  
 **Input**: User description: "API authentication and rate limiting for REST endpoints"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -77,6 +78,11 @@ As an operator, I want rate limiting applied per client so the service remains s
 - **AuthDecision**: Represents the outcome of authentication checks.
 - **RateLimitPolicy**: Represents per-client request limits.
 - **ErrorEnvelope**: Represents the standardized error response structure.
+
+## Dependencies
+
+- [specs/041-mt5-rest-api/spec.md](specs/041-mt5-rest-api/spec.md)
+- [specs/046-mt5-api-service/spec.md](specs/046-mt5-api-service/spec.md)
 
 ## Success Criteria _(mandatory)_
 
