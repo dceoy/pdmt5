@@ -236,18 +236,6 @@ class MarketBookRequest(BaseModel):
     format: ResponseFormat | None = Field(default=None)
 
 
-class AccountInfoRequest(BaseModel):
-    """Request parameters for account info endpoint."""
-
-    format: ResponseFormat | None = Field(default=None)
-
-
-class TerminalInfoRequest(BaseModel):
-    """Request parameters for terminal info endpoint."""
-
-    format: ResponseFormat | None = Field(default=None)
-
-
 class PositionsRequest(BaseModel):
     """Request parameters for positions endpoint."""
 

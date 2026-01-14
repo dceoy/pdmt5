@@ -102,3 +102,29 @@ def format_dict_to_parquet(data: dict[str, Any]) -> Response:
     # Convert dict to single-row DataFrame
     dataframe = pd.DataFrame([data])
     return format_dataframe_to_parquet(dataframe)
+
+
+def format_response(
+    data: pd.DataFrame | dict[str, Any],
+    response_format: ResponseFormat,
+) -> DataResponse | Response:
+    """Format data based on requested response format.
+
+    Unified formatter that handles both DataFrame and dict data types,
+    selecting the appropriate output format (JSON or Parquet).
+
+    Args:
+        data: DataFrame or dictionary to format.
+        response_format: Requested response format (JSON or Parquet).
+
+    Returns:
+        DataResponse for JSON format, StreamingResponse for Parquet format.
+    """
+    if isinstance(data, pd.DataFrame):
+        if response_format == ResponseFormat.PARQUET:
+            return format_dataframe_to_parquet(data)
+        return format_dataframe_to_json(data)
+
+    if response_format == ResponseFormat.PARQUET:
+        return format_dict_to_parquet(data)
+    return format_dict_to_json(data)

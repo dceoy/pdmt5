@@ -12,10 +12,7 @@ from pdmt5.api.dependencies import (
     get_response_format,
     run_in_threadpool,
 )
-from pdmt5.api.formatters import (
-    format_dataframe_to_json,
-    format_dataframe_to_parquet,
-)
+from pdmt5.api.formatters import format_response
 from pdmt5.api.models import (
     DataResponse,
     MarketBookRequest,
@@ -52,7 +49,7 @@ async def get_rates_from(
     """Get historical rates from a specific date.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with OHLCV data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.copy_rates_from_as_df,
@@ -61,11 +58,7 @@ async def get_rates_from(
         date_from=request.date_from,
         count=request.count,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -82,7 +75,7 @@ async def get_rates_from_pos(
     """Get historical rates from a position index.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with OHLCV data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.copy_rates_from_pos_as_df,
@@ -91,11 +84,7 @@ async def get_rates_from_pos(
         start_pos=request.start_pos,
         count=request.count,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -112,7 +101,7 @@ async def get_rates_range(
     """Get historical rates in a date range.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with OHLCV data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.copy_rates_range_as_df,
@@ -121,11 +110,7 @@ async def get_rates_range(
         date_from=request.date_from,
         date_to=request.date_to,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -142,7 +127,7 @@ async def get_ticks_from(
     """Get tick data from a specific date.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with tick data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.copy_ticks_from_as_df,
@@ -151,11 +136,7 @@ async def get_ticks_from(
         count=request.count,
         flags=request.flags,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -172,7 +153,7 @@ async def get_ticks_range(
     """Get tick data for a date range.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with tick data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.copy_ticks_range_as_df,
@@ -181,11 +162,7 @@ async def get_ticks_range(
         date_to=request.date_to,
         flags=request.flags,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -202,14 +179,10 @@ async def get_market_book(
     """Get market depth (DOM) for a symbol.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with market book data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.market_book_get_as_df,
         symbol=request.symbol,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)

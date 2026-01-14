@@ -27,6 +27,35 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _create_error_response(
+    error_type: str,
+    title: str,
+    status_code: int,
+    detail: str,
+    instance: str,
+) -> JSONResponse:
+    """Create a RFC 7807 Problem Details error response.
+
+    Args:
+        error_type: Error type URI.
+        title: Short error summary.
+        status_code: HTTP status code.
+        detail: Detailed error explanation.
+        instance: Request URI that caused the error.
+
+    Returns:
+        JSONResponse with error details.
+    """
+    error = ErrorResponse(
+        type=error_type,
+        title=title,
+        status=status_code,
+        detail=detail,
+        instance=instance,
+    )
+    return JSONResponse(status_code=status_code, content=error.model_dump())
+
+
 async def error_handler_middleware(
     request: Request,
     call_next: RequestResponseEndpoint,
@@ -43,74 +72,49 @@ async def error_handler_middleware(
     try:
         return await call_next(request)
     except Mt5RuntimeError as e:
-        # MT5 terminal connection errors
-        error = ErrorResponse(
-            type="/errors/mt5-error",
-            title="MT5 Terminal Error",
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-            instance=str(request.url),
-        )
         logger.exception("MT5 error")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=error.model_dump(),
+        return _create_error_response(
+            "/errors/mt5-error",
+            "MT5 Terminal Error",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            str(e),
+            str(request.url),
         )
     except ValidationError as e:
-        # Pydantic validation errors
-        error = ErrorResponse(
-            type="/errors/validation-error",
-            title="Request Validation Failed",
-            status=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-            instance=str(request.url),
-        )
         logger.warning("Validation error: %s", e)
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=error.model_dump(),
+        return _create_error_response(
+            "/errors/validation-error",
+            "Request Validation Failed",
+            status.HTTP_400_BAD_REQUEST,
+            str(e),
+            str(request.url),
         )
     except ValueError as e:
-        # Value errors (invalid input)
-        error = ErrorResponse(
-            type="/errors/invalid-input",
-            title="Invalid Input",
-            status=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-            instance=str(request.url),
-        )
         logger.warning("Invalid input: %s", e)
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=error.model_dump(),
+        return _create_error_response(
+            "/errors/invalid-input",
+            "Invalid Input",
+            status.HTTP_400_BAD_REQUEST,
+            str(e),
+            str(request.url),
         )
     except RuntimeError as e:
-        # Runtime errors (MT5 not initialized, etc.)
-        error = ErrorResponse(
-            type="/errors/runtime-error",
-            title="Runtime Error",
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-            instance=str(request.url),
-        )
         logger.exception("Runtime error")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=error.model_dump(),
+        return _create_error_response(
+            "/errors/runtime-error",
+            "Runtime Error",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            str(e),
+            str(request.url),
         )
     except Exception as e:
-        # Unexpected errors
-        error = ErrorResponse(
-            type="/errors/internal-error",
-            title="Internal Server Error",
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {e!s}",
-            instance=str(request.url),
-        )
         logger.exception("Unexpected error")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error.model_dump(),
+        return _create_error_response(
+            "/errors/internal-error",
+            "Internal Server Error",
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"An unexpected error occurred: {e!s}",
+            str(request.url),
         )
 
 
