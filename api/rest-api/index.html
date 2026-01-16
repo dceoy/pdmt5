@@ -133,6 +133,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-bs-level="2"><a href="#response-formatter-utilities" class="nav-link">Response Formatter Utilities</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
             <li class="nav-item" data-bs-level="2"><a href="#example-requests" class="nav-link">Example Requests</a>
               <ul class="nav flex-column">
               </ul>
@@ -192,6 +196,18 @@ JSON and Apache Parquet responses for efficient analytics workflows.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: your-secret-api-key&quot;</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="s2">&quot;http://localhost:8000/api/v1/symbols?format=json&quot;</span>
 </code></pre></div>
+<h2 id="response-formatter-utilities">Response Formatter Utilities<a class="headerlink" href="#response-formatter-utilities" title="Permanent link">&para;</a></h2>
+<p>If you are extending the API with custom endpoints, use the formatter helpers
+in <code>pdmt5.api.formatters</code> to keep JSON and Parquet responses consistent:</p>
+<ul>
+<li><code>format_response(data, response_format)</code>: Unified formatter for DataFrame or
+  dict data.</li>
+<li><code>format_dataframe_to_json(dataframe)</code>: Convert DataFrame to JSON response.</li>
+<li><code>format_dataframe_to_parquet(dataframe)</code>: Convert DataFrame to Parquet
+  response.</li>
+<li><code>format_dict_to_json(data)</code>: Convert dict to JSON response.</li>
+<li><code>format_dict_to_parquet(data)</code>: Convert dict to Parquet response.</li>
+</ul>
 <h2 id="example-requests">Example Requests<a class="headerlink" href="#example-requests" title="Permanent link">&para;</a></h2>
 <h3 id="health-check-no-auth">Health Check (No Auth)<a class="headerlink" href="#health-check-no-auth" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>http://localhost:8000/api/v1/health
