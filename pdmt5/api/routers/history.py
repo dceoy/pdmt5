@@ -12,10 +12,7 @@ from pdmt5.api.dependencies import (
     get_response_format,
     run_in_threadpool,
 )
-from pdmt5.api.formatters import (
-    format_dataframe_to_json,
-    format_dataframe_to_parquet,
-)
+from pdmt5.api.formatters import format_response
 from pdmt5.api.models import (
     DataResponse,
     HistoryDealsRequest,
@@ -50,7 +47,7 @@ async def get_history_orders(
     """Get historical orders.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with order data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.history_orders_get_as_df,
@@ -61,11 +58,7 @@ async def get_history_orders(
         ticket=request.ticket,
         position=request.position,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -82,7 +75,7 @@ async def get_history_deals(
     """Get historical deals.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with deal data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.history_deals_get_as_df,
@@ -93,11 +86,7 @@ async def get_history_deals(
         ticket=request.ticket,
         position=request.position,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -114,7 +103,7 @@ async def get_positions(
     """Get current open positions.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with position data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.positions_get_as_df,
@@ -122,11 +111,7 @@ async def get_positions(
         group=request.group,
         ticket=request.ticket,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -143,7 +128,7 @@ async def get_orders(
     """Get current pending orders.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with order data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.orders_get_as_df,
@@ -151,8 +136,4 @@ async def get_orders(
         group=request.group,
         ticket=request.ticket,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)

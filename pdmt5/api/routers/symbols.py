@@ -12,10 +12,7 @@ from pdmt5.api.dependencies import (
     get_response_format,
     run_in_threadpool,
 )
-from pdmt5.api.formatters import (
-    format_dataframe_to_json,
-    format_dataframe_to_parquet,
-)
+from pdmt5.api.formatters import format_response
 from pdmt5.api.models import (
     DataResponse,
     ResponseFormat,
@@ -49,17 +46,13 @@ async def get_symbols(
     """Get list of symbols with optional group filter.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with symbol data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.symbols_get_as_df,
         group=request.group,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -76,17 +69,13 @@ async def get_symbol_info(
     """Get detailed information for a specific symbol.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with symbol info.
     """
     dataframe = await run_in_threadpool(
         mt5_client.symbol_info_as_df,
         symbol=request.symbol,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)
 
 
 @router.get(
@@ -103,14 +92,10 @@ async def get_symbol_tick(
     """Get latest tick data for a symbol.
 
     Returns:
-        DataResponse for JSON requests, or a Parquet response.
+        JSON or Parquet response with tick data.
     """
     dataframe = await run_in_threadpool(
         mt5_client.symbol_info_tick_as_df,
         symbol=request.symbol,
     )
-
-    if response_format == ResponseFormat.PARQUET:
-        return format_dataframe_to_parquet(dataframe)
-
-    return format_dataframe_to_json(dataframe)
+    return format_response(dataframe, response_format)

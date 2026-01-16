@@ -1,14 +1,16 @@
+# pyright: reportPrivateUsage=false
 """Tests for API middleware behavior."""
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from pdmt5.api.middleware import add_middleware
+from pdmt5.api.middleware import _create_error_response, add_middleware
 from pdmt5.mt5 import Mt5RuntimeError
 
 if TYPE_CHECKING:
@@ -22,6 +24,27 @@ def _create_app(handler: Callable[[], object]) -> FastAPI:
     add_middleware(app)
     app.get("/boom")(handler)
     return app
+
+
+def test_create_error_response_builds_problem_details() -> None:
+    """Test helper creates RFC 7807 error responses."""
+    response = _create_error_response(
+        "/errors/test",
+        "Test Error",
+        400,
+        "Test detail",
+        "/api/v1/test",
+    )
+
+    assert response.status_code == 400
+    payload = json.loads(bytes(response.body))
+    assert payload == {
+        "type": "/errors/test",
+        "title": "Test Error",
+        "status": 400,
+        "detail": "Test detail",
+        "instance": "/api/v1/test",
+    }
 
 
 def test_error_handler_handles_mt5_runtime_error() -> None:
