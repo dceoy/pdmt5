@@ -20,11 +20,11 @@ from pdmt5.dataframe import Mt5DataClient  # noqa: TC001
 if TYPE_CHECKING:
     from fastapi.responses import Response
 
+API_VERSION = "1.0.0"
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["health"])
-
-API_VERSION = "1.0.0"
 
 
 @router.get(
@@ -37,6 +37,8 @@ async def get_health() -> HealthResponse:
     """Check API health and MT5 terminal connectivity.
 
     This endpoint does NOT require authentication (public health check).
+    Returns 200 OK even if MT5 is unavailable to allow infrastructure
+    health monitoring without failing on MT5 outages.
 
     Returns:
         HealthResponse with API and MT5 connection status.
@@ -73,6 +75,10 @@ async def get_version(
     response_format: Annotated[ResponseFormat, Depends(get_response_format)],
 ) -> DataResponse | Response:
     """Get MT5 terminal version information.
+
+    Args:
+        mt5_client: MT5 data client dependency.
+        response_format: Negotiated response format (JSON or Parquet).
 
     Returns:
         JSON or Parquet response with version data.

@@ -57,6 +57,19 @@ curl -H "X-API-Key: your-secret-api-key" \
   "http://localhost:8000/api/v1/symbols?format=json"
 ```
 
+## Response Formatter Utilities
+
+If you are extending the API with custom endpoints, use the formatter helpers
+in `pdmt5.api.formatters` to keep JSON and Parquet responses consistent:
+
+- `format_response(data, response_format)`: Unified formatter for DataFrame or
+  dict data.
+- `format_dataframe_to_json(dataframe)`: Convert DataFrame to JSON response.
+- `format_dataframe_to_parquet(dataframe)`: Convert DataFrame to Parquet
+  response.
+- `format_dict_to_json(data)`: Convert dict to JSON response.
+- `format_dict_to_parquet(data)`: Convert dict to Parquet response.
+
 ## Example Requests
 
 ### Health Check (No Auth)

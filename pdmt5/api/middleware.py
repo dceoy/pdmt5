@@ -37,7 +37,7 @@ def _create_error_response(
     """Create a RFC 7807 Problem Details error response.
 
     Args:
-        error_type: Error type URI.
+        error_type: Error type URI (e.g., "/errors/mt5-error").
         title: Short error summary.
         status_code: HTTP status code.
         detail: Detailed error explanation.
@@ -61,6 +61,13 @@ async def error_handler_middleware(
     call_next: RequestResponseEndpoint,
 ) -> Response:
     """Handle errors and convert to RFC 7807 Problem Details responses.
+
+    Error type mapping:
+        - Mt5RuntimeError -> 503 Service Unavailable
+        - ValidationError -> 400 Bad Request
+        - ValueError -> 400 Bad Request
+        - RuntimeError -> 503 Service Unavailable
+        - Exception -> 500 Internal Server Error
 
     Args:
         request: FastAPI request object.
@@ -107,13 +114,13 @@ async def error_handler_middleware(
             str(e),
             str(request.url),
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected error")
         return _create_error_response(
             "/errors/internal-error",
             "Internal Server Error",
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            f"An unexpected error occurred: {e!s}",
+            "An unexpected error occurred",
             str(request.url),
         )
 

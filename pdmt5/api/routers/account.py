@@ -38,6 +38,10 @@ async def get_account_info(
 ) -> DataResponse | Response:
     """Get account information.
 
+    Args:
+        mt5_client: MT5 data client dependency.
+        response_format: Negotiated response format (JSON or Parquet).
+
     Returns:
         JSON or Parquet response with account data.
     """
@@ -56,6 +60,10 @@ async def get_terminal_info(
     response_format: Annotated[ResponseFormat, Depends(get_response_format)],
 ) -> DataResponse | Response:
     """Get terminal information.
+
+    Args:
+        mt5_client: MT5 data client dependency.
+        response_format: Negotiated response format (JSON or Parquet).
 
     Returns:
         JSON or Parquet response with terminal data.

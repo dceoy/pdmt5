@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from typing import Any
+from typing import TYPE_CHECKING, Any, overload
 
 import pandas as pd
 import pyarrow as pa  # type: ignore[import-untyped]
@@ -11,6 +11,23 @@ import pyarrow.parquet as pq  # type: ignore[import-untyped]
 from fastapi.responses import Response, StreamingResponse
 
 from .models import DataResponse, ResponseFormat
+
+_SUPPORTED_RESPONSE_FORMATS = {ResponseFormat.JSON, ResponseFormat.PARQUET}
+_INVALID_DATA_MESSAGE = "data must be a pandas DataFrame or dict[str, Any]"
+
+if TYPE_CHECKING:  # pragma: no cover
+
+    @overload
+    def format_response(
+        data: pd.DataFrame,
+        response_format: ResponseFormat,
+    ) -> DataResponse | Response: ...
+
+    @overload
+    def format_response(
+        data: dict[str, Any],
+        response_format: ResponseFormat,
+    ) -> DataResponse | Response: ...
 
 
 def format_dataframe_to_json(
@@ -105,7 +122,7 @@ def format_dict_to_parquet(data: dict[str, Any]) -> Response:
 
 
 def format_response(
-    data: pd.DataFrame | dict[str, Any],
+    data: object,
     response_format: ResponseFormat,
 ) -> DataResponse | Response:
     """Format data based on requested response format.
@@ -114,17 +131,29 @@ def format_response(
     selecting the appropriate output format (JSON or Parquet).
 
     Args:
-        data: DataFrame or dictionary to format.
+        data: Data to format. Must be a pandas DataFrame or dict with string
+            keys.
         response_format: Requested response format (JSON or Parquet).
 
     Returns:
         DataResponse for JSON format, StreamingResponse for Parquet format.
+
+    Raises:
+        TypeError: If the data type is neither DataFrame nor dict.
+        ValueError: If the response format is not supported.
     """
+    if response_format not in _SUPPORTED_RESPONSE_FORMATS:
+        message = f"Unsupported response format: {response_format}"
+        raise ValueError(message)
+
     if isinstance(data, pd.DataFrame):
         if response_format == ResponseFormat.PARQUET:
             return format_dataframe_to_parquet(data)
         return format_dataframe_to_json(data)
 
-    if response_format == ResponseFormat.PARQUET:
-        return format_dict_to_parquet(data)
-    return format_dict_to_json(data)
+    if isinstance(data, dict):
+        if response_format == ResponseFormat.PARQUET:
+            return format_dict_to_parquet(data)
+        return format_dict_to_json(data)
+
+    raise TypeError(_INVALID_DATA_MESSAGE)

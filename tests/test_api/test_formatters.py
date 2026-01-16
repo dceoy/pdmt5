@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
+import pytest
+from fastapi.responses import Response
 
 from pdmt5.api.formatters import (
     format_dataframe_to_json,
     format_dataframe_to_parquet,
     format_dict_to_json,
     format_dict_to_parquet,
+    format_response,
 )
-from pdmt5.api.models import ResponseFormat
+from pdmt5.api.models import DataResponse, ResponseFormat
 
 
 def test_format_dataframe_to_json_returns_data_response() -> None:
@@ -82,6 +87,40 @@ def test_format_dict_to_parquet_returns_binary() -> None:
 
     # Verify StreamingResponse - async generator tested in integration
     assert hasattr(response, "body_iterator")
+
+
+@pytest.mark.parametrize(
+    ("data", "response_format", "expected_type"),
+    [
+        (pd.DataFrame([{"symbol": "EURUSD"}]), ResponseFormat.JSON, DataResponse),
+        (pd.DataFrame([{"symbol": "EURUSD"}]), ResponseFormat.PARQUET, Response),
+        ({"symbol": "EURUSD"}, ResponseFormat.JSON, DataResponse),
+        ({"symbol": "EURUSD"}, ResponseFormat.PARQUET, Response),
+    ],
+)
+def test_format_response_routes_by_data_and_format(
+    data: pd.DataFrame | dict[str, object],
+    response_format: ResponseFormat,
+    expected_type: type[object],
+) -> None:
+    """Test format_response routing for data type and format."""
+    result = format_response(data, response_format)
+
+    assert isinstance(result, expected_type)
+
+
+def test_format_response_rejects_invalid_data_type() -> None:
+    """Test format_response rejects unsupported data types."""
+    with pytest.raises(TypeError, match=r"DataFrame|dict"):
+        format_response([1, 2, 3], ResponseFormat.JSON)  # type: ignore[arg-type]
+
+
+def test_format_response_rejects_invalid_format() -> None:
+    """Test format_response rejects unsupported formats."""
+    invalid_format = cast("ResponseFormat", "xml")
+
+    with pytest.raises(ValueError, match="Unsupported response format"):
+        format_response({"symbol": "EURUSD"}, invalid_format)
 
 
 def test_get_response_format_from_query_parameter() -> None:
