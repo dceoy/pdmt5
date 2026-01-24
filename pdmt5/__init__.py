@@ -16,10 +16,3 @@ __all__ = [
     "Mt5TradingClient",
     "Mt5TradingError",
 ]
-
-try:
-    from .api.main import app as api_app
-except (ImportError, RuntimeError):
-    api_app = None
-else:
-    __all__ += ["api_app"]
