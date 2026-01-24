@@ -18,10 +18,6 @@ Core data client functionality and configuration, providing pandas-friendly inte
 
 Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
 
-### REST API
-
-The REST API has been removed from the codebase.
-
 ## Architecture Overview
 
 The package follows a layered architecture:

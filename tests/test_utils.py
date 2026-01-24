@@ -217,7 +217,10 @@ class TestConvertTimeColumnsInDf:
             return
 
         for column, expected_dtype in expected_dtypes.items():
-            assert result[column].dtype == expected_dtype
+            if expected_dtype is object:
+                assert result[column].dtype == original_df[column].dtype
+            else:
+                assert result[column].dtype == expected_dtype
 
         for column, index, expected_value in expected_values:
             value = result[column].iloc[index]

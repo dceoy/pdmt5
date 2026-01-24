@@ -12,7 +12,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-  workflow_dispatch:
+  workflow_dispatch:  # checkov:skip=CKV_GHA_7:workflow_dispatch inputs are required for manual runs
     inputs:
       workflow:
         required: true
@@ -23,6 +23,8 @@ on:
           - release
         description: Choose the workflow to run
         default: lint-and-test
+permissions:
+  contents: read
 defaults:
   run:
     shell: bash -euo pipefail {0}

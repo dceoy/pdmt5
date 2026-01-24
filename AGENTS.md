@@ -9,30 +9,13 @@
 uv sync
 ```
 
-### Code Quality and Testing
+### Code Quality and Documentation
 
-**IMPORTANT: Run these checks on every code change before committing.**
+**IMPORTANT: Run the following on each change before committing.**
 
-```bash
-# Run all quality checks (formatting, linting, type checking, tests)
-uv run ruff format . && uv run ruff check --fix . && uv run pyright . && uv run pytest tests/ -v
-
-# Individual commands (if needed):
-uv run ruff format .        # Format code
-uv run ruff check --fix .   # Lint code
-uv run pyright .            # Type check
-uv run pytest tests/ -v     # Run tests only
-```
-
-### Documentation
-
-**IMPORTANT: Update documentation after any public API changes.**
-
-```bash
-uv run mkdocs build         # Build documentation with MkDocs
-uv run mkdocs serve         # Serve documentation locally with live reload
-uv run mkdocs gh-deploy     # Deploy documentation to GitHub Pages
-```
+1. **format, lint, and test**: Use the `local-qa` skill.
+2. **Documentation build** (if any public API changes): `uv run mkdocs build`
+3. **Security scan** (periodically): `trivy filesystem --scanners vuln,secret,misconfig .`
 
 ## Commit & Pull Request Guidelines
 
