@@ -589,30 +589,31 @@ class Mt5TradingClient(Mt5DataClient):
                 price=symbol_info_tick["bid"],
             )
             result = (
-                positions_df.assign(
+                positions_df
+                .assign(
                     elapsed_seconds=lambda d: (
                         symbol_info_tick["time"] - d["time"]
                     ).dt.total_seconds(),
                     underlier_increase_ratio=lambda d: (
                         d["price_current"] / d["price_open"] - 1
                     ),
-                    buy=lambda d: (d["type"] == self.mt5.POSITION_TYPE_BUY),
-                    sell=lambda d: (d["type"] == self.mt5.POSITION_TYPE_SELL),
+                    buy=lambda d: d["type"] == self.mt5.POSITION_TYPE_BUY,
+                    sell=lambda d: d["type"] == self.mt5.POSITION_TYPE_SELL,
                 )
                 .assign(
                     buy_i=lambda d: d["buy"].astype(int),
                     sell_i=lambda d: d["sell"].astype(int),
                 )
                 .assign(
-                    sign=lambda d: (d["buy_i"] - d["sell_i"]),
+                    sign=lambda d: d["buy_i"] - d["sell_i"],
                     margin=lambda d: (
                         (d["buy_i"] * ask_margin + d["sell_i"] * bid_margin)
                         * d["volume"]
                     ),
                 )
                 .assign(
-                    signed_volume=lambda d: (d["volume"] * d["sign"]),
-                    signed_margin=lambda d: (d["margin"] * d["sign"]),
+                    signed_volume=lambda d: d["volume"] * d["sign"],
+                    signed_margin=lambda d: d["margin"] * d["sign"],
                     underlier_profit_ratio=lambda d: (
                         d["underlier_increase_ratio"] * d["sign"]
                     ),
