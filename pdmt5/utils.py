@@ -87,9 +87,9 @@ def _convert_time_columns_in_df(df: pd.DataFrame) -> pd.DataFrame:
     new_df = df.copy()
     for c in new_df.columns:
         if c.startswith("time_") and c.endswith("_msc"):
-            new_df[c] = pd.to_datetime(new_df[c], unit="ms")
+            new_df[c] = pd.to_datetime(new_df[c], unit="ms").astype("datetime64[ns]")
         elif c == "time" or c.startswith("time_"):
-            new_df[c] = pd.to_datetime(new_df[c], unit="s")
+            new_df[c] = pd.to_datetime(new_df[c], unit="s").astype("datetime64[ns]")
     return new_df
 
 
