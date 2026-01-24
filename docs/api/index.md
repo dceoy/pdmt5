@@ -18,13 +18,9 @@ Core data client functionality and configuration, providing pandas-friendly inte
 
 Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
 
-### [REST API](rest-api.md)
+### REST API
 
-FastAPI-based REST API that exposes read-only MT5 data over HTTP with JSON and Parquet support.
-
-### [Deployment](deployment.md)
-
-Windows service deployment guide for hosting the REST API alongside MetaTrader 5.
+The REST API has been removed from the codebase.
 
 ## Architecture Overview
 

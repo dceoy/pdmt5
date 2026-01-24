@@ -355,17 +355,6 @@ with Mt5TradingClient(config=config) as trader:
         print(positions_df[['ticket', 'volume', 'profit', 'elapsed_seconds', 'underlier_profit_ratio']].head())
 ```
 
-## REST API (Under Development)
-
-**pdmt5** has a planned FastAPI-based REST API for MT5 data access. The
-implementation is not available yet, so the API is not runnable and the public
-HTTP surface is subject to change.
-
-For the current specification and design work, see:
-
-- [docs/api/rest-api.md](docs/api/rest-api.md)
-- [specs/041-mt5-rest-api/quickstart.md](specs/041-mt5-rest-api/quickstart.md)
-
 ## Development
 
 ### Setup Development Environment
