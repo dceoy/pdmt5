@@ -1,6 +1,7 @@
 ---
 name: local-qa
-description: Run local QA for the repository. Use when asked to run formatting, linting, testing, or pre-commit checks, when verifying local QA, or whenever any file has been updated and local QA should be re-run.
+description: Run local QA including formatting, linting, and testing for the repository. Use whenever any file has been updated.
+disable-model-invocation: true
 ---
 
 # Local QA (format, lint, and test)
