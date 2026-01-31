@@ -11,7 +11,6 @@ on:
       - opened
       - synchronize
       - reopened
-      - ready_for_review
   workflow_dispatch:  # checkov:skip=CKV_GHA_7:workflow_dispatch inputs are required for manual runs
     inputs:
       workflow:
@@ -33,7 +32,7 @@ jobs:
   python-lint-and-scan:
     if: >
       github.event_name == 'push'
-      || (github.event_name == 'pull_request' && github.event.action != 'ready_for_review')
+      || github.event_name == 'pull_request'
       || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
     permissions:
       contents: read
@@ -44,7 +43,7 @@ jobs:
   python-test:
     if: >
       github.event_name == 'push'
-      || (github.event_name == 'pull_request' && github.event.action != 'ready_for_review')
+      || github.event_name == 'pull_request'
       || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
     permissions:
       contents: read
@@ -83,27 +82,6 @@ jobs:
       create-releases: ${{ github.event_name == 'workflow_dispatch' && inputs.workflow == 'release' }}
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  claude-code-review:
-    if: >
-      github.event_name == 'pull_request'
-      && github.event.pull_request.draft == false
-      && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
-      && (! startsWith(github.head_ref, 'dependabot/'))
-      && (! startsWith(github.head_ref, 'renovate/'))
-      && (! (failure() || cancelled()))
-    needs:
-      - python-lint-and-scan
-      - python-test
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read
-    uses: dceoy/gh-actions-for-devops/.github/workflows/claude-code-review.yml@main   # zizmor: ignore[unpinned-uses]
-    secrets:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   claude-code-bot:
     if: >
