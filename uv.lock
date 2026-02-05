@@ -323,7 +323,7 @@ name = "metatrader5"
 version = "5.0.5509"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform == 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e1/a971b3747ebaeebc1e8a3354d303d140ea75425e82f36050dcc0c3af2574/metatrader5-5.0.5509-cp311-cp311-win_amd64.whl", hash = "sha256:226488ebe9a4f3f30a67e9306ebf387a8f8e6c6bdb69331d431c5ef1b2583d5b", size = 48088, upload-time = "2026-01-20T08:04:57.815Z" },
@@ -603,7 +603,7 @@ wheels = [
 
 [[package]]
 name = "pdmt5"
-version = "0.2.2"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "metatrader5", marker = "sys_platform == 'win32'" },

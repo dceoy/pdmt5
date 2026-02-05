@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime  # noqa: TC003
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
@@ -73,12 +73,10 @@ class Mt5DataClient(Mt5Client):
             Mt5RuntimeError: If initialization fails after retries.
         """
         path = path or self.config.path
-        login_kwargs = {
-            "login": login or self.config.login,
-            "password": password or self.config.password,
-            "server": server or self.config.server,
-            "timeout": timeout or self.config.timeout,
-        }
+        login_value = login if login is not None else self.config.login
+        password_value = password if password is not None else self.config.password
+        server_value = server if server is not None else self.config.server
+        timeout_value = timeout if timeout is not None else self.config.timeout
         for i in range(1 + max(0, self.retry_count)):
             if i:
                 self.logger.warning(
@@ -87,8 +85,20 @@ class Mt5DataClient(Mt5Client):
                     self.retry_count,
                 )
                 time.sleep(i)
-            if self.initialize(path=path, **login_kwargs) and (
-                (not login_kwargs["login"]) or self.login(**login_kwargs)
+            if self.initialize(
+                path=path,
+                login=login_value,
+                password=password_value,
+                server=server_value,
+                timeout=timeout_value,
+            ) and (
+                login_value is None
+                or self.login(
+                    login=login_value,
+                    password=password_value,
+                    server=server_value,
+                    timeout=timeout_value,
+                )
             ):
                 return
         error_message = (
@@ -359,14 +369,17 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return self.copy_rates_from_as_df(
-            symbol=symbol,
-            timeframe=timeframe,
-            date_from=date_from,
-            count=count,
-            skip_to_datetime=skip_to_datetime,
-            index_keys=None,
-        ).to_dict(orient="records")
+        return cast(
+            "list[dict[str, Any]]",
+            self.copy_rates_from_as_df(
+                symbol=symbol,
+                timeframe=timeframe,
+                date_from=date_from,
+                count=count,
+                skip_to_datetime=skip_to_datetime,
+                index_keys=None,
+            ).to_dict(orient="records"),
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -422,14 +435,17 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return self.copy_rates_from_pos_as_df(
-            symbol=symbol,
-            timeframe=timeframe,
-            start_pos=start_pos,
-            count=count,
-            skip_to_datetime=skip_to_datetime,
-            index_keys=None,
-        ).to_dict(orient="records")
+        return cast(
+            "list[dict[str, Any]]",
+            self.copy_rates_from_pos_as_df(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_pos=start_pos,
+                count=count,
+                skip_to_datetime=skip_to_datetime,
+                index_keys=None,
+            ).to_dict(orient="records"),
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -486,14 +502,17 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return self.copy_rates_range_as_df(
-            symbol=symbol,
-            timeframe=timeframe,
-            date_from=date_from,
-            date_to=date_to,
-            skip_to_datetime=skip_to_datetime,
-            index_keys=None,
-        ).to_dict(orient="records")
+        return cast(
+            "list[dict[str, Any]]",
+            self.copy_rates_range_as_df(
+                symbol=symbol,
+                timeframe=timeframe,
+                date_from=date_from,
+                date_to=date_to,
+                skip_to_datetime=skip_to_datetime,
+                index_keys=None,
+            ).to_dict(orient="records"),
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -549,14 +568,17 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        return self.copy_ticks_from_as_df(
-            symbol=symbol,
-            date_from=date_from,
-            count=count,
-            flags=flags,
-            skip_to_datetime=skip_to_datetime,
-            index_keys=None,
-        ).to_dict(orient="records")  # type: ignore[reportReturnType]
+        return cast(
+            "list[dict[str, Any]]",
+            self.copy_ticks_from_as_df(
+                symbol=symbol,
+                date_from=date_from,
+                count=count,
+                flags=flags,
+                skip_to_datetime=skip_to_datetime,
+                index_keys=None,
+            ).to_dict(orient="records"),
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -612,14 +634,17 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        return self.copy_ticks_range_as_df(
-            symbol=symbol,
-            date_from=date_from,
-            date_to=date_to,
-            flags=flags,
-            skip_to_datetime=skip_to_datetime,
-            index_keys=None,
-        ).to_dict(orient="records")  # type: ignore[reportReturnType]
+        return cast(
+            "list[dict[str, Any]]",
+            self.copy_ticks_range_as_df(
+                symbol=symbol,
+                date_from=date_from,
+                date_to=date_to,
+                flags=flags,
+                skip_to_datetime=skip_to_datetime,
+                index_keys=None,
+            ).to_dict(orient="records"),
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -1110,10 +1135,11 @@ class Mt5DataClient(Mt5Client):
         Returns:
             Flattened dictionary.
         """
-        items = []
+        items: list[tuple[str, Any]] = []
         for k, v in dictionary.items():
             if isinstance(v, dict):
-                items.extend((f"{k}{sep}{sk}", sv) for sk, sv in v.items())
+                nested = cast("dict[str, Any]", v)
+                items.extend((f"{k}{sep}{sk}", sv) for sk, sv in nested.items())
             else:
                 items.append((k, v))
         return dict(items)

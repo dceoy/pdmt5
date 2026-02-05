@@ -8,7 +8,7 @@ import importlib
 import logging
 from functools import wraps
 from types import ModuleType  # noqa: TC003
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
     from types import TracebackType
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class Mt5RuntimeError(RuntimeError):
@@ -46,7 +49,9 @@ class Mt5Client(BaseModel):
     _is_initialized: bool = False
 
     @staticmethod
-    def _log_mt5_last_status_code(func: Callable[..., Any]) -> Callable[..., Any]:
+    def _log_mt5_last_status_code(
+        func: Callable[Concatenate[Mt5Client, P], R],
+    ) -> Callable[Concatenate[Mt5Client, P], R]:
         """Decorator to log MetaTrader5 last status code after method execution.
 
         Args:
@@ -57,7 +62,11 @@ class Mt5Client(BaseModel):
         """
 
         @wraps(func)
-        def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        def wrapper(
+            self: Mt5Client,
+            *args: P.args,
+            **kwargs: P.kwargs,
+        ) -> R:
             try:
                 response = func(self, *args, **kwargs)
             except Exception as e:

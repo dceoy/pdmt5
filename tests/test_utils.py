@@ -1,7 +1,5 @@
 """Test cases for pdmt5.utils module."""
 
-# pyright: reportPrivateUsage=false
-
 from collections.abc import Callable
 from typing import Any
 
@@ -9,8 +7,8 @@ import pandas as pd
 import pytest
 
 from pdmt5.utils import (
-    _convert_time_columns_in_df,
-    _convert_time_values_in_dict,
+    _convert_time_columns_in_df,  # type: ignore[reportPrivateUsage]
+    _convert_time_values_in_dict,  # type: ignore[reportPrivateUsage]
     detect_and_convert_time_to_datetime,
     set_index_if_possible,
 )
@@ -367,7 +365,7 @@ class TestSetIndexIfPossible:
     def test_decorator_with_non_dataframe_raises(self) -> None:
         """Test decorator raises TypeError for non-DataFrame return."""
 
-        @set_index_if_possible(index_parameters="index_keys")
+        @set_index_if_possible(index_parameters="index_keys")  # type: ignore[arg-type]
         def get_data(index_keys: str | None = None) -> dict[str, Any]:  # noqa: ARG001
             return {"data": "not a dataframe"}
 
