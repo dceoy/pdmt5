@@ -1,6 +1,6 @@
 # Requirements Checklist: MT5 client operations
 
-**Purpose**: Validate baseline MT5 client operations against current code.
+**Purpose**: Validate MT5 client operations baseline against current code.
 **Created**: 2026-02-05
 **Feature**: ../spec.md
 

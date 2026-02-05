@@ -1,0 +1,72 @@
+# Implementation Plan: Mt5 Core Client
+
+**Branch**: `042-mt5-core-client` | **Date**: 2026-02-05 | **Spec**: `/specs/042-mt5-core-client/spec.md`
+**Input**: Feature specification from `/specs/042-mt5-core-client/spec.md`
+
+## Summary
+
+Document the existing MT5 core client lifecycle and data retrieval APIs to align
+specs, plan, and tasks with the current pdmt5 implementation.
+
+## Technical Context
+
+**Language/Version**: Python 3.11+ (>=3.11,<3.14)  
+**Primary Dependencies**: MetaTrader5, pandas, pydantic  
+**Storage**: N/A (in-memory operations)  
+**Testing**: pytest, pytest-mock, pytest-cov  
+**Target Platform**: Windows (MetaTrader5 requirement)  
+**Project Type**: Single Python package/library  
+**Performance Goals**: Not explicitly defined; interactive MT5 data access  
+**Constraints**: Requires local MT5 terminal and broker connectivity; Windows-only  
+**Scale/Scope**: Small library with core client, data, trading, and utils modules
+
+## Constitution Check
+
+_Gate: Must pass before Phase 0 research. Re-check after Phase 1 design._
+
+- Constitution file contains template placeholders only; no active gates defined.
+- Result (pre-design): PASS (no applicable constraints).
+- Result (post-design): PASS (no applicable constraints).
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/042-mt5-core-client/
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/
+└── tasks.md
+```
+
+### Source Code (repository root)
+
+```text
+pdmt5/
+├── __init__.py
+├── mt5.py
+├── dataframe.py
+├── trading.py
+└── utils.py
+
+tests/
+├── test_init.py
+├── test_mt5.py
+├── test_dataframe.py
+├── test_trading.py
+└── test_utils.py
+
+docs/
+├── index.md
+└── api/
+```
+
+**Structure Decision**: Single Python library with pdmt5 modules, pytest suite,
+and MkDocs documentation.
+
+## Complexity Tracking
+
+No constitution violations.
