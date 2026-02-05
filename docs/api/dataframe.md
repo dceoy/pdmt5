@@ -4,7 +4,10 @@
 
 ## Overview
 
-The dataframe module extends the base Mt5Client with pandas-friendly functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, automatic data conversion, and comprehensive validation utilities.
+The dataframe module extends the base Mt5Client with pandas-friendly functionality for connecting to MetaTrader 5 and retrieving trading data as pandas DataFrames. It includes configuration management, data conversion helpers, and comprehensive validation utilities.
+
+Use the `_as_df`/`_as_dict` methods for pandas conversions; base methods return
+raw MT5 structures.
 
 ## Classes
 
@@ -44,8 +47,11 @@ client = Mt5DataClient(mt5=mt5, config=config)
 
 # Use as context manager
 with client:
+    # Optional: login when credentials are provided
+    client.login(config.login, config.password, config.server)
+
     # Get account information
-    account_df = client.account_info()
+    account_df = client.account_info_as_df()
     print(account_df)
 ```
 
@@ -57,7 +63,7 @@ import MetaTrader5 as mt5
 
 with client:
     # Get OHLCV data
-    rates_df = client.copy_rates_from(
+    rates_df = client.copy_rates_from_as_df(
         symbol="EURUSD",
         timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime(2024, 1, 1),
@@ -65,7 +71,7 @@ with client:
     )
 
     # Get tick data
-    ticks_df = client.copy_ticks_from(
+    ticks_df = client.copy_ticks_from_as_df(
         symbol="EURUSD",
         date_from=datetime(2024, 1, 1),
         count=1000,
@@ -78,13 +84,13 @@ with client:
 ```python
 with client:
     # Get all symbols
-    symbols_df = client.symbols_get()
+    symbols_df = client.symbols_get_as_df()
 
     # Get specific symbol info
-    symbol_info_df = client.symbol_info("EURUSD")
+    symbol_info_df = client.symbol_info_as_df("EURUSD")
 
     # Get current tick
-    tick_df = client.symbol_info_tick("EURUSD")
+    tick_df = client.symbol_info_tick_as_df("EURUSD")
 ```
 
 ### Trading History
@@ -94,14 +100,14 @@ from datetime import datetime
 
 with client:
     # Get historical orders
-    orders_df = client.history_orders_get(
+    orders_df = client.history_orders_get_as_df(
         date_from=datetime(2024, 1, 1),
         date_to=datetime(2024, 1, 31),
         symbol="EURUSD"
     )
 
     # Get historical deals
-    deals_df = client.history_deals_get(
+    deals_df = client.history_deals_get_as_df(
         date_from=datetime(2024, 1, 1),
         date_to=datetime(2024, 1, 31)
     )
@@ -112,10 +118,10 @@ with client:
 ```python
 with client:
     # Get current positions
-    positions_df = client.positions_get()
+    positions_df = client.positions_get_as_df()
 
     # Get current orders
-    orders_df = client.orders_get(symbol="EURUSD")
+    orders_df = client.orders_get_as_df(symbol="EURUSD")
 ```
 
 ## Data Conversion Features
@@ -136,7 +142,7 @@ All methods raise `Mt5RuntimeError` exceptions with detailed error information w
 from pdmt5.mt5 import Mt5RuntimeError
 
 try:
-    rates_df = client.copy_rates_from("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
+    rates_df = client.copy_rates_from_as_df("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
 except Mt5RuntimeError as e:
     print(f"MetaTrader 5 error: {e}")
 ```

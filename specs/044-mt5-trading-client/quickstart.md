@@ -30,7 +30,7 @@ with Mt5TradingClient(config=config) as trader:
         order_side="BUY",
         dry_run=True,
     )
-    metrics_df = trader.positions_with_metrics(symbol="EURUSD")
+    metrics_df = trader.fetch_positions_with_metrics_as_df(symbol="EURUSD")
 ```
 
 ## Notes

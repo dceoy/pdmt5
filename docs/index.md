@@ -41,8 +41,11 @@ with Mt5Client() as client:
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Pandas-friendly interface with automatic initialization
+# Pandas-friendly interface with context-managed initialization
 with Mt5DataClient(config=config) as client:
+    # Optional: login when credentials are provided
+    client.login(config.login, config.password, config.server)
+
     # Get symbol information as DataFrame
     symbols_df = client.symbols_get_as_df()
     # Get OHLCV data as DataFrame

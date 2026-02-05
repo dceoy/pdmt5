@@ -138,7 +138,7 @@ The Mt5TradingClient provides intelligent position management:
 - **Automatic Position Reversal**: Automatically determines the correct order type to close positions
 - **Batch Operations**: Close multiple positions for one or more symbols
 - **Dry Run Support**: Test trading logic without executing real trades
-- **Flexible Filtering**: Close positions by symbol, group, or all positions
+- **Flexible Filtering**: Close positions by symbol(s) or all positions
 - **Custom Parameters**: Support for additional order parameters like comment, deviation, etc.
 
 ## Dry Run Mode

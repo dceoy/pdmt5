@@ -9,14 +9,14 @@ Pandas-based data handler for MetaTrader 5
 
 ## Overview
 
-**pdmt5** is a Python package that provides a pandas-based interface for MetaTrader 5 (MT5), making it easier to work with financial market data in Python. It automatically converts MT5's native data structures into pandas DataFrames, enabling seamless integration with data science workflows.
+**pdmt5** is a Python package that provides a pandas-based interface for MetaTrader 5 (MT5), making it easier to work with financial market data in Python. It provides helpers to convert MT5's native data structures into pandas DataFrames and dictionaries, enabling seamless integration with data science workflows.
 
 ### Key Features
 
-- 📊 **Pandas Integration**: All data returned as pandas DataFrames for easy analysis
+- 📊 **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
 - 🔧 **Type Safety**: Full type hints with strict pyright checking and pydantic validation
 - 🏦 **Comprehensive MT5 Coverage**: Account info, market data, tick data, orders, positions, and more
-- 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements
+- 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
 - 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
 - 💰 **Advanced Trading Operations**: Position management, margin calculations, and risk analysis tools
@@ -61,6 +61,9 @@ config = Mt5Config(
 
 # Use as context manager
 with Mt5DataClient(config=config) as client:
+    # Optional: login when credentials are provided
+    client.login(config.login, config.password, config.server)
+
     # Get account information as DataFrame
     account_info = client.account_info_as_df()
     print(account_info)
@@ -89,7 +92,7 @@ The base client wrapper for all MetaTrader5 operations with context manager supp
   - `initialize()` - Establish connection with MT5 terminal (with optional path, login, password, server, timeout)
   - `login()` - Connect to trading account with credentials
   - `shutdown()` - Close MT5 terminal connection
-  - Context manager support (`with` statement) for automatic initialization/cleanup
+  - Context manager support (`with` statement) for automatic initialization/cleanup (initialize only)
 - **Terminal Information**:
   - `version()` - Get MT5 terminal version, build, and release date
   - `last_error()` - Get last error code and description
