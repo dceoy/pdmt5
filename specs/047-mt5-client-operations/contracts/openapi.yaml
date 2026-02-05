@@ -1,0 +1,814 @@
+openapi: 3.0.3
+info:
+  title: MT5 Client Operations API (conceptual)
+  version: 0.1.0
+  description: |
+    Conceptual REST-style contract that mirrors the pdmt5 client operations.
+    The library is not an HTTP service; endpoints map to library actions.
+servers:
+  - url: https://localhost
+security:
+  - ApiKeyAuth: []
+paths:
+  /mt5/initialize:
+    post:
+      summary: Initialize MT5 terminal session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mt5Config'
+      responses:
+        "200":
+          description: Initialization result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitResponse'
+  /mt5/login:
+    post:
+      summary: Login to MT5 account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          description: Login result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitResponse'
+  /mt5/shutdown:
+    post:
+      summary: Shutdown MT5 session
+      responses:
+        "200":
+          description: Shutdown result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /mt5/version:
+    get:
+      summary: Fetch MT5 terminal version
+      responses:
+        "200":
+          description: Version info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /mt5/last-error:
+    get:
+      summary: Fetch MT5 last error
+      responses:
+        "200":
+          description: Last error info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /mt5/account:
+    get:
+      summary: Fetch account information
+      responses:
+        "200":
+          description: Account info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /mt5/terminal:
+    get:
+      summary: Fetch terminal information
+      responses:
+        "200":
+          description: Terminal info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /symbols:
+    get:
+      summary: Retrieve symbols
+      parameters:
+        - in: query
+          name: group
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: Symbol list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /symbols/{symbol}:
+    get:
+      summary: Retrieve symbol information
+      parameters:
+        - in: path
+          name: symbol
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Symbol info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /symbols/{symbol}/tick:
+    get:
+      summary: Retrieve latest tick for a symbol
+      parameters:
+        - in: path
+          name: symbol
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tick info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /market-book/{symbol}:
+    get:
+      summary: Retrieve market book for a symbol
+      parameters:
+        - in: path
+          name: symbol
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Market book info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /rates/from:
+    get:
+      summary: Retrieve rates from a start date
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: timeframe
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: date_from
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: count
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rate data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /rates/pos:
+    get:
+      summary: Retrieve rates from a position
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: timeframe
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: start_pos
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: count
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rate data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /rates/range:
+    get:
+      summary: Retrieve rates in a date range
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: timeframe
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: date_from
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: date_to
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Rate data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /ticks/from:
+    get:
+      summary: Retrieve ticks from a start date
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: date_from
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: count
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: flags
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tick data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /ticks/range:
+    get:
+      summary: Retrieve ticks in a date range
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: date_from
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: date_to
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: flags
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tick data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /orders:
+    get:
+      summary: Retrieve active orders
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+        - in: query
+          name: group
+          schema:
+            type: string
+        - in: query
+          name: ticket
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /positions:
+    get:
+      summary: Retrieve open positions
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+        - in: query
+          name: group
+          schema:
+            type: string
+        - in: query
+          name: ticket
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Position list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /history/orders:
+    get:
+      summary: Retrieve historical orders
+      parameters:
+        - in: query
+          name: date_from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: date_to
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: group
+          schema:
+            type: string
+        - in: query
+          name: symbol
+          schema:
+            type: string
+        - in: query
+          name: ticket
+          schema:
+            type: integer
+        - in: query
+          name: position
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: History orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /history/deals:
+    get:
+      summary: Retrieve historical deals
+      parameters:
+        - in: query
+          name: date_from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: date_to
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: group
+          schema:
+            type: string
+        - in: query
+          name: symbol
+          schema:
+            type: string
+        - in: query
+          name: ticket
+          schema:
+            type: integer
+        - in: query
+          name: position
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: History deals list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /orders/check:
+    post:
+      summary: Check order request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        "200":
+          description: Order check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /orders/send:
+    post:
+      summary: Send order request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        "200":
+          description: Order send result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/positions/close:
+    post:
+      summary: Close open positions
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClosePositionsRequest'
+      responses:
+        "200":
+          description: Close positions result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/orders/market:
+    post:
+      summary: Place market order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarketOrderRequest'
+      responses:
+        "200":
+          description: Market order result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/positions/update-sltp:
+    post:
+      summary: Update stop loss/take profit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SltpUpdateRequest'
+      responses:
+        "200":
+          description: Update result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /trading/metrics/minimum-margin:
+    get:
+      summary: Calculate minimum order margin
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: order_side
+          required: true
+          schema:
+            type: string
+            enum: [BUY, SELL]
+      responses:
+        "200":
+          description: Minimum margin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/metrics/volume-by-margin:
+    get:
+      summary: Calculate volume by margin
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: margin
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: order_side
+          required: true
+          schema:
+            type: string
+            enum: [BUY, SELL]
+      responses:
+        "200":
+          description: Volume by margin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/metrics/spread-ratio:
+    get:
+      summary: Calculate spread ratio
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Spread ratio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/metrics/positions:
+    get:
+      summary: Fetch positions with metrics
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Positions with metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /trading/metrics/new-position-margin:
+    get:
+      summary: Calculate new position margin ratio
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: new_position_side
+          schema:
+            type: string
+            enum: [BUY, SELL]
+        - in: query
+          name: new_position_volume
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Margin ratio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericObject'
+  /trading/latest-rates:
+    get:
+      summary: Fetch latest rates
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: granularity
+          schema:
+            type: string
+        - in: query
+          name: count
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Latest rates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /trading/latest-ticks:
+    get:
+      summary: Fetch latest ticks
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: seconds
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Latest ticks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+  /trading/entry-deals:
+    get:
+      summary: Fetch entry deals
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: history_seconds
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Entry deals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericList'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Mt5Config:
+      type: object
+      properties:
+        path:
+          type: string
+          nullable: true
+        login:
+          type: integer
+          nullable: true
+        password:
+          type: string
+          nullable: true
+        server:
+          type: string
+          nullable: true
+        timeout:
+          type: integer
+          nullable: true
+    LoginRequest:
+      allOf:
+        - $ref: '#/components/schemas/Mt5Config'
+        - type: object
+          required: [login]
+    InitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required: [success]
+    OrderRequest:
+      type: object
+      properties:
+        action:
+          type: integer
+        symbol:
+          type: string
+        volume:
+          type: number
+        type:
+          type: integer
+        type_filling:
+          type: integer
+        type_time:
+          type: integer
+        position:
+          type: integer
+        sl:
+          type: number
+        tp:
+          type: number
+      required: [action, symbol, volume]
+      additionalProperties: true
+    MarketOrderRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+        volume:
+          type: number
+        order_side:
+          type: string
+          enum: [BUY, SELL]
+        order_filling_mode:
+          type: string
+          enum: [IOC, FOK, RETURN]
+        order_time_mode:
+          type: string
+          enum: [GTC, DAY, SPECIFIED, SPECIFIED_DAY]
+        dry_run:
+          type: boolean
+      required: [symbol, volume, order_side]
+      additionalProperties: true
+    SltpUpdateRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+        stop_loss:
+          type: number
+          nullable: true
+        take_profit:
+          type: number
+          nullable: true
+        tickets:
+          type: array
+          items:
+            type: integer
+          maxItems: 1000
+        dry_run:
+          type: boolean
+      required: [symbol]
+      additionalProperties: true
+    ClosePositionsRequest:
+      type: object
+      properties:
+        symbols:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+              maxItems: 1000
+        order_filling_mode:
+          type: string
+          enum: [IOC, FOK, RETURN]
+        dry_run:
+          type: boolean
+      additionalProperties: true
+    GenericObject:
+      type: object
+      additionalProperties: true
+    GenericList:
+      type: array
+      maxItems: 10000
+      items:
+        $ref: '#/components/schemas/GenericObject'

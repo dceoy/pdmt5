@@ -42,9 +42,13 @@ These utilities are primarily used internally by Mt5DataClient methods through d
 
 ```python
 # Example of how decorators are applied internally
-@detect_and_convert_time_to_datetime(skip_toggle="convert_time")
+@detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
 @set_index_if_possible(index_parameters="index_keys")
-def some_method(self, convert_time: bool = True, index_keys: str | None = None):
+def some_method(
+    self,
+    skip_to_datetime: bool = False,
+    index_keys: str | None = None,
+):
     # Method implementation
     pass
 ```
@@ -72,7 +76,7 @@ These utilities enable Mt5DataClient to provide user-friendly data:
 
 ```python
 # Time values are automatically converted
-df = client.get_symbols_as_df(convert_time=True)
+df = client.symbols_get_as_df(skip_to_datetime=False)
 # Returns DataFrame with datetime objects instead of Unix timestamps
 
 # DataFrames can have custom indexes
