@@ -38,28 +38,27 @@ config = Mt5Config(
     password="your_password",
     server="broker_server",
     timeout=60000,
-    portable=False
 )
 
-# Create client with dry run mode for testing
-client = Mt5TradingClient(config=config, dry_run=True)
+# Create client
+client = Mt5TradingClient(config=config)
 
 # Use as context manager
 with client:
     # Get current positions as DataFrame
-    positions_df = client.get_positions_as_df()
+    positions_df = client.positions_get_as_df()
     print(f"Open positions: {len(positions_df)}")
 
     # Close positions for specific symbol
-    results = client.close_open_positions("EURUSD")
+    results = client.close_open_positions("EURUSD", dry_run=True)
     print(f"Closed positions: {results}")
 ```
 
 ### Production Trading
 
 ```python
-# Create client for live trading (dry_run=False)
-client = Mt5TradingClient(config=config, dry_run=False)
+# Create client for live trading (default execution)
+client = Mt5TradingClient(config=config)
 
 with client:
     # Close all positions for multiple symbols
@@ -126,7 +125,7 @@ with client:
     # For trading operations, use the provided methods like close_open_positions
 
     # Example: Check if we can close a position
-    positions = client.get_positions_as_df()
+    positions = client.positions_get_as_df()
     if not positions.empty:
         # Close specific position
         results = client.close_open_positions("EURUSD")
@@ -148,10 +147,13 @@ Dry run mode is essential for testing trading strategies:
 
 ```python
 # Test mode - validates orders without execution
-test_client = Mt5TradingClient(config=config, dry_run=True)
+test_client = Mt5TradingClient(config=config)
 
-# Production mode - executes real orders
-prod_client = Mt5TradingClient(config=config, dry_run=False)
+with test_client:
+    _ = test_client.close_open_positions("EURUSD", dry_run=True)
+
+# Production mode - executes real orders (default)
+prod_client = Mt5TradingClient(config=config)
 ```
 
 In dry run mode:
@@ -374,7 +376,7 @@ Since Mt5TradingClient inherits from Mt5DataClient, all data retrieval methods a
 ```python
 with Mt5TradingClient(config=config) as client:
     # Get current positions as DataFrame
-    positions_df = client.get_positions_as_df()
+    positions_df = client.positions_get_as_df()
 
     # Analyze positions
     if not positions_df.empty:

@@ -32,7 +32,6 @@ config = Mt5Config(
     password="your_password",
     server="YourBroker-Server",
     timeout=60000,
-    portable=False
 )
 
 # Low-level API access with context manager
@@ -45,20 +44,20 @@ with Mt5Client() as client:
 # Pandas-friendly interface with automatic initialization
 with Mt5DataClient(config=config) as client:
     # Get symbol information as DataFrame
-    symbols_df = client.get_symbols_as_df()
+    symbols_df = client.symbols_get_as_df()
     # Get OHLCV data as DataFrame
     rates_df = client.copy_rates_from_as_df(
         "EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100
     )
     # Get account info as DataFrame
-    account_df = client.get_account_info_as_df()
+    account_df = client.account_info_as_df()
 
 # Trading operations with dry run support
-with Mt5TradingClient(config=config, dry_run=True) as client:
+with Mt5TradingClient(config=config) as client:
     # Check open positions as DataFrame
-    positions_df = client.get_positions_as_df()
+    positions_df = client.positions_get_as_df()
     # Close positions for specific symbol (dry run)
-    results = client.close_open_positions("EURUSD")
+    results = client.close_open_positions("EURUSD", dry_run=True)
 ```
 
 ## Requirements

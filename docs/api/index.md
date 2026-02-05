@@ -57,9 +57,9 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     rates_df = client.copy_rates_from_as_df("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
 # Advanced trading operations with Mt5TradingClient
-with Mt5TradingClient(mt5=mt5, config=config, dry_run=True) as client:
+with Mt5TradingClient(mt5=mt5, config=config) as client:
     # Close all positions for a symbol
-    results = client.close_open_positions("EURUSD")
+    results = client.close_open_positions("EURUSD", dry_run=True)
 ```
 
 ## Examples
