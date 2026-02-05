@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "0.2.2"
+version = "0.2.3"
 description = "Pandas-based data handler for MetaTrader 5"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
@@ -153,11 +153,6 @@ exclude = ["build", ".venv"]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
-reportUnknownArgumentType = "none"
-reportUnknownMemberType = "none"
-reportUnknownVariableType = "none"
-reportUnknownParameterType = "none"
-reportUnknownLambdaType = "none"
 
 [tool.pytest.ini_options]
 addopts = [

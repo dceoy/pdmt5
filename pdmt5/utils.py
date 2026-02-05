@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 import pandas as pd
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 
 def detect_and_convert_time_to_datetime(
     skip_toggle: str | None = None,
-) -> Callable[..., Any]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to convert time values/columns to datetime based on result type.
 
     Automatically detects result type and applies appropriate time conversion:
@@ -28,25 +31,32 @@ def detect_and_convert_time_to_datetime(
         Decorator function.
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             result = func(*args, **kwargs)
             if skip_toggle and kwargs.get(skip_toggle):
                 return result
             elif isinstance(result, dict):
-                return _convert_time_values_in_dict(dictionary=result)
+                return cast(
+                    "R",
+                    _convert_time_values_in_dict(
+                        dictionary=cast("dict[str, Any]", result)
+                    ),
+                )
             elif isinstance(result, list):
                 return [
                     (
-                        _convert_time_values_in_dict(dictionary=d)
+                        _convert_time_values_in_dict(
+                            dictionary=cast("dict[str, Any]", d)
+                        )
                         if isinstance(d, dict)
                         else d
                     )
-                    for d in result
-                ]
+                    for d in cast("list[Any]", result)
+                ]  # type: ignore[return-value]
             elif isinstance(result, pd.DataFrame):
-                return _convert_time_columns_in_df(result)
+                return cast("R", _convert_time_columns_in_df(result))
             else:
                 return result
 
@@ -93,7 +103,9 @@ def _convert_time_columns_in_df(df: pd.DataFrame) -> pd.DataFrame:
     return new_df
 
 
-def set_index_if_possible(index_parameters: str | None = None) -> Callable[..., Any]:
+def set_index_if_possible(
+    index_parameters: str | None = None,
+) -> Callable[[Callable[P, pd.DataFrame]], Callable[P, pd.DataFrame]]:
     """Decorator to set index on DataFrame results if not empty.
 
     Args:
@@ -103,11 +115,13 @@ def set_index_if_possible(index_parameters: str | None = None) -> Callable[..., 
         Decorator function.
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(
+        func: Callable[P, pd.DataFrame],
+    ) -> Callable[P, pd.DataFrame]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> pd.DataFrame:
             result = func(*args, **kwargs)
-            if not isinstance(result, pd.DataFrame):
+            if not isinstance(result, pd.DataFrame):  # type: ignore[reportUnnecessaryIsInstance]
                 error_message = (
                     f"Function {func.__name__} returned non-DataFrame result: "
                     f"{type(result).__name__}. Expected DataFrame."

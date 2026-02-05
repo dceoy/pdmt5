@@ -1,11 +1,8 @@
 """Tests for pdmt5.trading module."""
 
-# pyright: reportPrivateUsage=false
-# pyright: reportAttributeAccessIssue=false
-
 from collections.abc import Generator
 from types import ModuleType
-from typing import Literal, NamedTuple
+from typing import Any, Literal, NamedTuple, cast
 
 import numpy as np
 import pandas as pd
@@ -31,91 +28,93 @@ def mock_mt5_import(  # noqa: PLR0915
                             None for import error tests.
     """
     # Skip mocking for tests that explicitly test import errors
-    if "initialize_import_error" in request.node.name:
+    node_name = cast("Any", request).node.name
+    if "initialize_import_error" in node_name:
         yield None
         return
     else:
         # Create a real module instance and add mock attributes to it
         mock_mt5 = ModuleType("mock_mt5")
+        mock_mt5_any = cast("Any", mock_mt5)
         # Make it a MagicMock while preserving module type
         for attr in dir(mocker.MagicMock()):
             if not attr.startswith("__") or attr == "__call__":
-                setattr(mock_mt5, attr, getattr(mocker.MagicMock(), attr))
+                setattr(mock_mt5_any, attr, getattr(mocker.MagicMock(), attr))
 
         # Configure common mock attributes
-        mock_mt5.initialize = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.shutdown = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.last_error = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.account_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.terminal_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbols_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbol_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbol_info_tick = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.positions_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_check = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_send = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_calc_margin = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_rates_from_pos = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_ticks_range = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.history_deals_get = mocker.MagicMock()  # type: ignore[attr-defined]
+        mock_mt5_any.initialize = mocker.MagicMock()
+        mock_mt5_any.shutdown = mocker.MagicMock()
+        mock_mt5_any.last_error = mocker.MagicMock()
+        mock_mt5_any.account_info = mocker.MagicMock()
+        mock_mt5_any.terminal_info = mocker.MagicMock()
+        mock_mt5_any.symbols_get = mocker.MagicMock()
+        mock_mt5_any.symbol_info = mocker.MagicMock()
+        mock_mt5_any.symbol_info_tick = mocker.MagicMock()
+        mock_mt5_any.positions_get = mocker.MagicMock()
+        mock_mt5_any.order_check = mocker.MagicMock()
+        mock_mt5_any.order_send = mocker.MagicMock()
+        mock_mt5_any.order_calc_margin = mocker.MagicMock()
+        mock_mt5_any.copy_rates_from_pos = mocker.MagicMock()
+        mock_mt5_any.copy_ticks_range = mocker.MagicMock()
+        mock_mt5_any.history_deals_get = mocker.MagicMock()
 
         # Trading-specific constants
-        mock_mt5.TRADE_ACTION_DEAL = 1
-        mock_mt5.ORDER_TYPE_BUY = 0
-        mock_mt5.ORDER_TYPE_SELL = 1
-        mock_mt5.POSITION_TYPE_BUY = 0
-        mock_mt5.POSITION_TYPE_SELL = 1
-        mock_mt5.ORDER_FILLING_IOC = 1
-        mock_mt5.ORDER_FILLING_FOK = 2
-        mock_mt5.ORDER_FILLING_RETURN = 3
-        mock_mt5.ORDER_TIME_GTC = 0
+        mock_mt5_any.TRADE_ACTION_DEAL = 1
+        mock_mt5_any.ORDER_TYPE_BUY = 0
+        mock_mt5_any.ORDER_TYPE_SELL = 1
+        mock_mt5_any.POSITION_TYPE_BUY = 0
+        mock_mt5_any.POSITION_TYPE_SELL = 1
+        mock_mt5_any.ORDER_FILLING_IOC = 1
+        mock_mt5_any.ORDER_FILLING_FOK = 2
+        mock_mt5_any.ORDER_FILLING_RETURN = 3
+        mock_mt5_any.ORDER_TIME_GTC = 0
 
         # Trade return codes
-        mock_mt5.TRADE_RETCODE_REQUOTE = 10004
-        mock_mt5.TRADE_RETCODE_REJECT = 10006
-        mock_mt5.TRADE_RETCODE_CANCEL = 10007
-        mock_mt5.TRADE_RETCODE_PLACED = 10008
-        mock_mt5.TRADE_RETCODE_DONE = 10009
-        mock_mt5.TRADE_RETCODE_DONE_PARTIAL = 10010
-        mock_mt5.TRADE_RETCODE_ERROR = 10011
-        mock_mt5.TRADE_RETCODE_TIMEOUT = 10012
-        mock_mt5.TRADE_RETCODE_INVALID = 10013
-        mock_mt5.TRADE_RETCODE_INVALID_VOLUME = 10014
-        mock_mt5.TRADE_RETCODE_INVALID_PRICE = 10015
-        mock_mt5.TRADE_RETCODE_INVALID_STOPS = 10016
-        mock_mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
-        mock_mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
-        mock_mt5.TRADE_RETCODE_NO_MONEY = 10019
-        mock_mt5.TRADE_RETCODE_PRICE_CHANGED = 10020
-        mock_mt5.TRADE_RETCODE_PRICE_OFF = 10021
-        mock_mt5.TRADE_RETCODE_INVALID_EXPIRATION = 10022
-        mock_mt5.TRADE_RETCODE_ORDER_CHANGED = 10023
-        mock_mt5.TRADE_RETCODE_TOO_MANY_REQUESTS = 10024
-        mock_mt5.TRADE_RETCODE_NO_CHANGES = 10025
-        mock_mt5.TRADE_RETCODE_SERVER_DISABLES_AT = 10026
-        mock_mt5.TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
-        mock_mt5.TRADE_RETCODE_LOCKED = 10028
-        mock_mt5.TRADE_RETCODE_FROZEN = 10029
-        mock_mt5.TRADE_RETCODE_INVALID_FILL = 10030
-        mock_mt5.TRADE_RETCODE_CONNECTION = 10031
-        mock_mt5.TRADE_RETCODE_ONLY_REAL = 10032
-        mock_mt5.TRADE_RETCODE_LIMIT_ORDERS = 10033
-        mock_mt5.TRADE_RETCODE_LIMIT_VOLUME = 10034
-        mock_mt5.TRADE_RETCODE_INVALID_ORDER = 10035
-        mock_mt5.TRADE_RETCODE_POSITION_CLOSED = 10036
-        mock_mt5.TRADE_RETCODE_INVALID_CLOSE_VOLUME = 10038
-        mock_mt5.TRADE_RETCODE_CLOSE_ORDER_EXIST = 10039
-        mock_mt5.TRADE_RETCODE_LIMIT_POSITIONS = 10040
-        mock_mt5.TRADE_RETCODE_REJECT_CANCEL = 10041
-        mock_mt5.TRADE_RETCODE_LONG_ONLY = 10042
-        mock_mt5.TRADE_RETCODE_SHORT_ONLY = 10043
-        mock_mt5.TRADE_RETCODE_CLOSE_ONLY = 10044
-        mock_mt5.TRADE_RETCODE_FIFO_CLOSE = 10045
-        mock_mt5.TRADE_RETCODE_HEDGE_PROHIBITED = 10046
+        mock_mt5_any.TRADE_RETCODE_REQUOTE = 10004
+        mock_mt5_any.TRADE_RETCODE_REJECT = 10006
+        mock_mt5_any.TRADE_RETCODE_CANCEL = 10007
+        mock_mt5_any.TRADE_RETCODE_PLACED = 10008
+        mock_mt5_any.TRADE_RETCODE_DONE = 10009
+        mock_mt5_any.TRADE_RETCODE_DONE_PARTIAL = 10010
+        mock_mt5_any.TRADE_RETCODE_ERROR = 10011
+        mock_mt5_any.TRADE_RETCODE_TIMEOUT = 10012
+        mock_mt5_any.TRADE_RETCODE_INVALID = 10013
+        mock_mt5_any.TRADE_RETCODE_INVALID_VOLUME = 10014
+        mock_mt5_any.TRADE_RETCODE_INVALID_PRICE = 10015
+        mock_mt5_any.TRADE_RETCODE_INVALID_STOPS = 10016
+        mock_mt5_any.TRADE_RETCODE_TRADE_DISABLED = 10017
+        mock_mt5_any.TRADE_RETCODE_MARKET_CLOSED = 10018
+        mock_mt5_any.TRADE_RETCODE_NO_MONEY = 10019
+        mock_mt5_any.TRADE_RETCODE_PRICE_CHANGED = 10020
+        mock_mt5_any.TRADE_RETCODE_PRICE_OFF = 10021
+        mock_mt5_any.TRADE_RETCODE_INVALID_EXPIRATION = 10022
+        mock_mt5_any.TRADE_RETCODE_ORDER_CHANGED = 10023
+        mock_mt5_any.TRADE_RETCODE_TOO_MANY_REQUESTS = 10024
+        mock_mt5_any.TRADE_RETCODE_NO_CHANGES = 10025
+        mock_mt5_any.TRADE_RETCODE_SERVER_DISABLES_AT = 10026
+        mock_mt5_any.TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
+        mock_mt5_any.TRADE_RETCODE_LOCKED = 10028
+        mock_mt5_any.TRADE_RETCODE_FROZEN = 10029
+        mock_mt5_any.TRADE_RETCODE_INVALID_FILL = 10030
+        mock_mt5_any.TRADE_RETCODE_CONNECTION = 10031
+        mock_mt5_any.TRADE_RETCODE_ONLY_REAL = 10032
+        mock_mt5_any.TRADE_RETCODE_LIMIT_ORDERS = 10033
+        mock_mt5_any.TRADE_RETCODE_LIMIT_VOLUME = 10034
+        mock_mt5_any.TRADE_RETCODE_INVALID_ORDER = 10035
+        mock_mt5_any.TRADE_RETCODE_POSITION_CLOSED = 10036
+        mock_mt5_any.TRADE_RETCODE_INVALID_CLOSE_VOLUME = 10038
+        mock_mt5_any.TRADE_RETCODE_CLOSE_ORDER_EXIST = 10039
+        mock_mt5_any.TRADE_RETCODE_LIMIT_POSITIONS = 10040
+        mock_mt5_any.TRADE_RETCODE_REJECT_CANCEL = 10041
+        mock_mt5_any.TRADE_RETCODE_LONG_ONLY = 10042
+        mock_mt5_any.TRADE_RETCODE_SHORT_ONLY = 10043
+        mock_mt5_any.TRADE_RETCODE_CLOSE_ONLY = 10044
+        mock_mt5_any.TRADE_RETCODE_FIFO_CLOSE = 10045
+        mock_mt5_any.TRADE_RETCODE_HEDGE_PROHIBITED = 10046
 
-        mock_mt5.RES_S_OK = 1
-        mock_mt5.DEAL_TYPE_BUY = 0
-        mock_mt5.DEAL_TYPE_SELL = 1
+        mock_mt5_any.RES_S_OK = 1
+        mock_mt5_any.DEAL_TYPE_BUY = 0
+        mock_mt5_any.DEAL_TYPE_SELL = 1
 
         yield mock_mt5
 
@@ -244,7 +243,9 @@ class TestMt5TradingClient:
         client.initialize()
         mock_mt5_import.positions_get.return_value = []
         # Should not raise as validation happens at method level
-        result = client._fetch_and_close_position(order_filling_mode="IOC")  # type: ignore[arg-type]
+        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
+            order_filling_mode="IOC"
+        )
         assert result == []
 
     def test_close_position_no_positions(
@@ -520,7 +521,10 @@ class TestMt5TradingClient:
             "result": "check_success",
         }
 
-        result = client._send_or_check_order(request, dry_run=True)
+        result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+            request,
+            dry_run=True,
+        )
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -549,7 +553,9 @@ class TestMt5TradingClient:
             "result": "send_success",
         }
 
-        result = client._send_or_check_order(request)
+        result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+            request
+        )
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
@@ -584,7 +590,9 @@ class TestMt5TradingClient:
             "comment": comment,
         }
 
-        result = client._send_or_check_order(request)
+        result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+            request
+        )
 
         assert result["retcode"] == retcode
 
@@ -612,7 +620,10 @@ class TestMt5TradingClient:
         }
 
         with pytest.raises(Mt5TradingError, match=r"order_send\(\) failed and aborted"):
-            client._send_or_check_order(request, raise_on_error=True)
+            client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+                request,
+                raise_on_error=True,
+            )
 
     def test_send_or_check_order_dry_run_failure(
         self,
@@ -640,7 +651,11 @@ class TestMt5TradingClient:
         with pytest.raises(
             Mt5TradingError, match=r"order_check\(\) failed and aborted"
         ):
-            client._send_or_check_order(request, raise_on_error=True, dry_run=True)
+            client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+                request,
+                raise_on_error=True,
+                dry_run=True,
+            )
 
     def test_send_or_check_order_dry_run_override(
         self,
@@ -667,7 +682,10 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=True
-        result = client._send_or_check_order(request, dry_run=True)
+        result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+            request,
+            dry_run=True,
+        )
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
@@ -700,7 +718,10 @@ class TestMt5TradingClient:
         }
 
         # Override with dry_run=False
-        result = client._send_or_check_order(request, dry_run=False)
+        result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
+            request,
+            dry_run=False,
+        )
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
@@ -718,10 +739,10 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock MT5 constants
-        mock_mt5_import.ORDER_TYPE_BUY = 0
-        mock_mt5_import.ORDER_FILLING_IOC = 1
-        mock_mt5_import.ORDER_TIME_GTC = 0
-        mock_mt5_import.TRADE_ACTION_DEAL = 1
+        mock_mt5_import.ORDER_TYPE_BUY = 0  # type: ignore[reportAttributeAccessIssue]
+        mock_mt5_import.ORDER_FILLING_IOC = 1  # type: ignore[reportAttributeAccessIssue]
+        mock_mt5_import.ORDER_TIME_GTC = 0  # type: ignore[reportAttributeAccessIssue]
+        mock_mt5_import.TRADE_ACTION_DEAL = 1  # type: ignore[reportAttributeAccessIssue]
 
         # Mock successful order send
         mock_mt5_import.order_send.return_value.retcode = 10009
@@ -773,7 +794,10 @@ class TestMt5TradingClient:
         }
 
         # Call _fetch_and_close_position with FOK mode
-        client._fetch_and_close_position("EURUSD", order_filling_mode="FOK")
+        client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
+            "EURUSD",
+            order_filling_mode="FOK",
+        )
 
         # Verify that ORDER_FILLING_FOK was used
         call_args = mock_mt5_import.order_send.call_args[0][0]
@@ -839,7 +863,10 @@ class TestMt5TradingClient:
         }
 
         # Call internal method directly with dry_run=True
-        result = client._fetch_and_close_position(symbol="EURUSD", dry_run=True)
+        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
+            symbol="EURUSD",
+            dry_run=True,
+        )
 
         assert len(result) == 2
         assert all(r["retcode"] == 0 for r in result)
@@ -866,7 +893,10 @@ class TestMt5TradingClient:
         }
 
         # Call with dry_run=True explicitly
-        result = client._fetch_and_close_position(symbol="EURUSD", dry_run=True)
+        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
+            symbol="EURUSD",
+            dry_run=True,
+        )
 
         assert len(result) == 1
         assert result[0]["retcode"] == 0
@@ -1051,7 +1081,7 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock TIMEFRAME constant
-        mock_mt5_import.TIMEFRAME_M1 = 1
+        mock_mt5_import.TIMEFRAME_M1 = 1  # type: ignore[reportAttributeAccessIssue]
 
         # Create structured array that mimics MT5 rates structure
         rates_dtype = np.dtype([
@@ -1120,7 +1150,7 @@ class TestMt5TradingClient:
         }
 
         # Mock copy ticks flag
-        mock_mt5_import.COPY_TICKS_ALL = 1
+        mock_mt5_import.COPY_TICKS_ALL = 1  # type: ignore[reportAttributeAccessIssue]
 
         # Create structured array that mimics MT5 ticks structure
         ticks_dtype = np.dtype([
@@ -1600,7 +1630,7 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6
+        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -1681,7 +1711,7 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6
+        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -1728,7 +1758,7 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6
+        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -1777,7 +1807,7 @@ class TestMt5TradingClient:
         client.initialize()
 
         # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6
+        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {

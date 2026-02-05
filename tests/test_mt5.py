@@ -1,12 +1,10 @@
 """Tests for MetaTrader5 client wrapper."""
 
-# pyright: reportPrivateUsage=false
-
 from __future__ import annotations
 
 import contextlib
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -51,7 +49,7 @@ class TestMt5Client:
 
     def test_initialization(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test client initialization."""
-        assert client._is_initialized is False
+        assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
         assert client.mt5 is mock_mt5
 
     def test_context_manager(self, client: Mt5Client, mock_mt5: Mock) -> None:
@@ -60,11 +58,11 @@ class TestMt5Client:
 
         with client as ctx_client:
             assert ctx_client is client
-            assert client._is_initialized is True
+            assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
             mock_mt5.initialize.assert_called_once()
 
         mock_mt5.shutdown.assert_called_once()
-        assert client._is_initialized is False
+        assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
 
     def test_initialize_success(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test successful initialization."""
@@ -73,7 +71,7 @@ class TestMt5Client:
         result = client.initialize()
 
         assert result is True
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
         mock_mt5.initialize.assert_called_once_with()
 
     def test_initialize_with_parameters(
@@ -106,14 +104,14 @@ class TestMt5Client:
         result = client.initialize()
 
         assert result is False
-        assert client._is_initialized is False
+        assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
 
     def test_shutdown(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test shutdown functionality."""
         initialized_client.shutdown()
 
         mock_mt5.shutdown.assert_called_once()
-        assert initialized_client._is_initialized is False
+        assert initialized_client._is_initialized is False  # type: ignore[reportPrivateUsage]
 
     def test_last_error(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test last_error method."""
@@ -130,11 +128,11 @@ class TestMt5Client:
         """Test _initialize_if_needed calls initialize when not initialized."""
         mock_mt5.initialize.return_value = True
 
-        assert client._is_initialized is False
-        client._initialize_if_needed()
+        assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
+        client._initialize_if_needed()  # type: ignore[reportPrivateUsage]
 
         mock_mt5.initialize.assert_called_once()
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
 
     def test_login_success(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test successful login."""
@@ -623,7 +621,7 @@ class TestMt5Client:
 
     def test_method_not_initialized(self, client: Mt5Client) -> None:
         """Test calling methods when not initialized."""
-        methods = [
+        methods: list[tuple[str, list[Any]]] = [
             ("symbols_total", []),
             ("symbols_get", []),
             ("symbol_info", ["EURUSD"]),

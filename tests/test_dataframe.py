@@ -1,12 +1,9 @@
 """Tests for pdmt5.dataframe module."""
 
-# pyright: reportPrivateUsage=false
-# pyright: reportAttributeAccessIssue=false
-
 from collections.abc import Generator
 from datetime import UTC, datetime
 from types import ModuleType
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 import numpy as np
 import pandas as pd
@@ -36,53 +33,55 @@ def mock_mt5_import(
                             None for import error tests.
     """
     # Skip mocking for tests that explicitly test import errors
+    node_name = cast("Any", request).node.name
     if (
-        "initialize_import_error" in request.node.name
-        or "test_error_handling_without_mt5" in request.node.name
+        "initialize_import_error" in node_name
+        or "test_error_handling_without_mt5" in node_name
     ):
         yield None
         return
     else:
         # Create a real module instance and add mock attributes to it
         mock_mt5 = ModuleType("mock_mt5")
+        mock_mt5_any = cast("Any", mock_mt5)
         # Make it a MagicMock while preserving module type
         for attr in dir(mocker.MagicMock()):
             if not attr.startswith("__") or attr == "__call__":
-                setattr(mock_mt5, attr, getattr(mocker.MagicMock(), attr))
+                setattr(mock_mt5_any, attr, getattr(mocker.MagicMock(), attr))
         # Configure common mock attributes
-        mock_mt5.initialize = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.shutdown = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.last_error = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.account_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.terminal_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbols_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbol_info = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_rates_from = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_ticks_from = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_rates_from_pos = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_rates_range = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.copy_ticks_range = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbol_info_tick = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.orders_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.positions_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.history_deals_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.history_orders_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.login = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_check = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_send = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.orders_total = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.positions_total = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.history_orders_total = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.history_deals_total = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_calc_margin = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.order_calc_profit = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.version = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbols_total = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.symbol_select = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.market_book_add = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.market_book_release = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.market_book_get = mocker.MagicMock()  # type: ignore[attr-defined]
-        mock_mt5.RES_S_OK = 1
+        mock_mt5_any.initialize = mocker.MagicMock()
+        mock_mt5_any.shutdown = mocker.MagicMock()
+        mock_mt5_any.last_error = mocker.MagicMock()
+        mock_mt5_any.account_info = mocker.MagicMock()
+        mock_mt5_any.terminal_info = mocker.MagicMock()
+        mock_mt5_any.symbols_get = mocker.MagicMock()
+        mock_mt5_any.symbol_info = mocker.MagicMock()
+        mock_mt5_any.copy_rates_from = mocker.MagicMock()
+        mock_mt5_any.copy_ticks_from = mocker.MagicMock()
+        mock_mt5_any.copy_rates_from_pos = mocker.MagicMock()
+        mock_mt5_any.copy_rates_range = mocker.MagicMock()
+        mock_mt5_any.copy_ticks_range = mocker.MagicMock()
+        mock_mt5_any.symbol_info_tick = mocker.MagicMock()
+        mock_mt5_any.orders_get = mocker.MagicMock()
+        mock_mt5_any.positions_get = mocker.MagicMock()
+        mock_mt5_any.history_deals_get = mocker.MagicMock()
+        mock_mt5_any.history_orders_get = mocker.MagicMock()
+        mock_mt5_any.login = mocker.MagicMock()
+        mock_mt5_any.order_check = mocker.MagicMock()
+        mock_mt5_any.order_send = mocker.MagicMock()
+        mock_mt5_any.orders_total = mocker.MagicMock()
+        mock_mt5_any.positions_total = mocker.MagicMock()
+        mock_mt5_any.history_orders_total = mocker.MagicMock()
+        mock_mt5_any.history_deals_total = mocker.MagicMock()
+        mock_mt5_any.order_calc_margin = mocker.MagicMock()
+        mock_mt5_any.order_calc_profit = mocker.MagicMock()
+        mock_mt5_any.version = mocker.MagicMock()
+        mock_mt5_any.symbols_total = mocker.MagicMock()
+        mock_mt5_any.symbol_select = mocker.MagicMock()
+        mock_mt5_any.market_book_add = mocker.MagicMock()
+        mock_mt5_any.market_book_release = mocker.MagicMock()
+        mock_mt5_any.market_book_get = mocker.MagicMock()
+        mock_mt5_any.RES_S_OK = 1
         yield mock_mt5
 
 
@@ -391,7 +390,7 @@ class TestMt5Config:
 
     def test_default_config(self) -> None:
         """Test default configuration."""
-        config = Mt5Config()  # pyright: ignore[reportCallIssue]
+        config = Mt5Config()
         assert config.path is None
         assert config.login is None
         assert config.password is None
@@ -413,7 +412,7 @@ class TestMt5Config:
 
     def test_config_immutable(self) -> None:
         """Test that config is immutable."""
-        config = Mt5Config()  # pyright: ignore[reportCallIssue]
+        config = Mt5Config()
         with pytest.raises(ValidationError):
             config.login = 123456
 
@@ -427,7 +426,7 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import)
         assert client.config is not None
         assert client.config.timeout is None
-        assert not client._is_initialized
+        assert not client._is_initialized  # type: ignore[reportPrivateUsage]
 
     def test_init_custom_config(self, mock_mt5_import: ModuleType | None) -> None:
         """Test client initialization with custom config."""
@@ -449,7 +448,7 @@ class TestMt5DataClient:
         mock_import = mocker.patch("importlib.import_module")
         mock_import.return_value = mocker.MagicMock()
 
-        client = Mt5DataClient()  # pyright: ignore[reportCallIssue]
+        client = Mt5DataClient()
 
         # Verify that importlib.import_module was called with "MetaTrader5"
         mock_import.assert_called_once_with("MetaTrader5")
@@ -464,7 +463,7 @@ class TestMt5DataClient:
         result = client.initialize()
 
         assert result is True
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
         mock_mt5_import.initialize.assert_called_once()
 
     def test_initialize_failure(self, mock_mt5_import: ModuleType | None) -> None:
@@ -490,7 +489,7 @@ class TestMt5DataClient:
 
         client = Mt5DataClient(mt5=mock_mt5_import)
         # Set _is_initialized to True to test the early return path
-        client._is_initialized = True
+        client._is_initialized = True  # type: ignore[reportPrivateUsage]
 
         # Call initialize when already initialized - should still call mt5.initialize
         result = client.initialize()
@@ -507,7 +506,7 @@ class TestMt5DataClient:
         client.initialize()
         client.shutdown()
 
-        assert client._is_initialized is False
+        assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
         mock_mt5_import.shutdown.assert_called_once()
 
     def test_context_manager(self, mock_mt5_import: ModuleType | None) -> None:
@@ -516,7 +515,7 @@ class TestMt5DataClient:
         mock_mt5_import.initialize.return_value = True
 
         with Mt5DataClient(mt5=mock_mt5_import) as client:
-            assert client._is_initialized is True
+            assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
             mock_mt5_import.initialize.assert_called_once()
 
         mock_mt5_import.shutdown.assert_called_once()
@@ -547,7 +546,7 @@ class TestMt5DataClient:
         # Test with an invalid mt5 module object
         invalid_mt5 = object()  # Not a proper module
         with pytest.raises(ValidationError):
-            Mt5DataClient(mt5=invalid_mt5)  # type: ignore[arg-type]
+            Mt5DataClient(mt5=cast("ModuleType", invalid_mt5))
 
     def test_ensure_initialized_calls_initialize(
         self,
@@ -592,7 +591,7 @@ class TestMt5DataClient:
         client.initialize()
         df_result = client.account_info_as_df()
 
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
         mock_mt5_import.initialize.assert_called_once()
         assert isinstance(df_result, pd.DataFrame)
 
@@ -1513,27 +1512,37 @@ class TestMt5DataClientValidation:
     def test_validate_positive_count_valid(self) -> None:
         """Test _validate_positive_count with valid count."""
         # Should not raise for positive count
-        Mt5DataClient._validate_positive_count(count=1)
-        Mt5DataClient._validate_positive_count(count=100)
+        Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
+            count=1
+        )
+        Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
+            count=100
+        )
 
     def test_validate_positive_count_invalid(self) -> None:
         """Test _validate_positive_count with invalid count."""
         with pytest.raises(
             ValueError, match=r"Invalid count: 0\. Count must be positive\."
         ):
-            Mt5DataClient._validate_positive_count(count=0)
+            Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
+                count=0
+            )
 
         with pytest.raises(
             ValueError, match=r"Invalid count: -1\. Count must be positive\."
         ):
-            Mt5DataClient._validate_positive_count(count=-1)
+            Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
+                count=-1
+            )
 
     def test_validate_date_range_valid(self) -> None:
         """Test _validate_date_range with valid date range."""
         date_from = datetime(2023, 1, 1, tzinfo=UTC)
         date_to = datetime(2023, 1, 2, tzinfo=UTC)
         # Should not raise for valid date range
-        Mt5DataClient._validate_date_range(date_from=date_from, date_to=date_to)
+        Mt5DataClient._validate_date_range(  # type: ignore[reportPrivateUsage]
+            date_from=date_from, date_to=date_to
+        )
 
     def test_validate_date_range_invalid(self) -> None:
         """Test _validate_date_range with invalid date range."""
@@ -1542,43 +1551,67 @@ class TestMt5DataClientValidation:
         with pytest.raises(
             ValueError, match=r"Invalid date range: from=.* must be before to=.*"
         ):
-            Mt5DataClient._validate_date_range(date_from=date_from, date_to=date_to)
+            Mt5DataClient._validate_date_range(  # type: ignore[reportPrivateUsage]
+                date_from=date_from, date_to=date_to
+            )
 
     def test_validate_positive_value_valid(self) -> None:
         """Test _validate_positive_value with valid values."""
         # Should not raise for positive values
-        Mt5DataClient._validate_positive_value(value=1.0, name="volume")
-        Mt5DataClient._validate_positive_value(value=0.1, name="volume")
+        Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+            value=1.0,
+            name="volume",
+        )
+        Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+            value=0.1,
+            name="volume",
+        )
 
     def test_validate_positive_value_invalid(self) -> None:
         """Test _validate_positive_value with invalid volume."""
         with pytest.raises(
             ValueError, match=r"Invalid volume: 0\. Volume must be positive\."
         ):
-            Mt5DataClient._validate_positive_value(value=0, name="volume")
+            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+                value=0,
+                name="volume",
+            )
 
         with pytest.raises(
             ValueError, match=r"Invalid volume: -1\. Volume must be positive\."
         ):
-            Mt5DataClient._validate_positive_value(value=-1, name="volume")
+            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+                value=-1,
+                name="volume",
+            )
 
     def test_validate_positive_value_price_invalid(self) -> None:
         """Test _validate_positive_value with invalid price."""
         with pytest.raises(
             ValueError, match=r"Invalid price_open: 0\. Price must be positive\."
         ):
-            Mt5DataClient._validate_positive_value(value=0, name="price_open")
+            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+                value=0,
+                name="price_open",
+            )
 
         with pytest.raises(
             ValueError, match=r"Invalid price_close: -1\. Price must be positive\."
         ):
-            Mt5DataClient._validate_positive_value(value=-1, name="price_close")
+            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
+                value=-1,
+                name="price_close",
+            )
 
     def test_validate_non_negative_position_valid(self) -> None:
         """Test _validate_non_negative_position with valid position."""
         # Should not raise for non-negative position
-        Mt5DataClient._validate_non_negative_position(position=0)
-        Mt5DataClient._validate_non_negative_position(position=10)
+        Mt5DataClient._validate_non_negative_position(  # type: ignore[reportPrivateUsage]
+            position=0
+        )
+        Mt5DataClient._validate_non_negative_position(  # type: ignore[reportPrivateUsage]
+            position=10
+        )
 
     def test_validate_non_negative_position_invalid(self) -> None:
         """Test _validate_non_negative_position with invalid position."""
@@ -1586,7 +1619,9 @@ class TestMt5DataClientValidation:
             ValueError,
             match=r"Invalid start_pos: -1\. Position must be non-negative\.",
         ):
-            Mt5DataClient._validate_non_negative_position(position=-1)
+            Mt5DataClient._validate_non_negative_position(  # type: ignore[reportPrivateUsage]
+                position=-1
+            )
 
     def test_order_check_as_dict(
         self,
@@ -2086,7 +2121,9 @@ class TestMt5DataClientRetryLogic:
         client.initialize()
 
         # Should not raise when ticket is provided
-        client._validate_history_input(ticket=123456)
+        client._validate_history_input(  # type: ignore[reportPrivateUsage]
+            ticket=123456
+        )
 
     def test_validate_history_input_with_position(
         self, mock_mt5_import: ModuleType | None
@@ -2099,7 +2136,9 @@ class TestMt5DataClientRetryLogic:
         client.initialize()
 
         # Should not raise when position is provided
-        client._validate_history_input(position=789012)
+        client._validate_history_input(  # type: ignore[reportPrivateUsage]
+            position=789012
+        )
 
     def test_validate_history_input_with_dates(
         self, mock_mt5_import: ModuleType | None
@@ -2112,7 +2151,7 @@ class TestMt5DataClientRetryLogic:
         client.initialize()
 
         # Should not raise when both dates are provided
-        client._validate_history_input(
+        client._validate_history_input(  # type: ignore[reportPrivateUsage]
             date_from=datetime(2022, 1, 1, tzinfo=UTC),
             date_to=datetime(2022, 1, 2, tzinfo=UTC),
         )
@@ -2135,7 +2174,9 @@ class TestMt5DataClientRetryLogic:
                 r" if not using ticket or position"
             ),
         ):
-            client._validate_history_input(date_from=datetime(2022, 1, 1, tzinfo=UTC))
+            client._validate_history_input(  # type: ignore[reportPrivateUsage]
+                date_from=datetime(2022, 1, 1, tzinfo=UTC)
+            )
 
     def test_validate_history_input_missing_date_from(
         self, mock_mt5_import: ModuleType | None
@@ -2155,7 +2196,9 @@ class TestMt5DataClientRetryLogic:
                 r" if not using ticket or position"
             ),
         ):
-            client._validate_history_input(date_to=datetime(2022, 1, 2, tzinfo=UTC))
+            client._validate_history_input(  # type: ignore[reportPrivateUsage]
+                date_to=datetime(2022, 1, 2, tzinfo=UTC)
+            )
 
     def test_validate_history_input_no_params(
         self, mock_mt5_import: ModuleType | None
@@ -2175,7 +2218,7 @@ class TestMt5DataClientRetryLogic:
                 r" if not using ticket or position"
             ),
         ):
-            client._validate_history_input()
+            client._validate_history_input()  # type: ignore[reportPrivateUsage]
 
     def test_history_deals_get_ticket_only(
         self, mock_mt5_import: ModuleType | None
@@ -2264,7 +2307,7 @@ class TestMt5DataClientRetryLogic:
 
         test_exception_msg = "Test exception"
         with Mt5DataClient(mt5=mock_mt5_import) as client:
-            assert client._is_initialized is True
+            assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
             mock_mt5_import.initialize.assert_called_once()
             with pytest.raises(ValueError, match=test_exception_msg):
                 raise ValueError(test_exception_msg)
@@ -2283,7 +2326,7 @@ class TestMt5DataClientRetryLogic:
         # First initialize the client normally
         result = client.initialize()
         assert result is True
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
         mock_mt5_import.initialize.assert_called_once()
 
         # Reset the mock
@@ -2295,7 +2338,7 @@ class TestMt5DataClientRetryLogic:
         # Initialize should be called again in current implementation
         mock_mt5_import.initialize.assert_called_once()
         # The method should still return True (or whatever the expected behavior is)
-        assert client._is_initialized is True
+        assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
 
 
 class TestMt5DataClientCoverageMissing:
@@ -2484,7 +2527,9 @@ class TestMt5DataClientCoverageMissing:
         client = Mt5DataClient(mt5=mock_mt5_import)
 
         input_dict = {"a": 1, "b": 2, "c": 3}
-        result = client._flatten_dict_to_one_level(input_dict)
+        result = client._flatten_dict_to_one_level(  # type: ignore[reportPrivateUsage]
+            input_dict
+        )
 
         assert result == {"a": 1, "b": 2, "c": 3}
 
@@ -2499,7 +2544,9 @@ class TestMt5DataClientCoverageMissing:
             "nested": {"x": 10, "y": 20},
             "b": 2,
         }
-        result = client._flatten_dict_to_one_level(input_dict)
+        result = client._flatten_dict_to_one_level(  # type: ignore[reportPrivateUsage]
+            input_dict
+        )
 
         assert result == {"a": 1, "nested_x": 10, "nested_y": 20, "b": 2}
 
@@ -2513,7 +2560,10 @@ class TestMt5DataClientCoverageMissing:
             "level1": {"level2": {"level3": "value"}},
             "simple": "value2",
         }
-        result = client._flatten_dict_to_one_level(input_dict, sep="_")
+        result = client._flatten_dict_to_one_level(  # type: ignore[reportPrivateUsage]
+            input_dict,
+            sep="_",
+        )
 
         assert result == {"level1_level2": {"level3": "value"}, "simple": "value2"}
 
