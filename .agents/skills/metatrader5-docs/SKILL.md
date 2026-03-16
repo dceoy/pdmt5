@@ -83,7 +83,7 @@ For each relevant function, retrieve its documentation using whichever method th
 - Shell fallback, for example:
 
 ```bash
-curl -L "https://www.mql5.com/en/docs/python_metatrader5/<url_path>"
+curl -fsSL "https://www.mql5.com/en/docs/python_metatrader5/<url_path>"
 ```
 
 Extraction target for each page:
