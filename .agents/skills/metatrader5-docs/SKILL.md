@@ -7,9 +7,9 @@ description: Search the official MQL5 documentation for MetaTrader5 Python packa
 
 Search the official MQL5 documentation at `https://www.mql5.com/en/docs/python_metatrader5` for MetaTrader5 Python package usage.
 
-## Agent Compatibility
+## Agent-Agnostic Compatibility
 
-This skill is **tool-agnostic** and can be used with Claude Code, Codex CLI, Copilot CLI, or other agents.
+This skill is **agent-agnostic** and can be used with Claude Code, Codex CLI, Copilot CLI, or other agents.
 
 - Prefer the agent's native web-fetch capability (for example: `WebFetch`, browser tool, or built-in URL retrieval).
 - If no native fetch tool exists, use CLI fallback (`curl` or `wget`) to retrieve docs pages.
@@ -83,7 +83,7 @@ For each relevant function, retrieve its documentation using whichever method th
 - Shell fallback, for example:
 
 ```bash
-curl -fsSL "https://www.mql5.com/en/docs/python_metatrader5/<url_path>"
+curl -fsSL "https://www.mql5.com/en/docs/python_metatrader5<url_path>"
 ```
 
 Extraction target for each page:
