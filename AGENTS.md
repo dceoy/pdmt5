@@ -10,7 +10,9 @@ uv sync
 
 ### Code Quality and Documentation
 
-1. **format, lint, and test**: Use the `local-qa` skill.
+**Important**: Run these before committing or creating a PR.
+
+1. **format, lint, and test**: Use `local-qa` skill.
 2. **Documentation build** (if any public API changes): `uv run mkdocs build`
 
 ## Architecture
