@@ -1,5 +1,5 @@
 ---
-name: metatrader5-search
+name: metatrader5-docs
 description: Search the official MQL5 documentation for MetaTrader5 Python package usage. Use when the user needs help with MT5 Python API functions, parameters, return values, or usage examples.
 ---
 
