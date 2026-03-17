@@ -44,7 +44,7 @@ uv sync
 - Comprehensive linting with 35+ rule categories (ruff)
 - Test coverage tracking with 100% (pytest-cov)
 - Parametrized tests for input/result matrices using `pytest.mark.parametrize` (pytest)
-- Professional financial software standards
+- Test doubles (mocks, stubs) using `pytest_mock` for external dependencies (pytest-mock)
 - Pydantic models for data validation and configuration
 - Context manager support for resource management
 
