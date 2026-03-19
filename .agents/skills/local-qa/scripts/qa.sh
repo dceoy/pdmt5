@@ -10,7 +10,7 @@ uv run pyright .
 uv run pytest
 
 # Markdown
-prettier --write './**/*.md'
+npx -y prettier --write './**/*.md'
 
 # GitHub Actions
 zizmor --fix=safe .github/workflows
