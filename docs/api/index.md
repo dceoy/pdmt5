@@ -6,6 +6,10 @@ This section contains the complete API documentation for pdmt5.
 
 The pdmt5 package consists of the following modules:
 
+### [CLI](cli.md)
+
+Command-line interface for exporting MetaTrader 5 data to CSV, JSON, Parquet, or SQLite3 files.
+
 ### [Mt5Client](mt5.md)
 
 Base client class for MetaTrader 5 operations with connection management, low-level API access, and error handling (`Mt5RuntimeError`).
@@ -26,6 +30,7 @@ The package follows a layered architecture:
 2. **Data Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
 3. **Trading Layer** (`trading.py`): Extends `Mt5DataClient` with advanced trading operations and `Mt5TradingError` exception
 4. **Utilities** (`utils.py`): Helper functions for time conversion and DataFrame manipulation
+5. **CLI** (`cli.py`): Command-line interface for data export using typer
 
 ## Usage Guidelines
 

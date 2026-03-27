@@ -12,6 +12,7 @@ pdmt5 is a Python library that provides a pandas-based interface for handling Me
 - **Pandas-based**: Leverages pandas for efficient data manipulation
 - **Type Safety**: Built with pydantic for robust data validation
 - **Financial Focus**: Designed specifically for trading and financial data analysis
+- **CLI Export**: Command-line tool for exporting data to CSV, JSON, Parquet, or SQLite3
 
 ## Installation
 
@@ -73,6 +74,7 @@ with Mt5TradingClient(config=config) as client:
 
 Browse the API documentation to learn about available modules and functions:
 
+- [CLI Reference](api/cli.md) - Command-line interface for exporting data to CSV, JSON, Parquet, or SQLite3
 - [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access with context manager support
 - [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client with DataFrame conversions
 - [Mt5TradingClient](api/trading.md) - Advanced trading operations with position management
