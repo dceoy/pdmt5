@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import TYPE_CHECKING
+from enum import StrEnum
+from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING, Annotated, cast
+
+import click
+import typer
 
 from .dataframe import Mt5Config, Mt5DataClient
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable
 
     import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 TIMEFRAME_MAP: dict[str, int] = {
     "M1": 1,
@@ -57,6 +65,144 @@ _FORMAT_EXTENSIONS: dict[str, str] = {
     ".sqlite": "sqlite3",
     ".sqlite3": "sqlite3",
 }
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
+
+class OutputFormat(StrEnum):
+    """Supported output file formats."""
+
+    csv = "csv"
+    json = "json"
+    parquet = "parquet"
+    sqlite3 = "sqlite3"
+
+
+class LogLevel(StrEnum):
+    """Logging verbosity levels."""
+
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+
+
+# ---------------------------------------------------------------------------
+# Click parameter types
+# ---------------------------------------------------------------------------
+
+
+class _DateTimeType(click.ParamType):
+    """Click parameter type for ISO 8601 datetime strings."""
+
+    name = "DATETIME"
+
+    def convert(
+        self,
+        value: object,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> datetime:
+        """Convert a string value to a timezone-aware datetime.
+
+        Args:
+            value: Raw value from the command line.
+            param: Click parameter instance.
+            ctx: Click context.
+
+        Returns:
+            Parsed datetime.
+        """
+        if isinstance(value, datetime):
+            return value
+        try:
+            return parse_datetime(str(value))
+        except ValueError as exc:
+            self.fail(str(exc), param, ctx)
+
+
+class _TimeframeType(click.ParamType):
+    """Click parameter type for MT5 timeframe values."""
+
+    name = "TIMEFRAME"
+
+    def convert(
+        self,
+        value: object,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> int:
+        """Convert a string or integer value to a timeframe integer.
+
+        Args:
+            value: Raw value from the command line.
+            param: Click parameter instance.
+            ctx: Click context.
+
+        Returns:
+            Integer timeframe value.
+        """
+        if isinstance(value, int):
+            return value
+        try:
+            return parse_timeframe(str(value))
+        except ValueError as exc:
+            self.fail(str(exc), param, ctx)
+
+
+class _TickFlagsType(click.ParamType):
+    """Click parameter type for MT5 tick copy flags."""
+
+    name = "FLAGS"
+
+    def convert(
+        self,
+        value: object,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> int:
+        """Convert a string or integer value to a tick flags integer.
+
+        Args:
+            value: Raw value from the command line.
+            param: Click parameter instance.
+            ctx: Click context.
+
+        Returns:
+            Integer tick flag value.
+        """
+        if isinstance(value, int):
+            return value
+        try:
+            return parse_tick_flags(str(value))
+        except ValueError as exc:
+            self.fail(str(exc), param, ctx)
+
+
+DATETIME_TYPE = _DateTimeType()
+TIMEFRAME_TYPE = _TimeframeType()
+TICK_FLAGS_TYPE = _TickFlagsType()
+
+# ---------------------------------------------------------------------------
+# Export context
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _ExportContext:
+    """Shared context data passed from the callback to each subcommand."""
+
+    output: Path
+    output_format: str
+    table: str
+    config: Mt5Config
+
+
+# ---------------------------------------------------------------------------
+# Public utility functions
+# ---------------------------------------------------------------------------
 
 
 def detect_format(
@@ -107,7 +253,12 @@ def export_dataframe(
     if output_format == "csv":
         df.to_csv(output_path, index=False)
     elif output_format == "json":
-        df.to_json(output_path, orient="records", date_format="iso", indent=2)
+        df.to_json(
+            output_path,
+            orient="records",
+            date_format="iso",
+            indent=2,
+        )
     elif output_format == "parquet":
         df.to_parquet(output_path, index=False)
     elif output_format == "sqlite3":
@@ -134,13 +285,13 @@ def parse_datetime(value: str) -> datetime:
         Parsed datetime with UTC timezone if no timezone is specified.
 
     Raises:
-        argparse.ArgumentTypeError: If the string cannot be parsed.
+        ValueError: If the string cannot be parsed.
     """
     try:
         dt = datetime.fromisoformat(value)
     except ValueError:
         msg = f"Invalid datetime format: '{value}'. Use ISO 8601 format."
-        raise argparse.ArgumentTypeError(msg) from None
+        raise ValueError(msg) from None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return dt
@@ -156,7 +307,7 @@ def parse_timeframe(value: str) -> int:
         Integer timeframe value.
 
     Raises:
-        argparse.ArgumentTypeError: If the timeframe is invalid.
+        ValueError: If the timeframe is invalid.
     """
     upper = value.upper()
     if upper in TIMEFRAME_MAP:
@@ -166,7 +317,7 @@ def parse_timeframe(value: str) -> int:
     except ValueError:
         valid = ", ".join(TIMEFRAME_MAP)
         msg = f"Invalid timeframe: '{value}'. Use one of: {valid}, or an integer."
-        raise argparse.ArgumentTypeError(msg) from None
+        raise ValueError(msg) from None
 
 
 def parse_tick_flags(value: str) -> int:
@@ -179,7 +330,7 @@ def parse_tick_flags(value: str) -> int:
         Integer tick flag value.
 
     Raises:
-        argparse.ArgumentTypeError: If the flag is invalid.
+        ValueError: If the flag is invalid.
     """
     upper = value.upper()
     if upper in TICK_FLAG_MAP:
@@ -189,373 +340,414 @@ def parse_tick_flags(value: str) -> int:
     except ValueError:
         valid = ", ".join(TICK_FLAG_MAP)
         msg = f"Invalid tick flags: '{value}'. Use one of: {valid}, or an integer."
-        raise argparse.ArgumentTypeError(msg) from None
+        raise ValueError(msg) from None
 
 
-def _fetch_rates(
-    client: Mt5DataClient,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    command: str = args.command
-    if command == "rates-from":
-        return client.copy_rates_from_as_df(
-            symbol=args.symbol,
-            timeframe=args.timeframe,
-            date_from=args.date_from,
-            count=args.count,
-        )
-    if command == "rates-from-pos":
-        return client.copy_rates_from_pos_as_df(
-            symbol=args.symbol,
-            timeframe=args.timeframe,
-            start_pos=args.start_pos,
-            count=args.count,
-        )
-    return client.copy_rates_range_as_df(
-        symbol=args.symbol,
-        timeframe=args.timeframe,
-        date_from=args.date_from,
-        date_to=args.date_to,
-    )
+# ---------------------------------------------------------------------------
+# Typer application
+# ---------------------------------------------------------------------------
+
+app = typer.Typer(
+    name="pdmt5",
+    help="Export MetaTrader5 data to CSV, JSON, Parquet, or SQLite3.",
+)
 
 
-def _fetch_ticks(
-    client: Mt5DataClient,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    if args.command == "ticks-from":
-        return client.copy_ticks_from_as_df(
-            symbol=args.symbol,
-            date_from=args.date_from,
-            count=args.count,
-            flags=args.flags,
-        )
-    return client.copy_ticks_range_as_df(
-        symbol=args.symbol,
-        date_from=args.date_from,
-        date_to=args.date_to,
-        flags=args.flags,
-    )
+def _get_export_context(ctx: typer.Context) -> _ExportContext:
+    return cast("_ExportContext", ctx.obj)
 
 
-def _fetch_info(
-    client: Mt5DataClient,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    command: str = args.command
-    if command == "account-info":
-        return client.account_info_as_df()
-    if command == "terminal-info":
-        return client.terminal_info_as_df()
-    if command == "symbols":
-        return client.symbols_get_as_df(group=args.group)
-    return client.symbol_info_as_df(symbol=args.symbol)
-
-
-def _fetch_trading(
-    client: Mt5DataClient,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    command: str = args.command
-    if command == "orders":
-        return client.orders_get_as_df(
-            symbol=args.symbol,
-            group=args.group,
-            ticket=args.ticket,
-        )
-    if command == "positions":
-        return client.positions_get_as_df(
-            symbol=args.symbol,
-            group=args.group,
-            ticket=args.ticket,
-        )
-    if command == "history-orders":
-        return client.history_orders_get_as_df(
-            date_from=args.date_from,
-            date_to=args.date_to,
-            group=args.group,
-            symbol=args.symbol,
-            ticket=args.ticket,
-            position=args.position,
-        )
-    return client.history_deals_get_as_df(
-        date_from=args.date_from,
-        date_to=args.date_to,
-        group=args.group,
-        symbol=args.symbol,
-        ticket=args.ticket,
-        position=args.position,
-    )
-
-
-_RATES_COMMANDS = frozenset({"rates-from", "rates-from-pos", "rates-range"})
-_TICKS_COMMANDS = frozenset({"ticks-from", "ticks-range"})
-_INFO_COMMANDS = frozenset({"account-info", "terminal-info", "symbols", "symbol-info"})
-_TRADING_COMMANDS = frozenset({
-    "orders",
-    "positions",
-    "history-orders",
-    "history-deals",
-})
-
-
-def fetch_data(
-    client: Mt5DataClient,
-    args: argparse.Namespace,
-) -> pd.DataFrame:
-    """Fetch data from MetaTrader5 based on the CLI subcommand.
+def _execute_export(
+    ctx: typer.Context,
+    fetch_fn: Callable[[Mt5DataClient], pd.DataFrame],
+) -> None:
+    """Execute the common connect-fetch-export-shutdown workflow.
 
     Args:
-        client: MetaTrader5 data client.
-        args: Parsed command-line arguments.
-
-    Returns:
-        DataFrame with the fetched data.
-
-    Raises:
-        ValueError: If the command is unknown.
+        ctx: Typer context carrying shared options.
+        fetch_fn: Callable that receives a connected client and returns a
+            DataFrame.
     """
-    command: str = args.command
-    if command in _RATES_COMMANDS:
-        return _fetch_rates(client, args)
-    if command in _TICKS_COMMANDS:
-        return _fetch_ticks(client, args)
-    if command in _INFO_COMMANDS:
-        return _fetch_info(client, args)
-    if command in _TRADING_COMMANDS:
-        return _fetch_trading(client, args)
-    msg = f"Unknown command: {command}"
-    raise ValueError(msg)
-
-
-def _add_connection_args(parser: argparse.ArgumentParser) -> None:
-    group = parser.add_argument_group("connection")
-    group.add_argument("--login", type=int, default=None, help="trading account login")
-    group.add_argument("--password", default=None, help="trading account password")
-    group.add_argument("--server", default=None, help="trading server name")
-    group.add_argument(
-        "--path", default=None, help="path to MetaTrader5 terminal EXE file"
-    )
-    group.add_argument(
-        "--timeout", type=int, default=None, help="connection timeout in milliseconds"
-    )
-
-
-def _add_output_args(parser: argparse.ArgumentParser) -> None:
-    group = parser.add_argument_group("output")
-    group.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        required=True,
-        help="output file path",
-    )
-    group.add_argument(
-        "-f",
-        "--format",
-        choices=("csv", "json", "parquet", "sqlite3"),
-        default=None,
-        help="output format (auto-detected from file extension if omitted)",
-    )
-    group.add_argument(
-        "--table",
-        default="data",
-        help="table name for SQLite3 output (default: data)",
-    )
-
-
-def _add_symbol_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--symbol", required=True, help="symbol name (e.g., EURUSD)")
-
-
-def _add_timeframe_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--timeframe",
-        type=parse_timeframe,
-        required=True,
-        help="timeframe (e.g., M1, M5, H1, H4, D1, W1, MN1, or integer)",
-    )
-
-
-def _add_date_from_arg(
-    parser: argparse.ArgumentParser,
-    required: bool = True,
-) -> None:
-    parser.add_argument(
-        "--date-from",
-        type=parse_datetime,
-        required=required,
-        default=None,
-        help="start date in ISO 8601 format (e.g., 2024-01-01)",
-    )
-
-
-def _add_date_to_arg(
-    parser: argparse.ArgumentParser,
-    required: bool = True,
-) -> None:
-    parser.add_argument(
-        "--date-to",
-        type=parse_datetime,
-        required=required,
-        default=None,
-        help="end date in ISO 8601 format (e.g., 2024-02-01)",
-    )
-
-
-def _add_count_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--count", type=int, required=True, help="number of records to retrieve"
-    )
-
-
-def _add_flags_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--flags",
-        type=parse_tick_flags,
-        required=True,
-        help="tick copy flags (ALL, INFO, TRADE, or integer)",
-    )
-
-
-def _add_filter_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--symbol", default=None, help="symbol filter")
-    parser.add_argument("--group", default=None, help="group filter")
-    parser.add_argument("--ticket", type=int, default=None, help="ticket filter")
-
-
-def _add_history_args(parser: argparse.ArgumentParser) -> None:
-    _add_date_from_arg(parser, required=False)
-    _add_date_to_arg(parser, required=False)
-    parser.add_argument("--group", default=None, help="group filter")
-    parser.add_argument("--symbol", default=None, help="symbol filter")
-    parser.add_argument("--ticket", type=int, default=None, help="order ticket")
-    parser.add_argument("--position", type=int, default=None, help="position ticket")
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for the CLI.
-
-    Returns:
-        Configured argument parser.
-    """
-    parser = argparse.ArgumentParser(
-        prog="pdmt5",
-        description="Export MetaTrader5 data to CSV, JSON, Parquet, or SQLite3.",
-    )
-    _add_connection_args(parser)
-    _add_output_args(parser)
-    parser.add_argument(
-        "--log-level",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
-        default="WARNING",
-        help="logging level (default: WARNING)",
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # rates-from
-    p = subparsers.add_parser("rates-from", help="export rates from a start date")
-    _add_symbol_arg(p)
-    _add_timeframe_arg(p)
-    _add_date_from_arg(p)
-    _add_count_arg(p)
-
-    # rates-from-pos
-    p = subparsers.add_parser(
-        "rates-from-pos", help="export rates from a start position"
-    )
-    _add_symbol_arg(p)
-    _add_timeframe_arg(p)
-    p.add_argument(
-        "--start-pos", type=int, required=True, help="start position (0 = current bar)"
-    )
-    _add_count_arg(p)
-
-    # rates-range
-    p = subparsers.add_parser("rates-range", help="export rates for a date range")
-    _add_symbol_arg(p)
-    _add_timeframe_arg(p)
-    _add_date_from_arg(p)
-    _add_date_to_arg(p)
-
-    # ticks-from
-    p = subparsers.add_parser("ticks-from", help="export ticks from a start date")
-    _add_symbol_arg(p)
-    _add_date_from_arg(p)
-    _add_count_arg(p)
-    _add_flags_arg(p)
-
-    # ticks-range
-    p = subparsers.add_parser("ticks-range", help="export ticks for a date range")
-    _add_symbol_arg(p)
-    _add_date_from_arg(p)
-    _add_date_to_arg(p)
-    _add_flags_arg(p)
-
-    # account-info
-    subparsers.add_parser("account-info", help="export account information")
-
-    # terminal-info
-    subparsers.add_parser("terminal-info", help="export terminal information")
-
-    # symbols
-    p = subparsers.add_parser("symbols", help="export symbol list")
-    p.add_argument("--group", default=None, help="symbol group filter (e.g., *USD*)")
-
-    # symbol-info
-    p = subparsers.add_parser("symbol-info", help="export symbol details")
-    _add_symbol_arg(p)
-
-    # orders
-    p = subparsers.add_parser("orders", help="export active orders")
-    _add_filter_args(p)
-
-    # positions
-    p = subparsers.add_parser("positions", help="export open positions")
-    _add_filter_args(p)
-
-    # history-orders
-    p = subparsers.add_parser("history-orders", help="export historical orders")
-    _add_history_args(p)
-
-    # history-deals
-    p = subparsers.add_parser("history-deals", help="export historical deals")
-    _add_history_args(p)
-
-    return parser
-
-
-def main(argv: Sequence[str] | None = None) -> None:
-    """Run the pdmt5 CLI.
-
-    Args:
-        argv: Command-line arguments (defaults to sys.argv[1:]).
-    """
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    logging.basicConfig(level=getattr(logging, args.log_level))
-    output_path: Path = args.output
-    try:
-        output_format = detect_format(output_path, args.format)
-    except ValueError as e:
-        parser.error(str(e))
-    config = Mt5Config(
-        path=args.path,
-        login=args.login,
-        password=args.password,
-        server=args.server,
-        timeout=args.timeout,
-    )
-    client = Mt5DataClient(config=config)
+    export_ctx = _get_export_context(ctx)
+    client = Mt5DataClient(config=export_ctx.config)
     client.initialize_and_login_mt5()
     try:
-        df = fetch_data(client, args)
+        df = fetch_fn(client)
         export_dataframe(
             df=df,
-            output_path=output_path,
-            output_format=output_format,
-            table_name=args.table,
+            output_path=export_ctx.output,
+            output_format=export_ctx.output_format,
+            table_name=export_ctx.table,
         )
-        logger.info("Exported %d rows to %s (%s)", len(df), output_path, output_format)
+        logger.info(
+            "Exported %d rows to %s (%s)",
+            len(df),
+            export_ctx.output,
+            export_ctx.output_format,
+        )
     finally:
         client.shutdown()
+
+
+@app.callback()
+def _callback(  # pyright: ignore[reportUnusedFunction]
+    ctx: typer.Context,
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Output file path."),
+    ],
+    fmt: Annotated[
+        OutputFormat | None,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Output format (auto-detected from extension if omitted).",
+        ),
+    ] = None,
+    table: Annotated[
+        str,
+        typer.Option(help="Table name for SQLite3 output."),
+    ] = "data",
+    login: Annotated[
+        int | None,
+        typer.Option(help="Trading account login."),
+    ] = None,
+    password: Annotated[
+        str | None,
+        typer.Option(help="Trading account password."),
+    ] = None,
+    server: Annotated[
+        str | None,
+        typer.Option(help="Trading server name."),
+    ] = None,
+    path: Annotated[
+        str | None,
+        typer.Option(help="Path to MetaTrader5 terminal EXE file."),
+    ] = None,
+    timeout: Annotated[
+        int | None,
+        typer.Option(help="Connection timeout in milliseconds."),
+    ] = None,
+    log_level: Annotated[
+        LogLevel,
+        typer.Option("--log-level", help="Logging level."),
+    ] = LogLevel.WARNING,
+) -> None:
+    """Configure shared options for all export commands.
+
+    Raises:
+        typer.BadParameter: If the output format cannot be determined.
+    """
+    logging.basicConfig(level=getattr(logging, log_level.value))
+    try:
+        output_format = detect_format(
+            output,
+            explicit_format=fmt.value if fmt is not None else None,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    ctx.obj = _ExportContext(
+        output=output,
+        output_format=output_format,
+        table=table,
+        config=Mt5Config(
+            path=path,
+            login=login,
+            password=password,
+            server=server,
+            timeout=timeout,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def rates_from(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+    timeframe: Annotated[
+        int,
+        typer.Option(
+            click_type=TIMEFRAME_TYPE,
+            help="Timeframe (e.g., M1, H1, D1, or integer).",
+        ),
+    ],
+    date_from: Annotated[
+        datetime,
+        typer.Option(
+            click_type=DATETIME_TYPE,
+            help="Start date in ISO 8601 format.",
+        ),
+    ],
+    count: Annotated[int, typer.Option(help="Number of records.")],
+) -> None:
+    """Export rates from a start date."""
+    _execute_export(
+        ctx,
+        lambda c: c.copy_rates_from_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            date_from=date_from,
+            count=count,
+        ),
+    )
+
+
+@app.command()
+def rates_from_pos(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+    timeframe: Annotated[
+        int,
+        typer.Option(
+            click_type=TIMEFRAME_TYPE,
+            help="Timeframe.",
+        ),
+    ],
+    start_pos: Annotated[int, typer.Option(help="Start position (0 = current bar).")],
+    count: Annotated[int, typer.Option(help="Number of records.")],
+) -> None:
+    """Export rates from a start position."""
+    _execute_export(
+        ctx,
+        lambda c: c.copy_rates_from_pos_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_pos=start_pos,
+            count=count,
+        ),
+    )
+
+
+@app.command()
+def rates_range(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+    timeframe: Annotated[
+        int,
+        typer.Option(
+            click_type=TIMEFRAME_TYPE,
+            help="Timeframe.",
+        ),
+    ],
+    date_from: Annotated[
+        datetime,
+        typer.Option(click_type=DATETIME_TYPE, help="Start date."),
+    ],
+    date_to: Annotated[
+        datetime,
+        typer.Option(click_type=DATETIME_TYPE, help="End date."),
+    ],
+) -> None:
+    """Export rates for a date range."""
+    _execute_export(
+        ctx,
+        lambda c: c.copy_rates_range_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            date_from=date_from,
+            date_to=date_to,
+        ),
+    )
+
+
+@app.command()
+def ticks_from(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+    date_from: Annotated[
+        datetime,
+        typer.Option(click_type=DATETIME_TYPE, help="Start date."),
+    ],
+    count: Annotated[int, typer.Option(help="Number of ticks.")],
+    flags: Annotated[
+        int,
+        typer.Option(
+            click_type=TICK_FLAGS_TYPE,
+            help="Tick flags (ALL, INFO, TRADE, or integer).",
+        ),
+    ],
+) -> None:
+    """Export ticks from a start date."""
+    _execute_export(
+        ctx,
+        lambda c: c.copy_ticks_from_as_df(
+            symbol=symbol,
+            date_from=date_from,
+            count=count,
+            flags=flags,
+        ),
+    )
+
+
+@app.command()
+def ticks_range(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+    date_from: Annotated[
+        datetime,
+        typer.Option(click_type=DATETIME_TYPE, help="Start date."),
+    ],
+    date_to: Annotated[
+        datetime,
+        typer.Option(click_type=DATETIME_TYPE, help="End date."),
+    ],
+    flags: Annotated[
+        int,
+        typer.Option(click_type=TICK_FLAGS_TYPE, help="Tick flags."),
+    ],
+) -> None:
+    """Export ticks for a date range."""
+    _execute_export(
+        ctx,
+        lambda c: c.copy_ticks_range_as_df(
+            symbol=symbol,
+            date_from=date_from,
+            date_to=date_to,
+            flags=flags,
+        ),
+    )
+
+
+@app.command()
+def account_info(ctx: typer.Context) -> None:
+    """Export account information."""
+    _execute_export(ctx, lambda c: c.account_info_as_df())
+
+
+@app.command()
+def terminal_info(ctx: typer.Context) -> None:
+    """Export terminal information."""
+    _execute_export(ctx, lambda c: c.terminal_info_as_df())
+
+
+@app.command()
+def symbols(
+    ctx: typer.Context,
+    group: Annotated[
+        str | None,
+        typer.Option(help="Symbol group filter (e.g., *USD*)."),
+    ] = None,
+) -> None:
+    """Export symbol list."""
+    _execute_export(
+        ctx,
+        lambda c: c.symbols_get_as_df(group=group),
+    )
+
+
+@app.command()
+def symbol_info(
+    ctx: typer.Context,
+    symbol: Annotated[str, typer.Option(help="Symbol name.")],
+) -> None:
+    """Export symbol details."""
+    _execute_export(
+        ctx,
+        lambda c: c.symbol_info_as_df(symbol=symbol),
+    )
+
+
+@app.command()
+def orders(
+    ctx: typer.Context,
+    symbol: Annotated[str | None, typer.Option(help="Symbol filter.")] = None,
+    group: Annotated[str | None, typer.Option(help="Group filter.")] = None,
+    ticket: Annotated[int | None, typer.Option(help="Ticket filter.")] = None,
+) -> None:
+    """Export active orders."""
+    _execute_export(
+        ctx,
+        lambda c: c.orders_get_as_df(
+            symbol=symbol,
+            group=group,
+            ticket=ticket,
+        ),
+    )
+
+
+@app.command()
+def positions(
+    ctx: typer.Context,
+    symbol: Annotated[str | None, typer.Option(help="Symbol filter.")] = None,
+    group: Annotated[str | None, typer.Option(help="Group filter.")] = None,
+    ticket: Annotated[int | None, typer.Option(help="Ticket filter.")] = None,
+) -> None:
+    """Export open positions."""
+    _execute_export(
+        ctx,
+        lambda c: c.positions_get_as_df(
+            symbol=symbol,
+            group=group,
+            ticket=ticket,
+        ),
+    )
+
+
+@app.command()
+def history_orders(
+    ctx: typer.Context,
+    date_from: Annotated[
+        datetime | None,
+        typer.Option(click_type=DATETIME_TYPE, help="Start date."),
+    ] = None,
+    date_to: Annotated[
+        datetime | None,
+        typer.Option(click_type=DATETIME_TYPE, help="End date."),
+    ] = None,
+    group: Annotated[str | None, typer.Option(help="Group filter.")] = None,
+    symbol: Annotated[str | None, typer.Option(help="Symbol filter.")] = None,
+    ticket: Annotated[int | None, typer.Option(help="Order ticket.")] = None,
+    position: Annotated[int | None, typer.Option(help="Position ticket.")] = None,
+) -> None:
+    """Export historical orders."""
+    _execute_export(
+        ctx,
+        lambda c: c.history_orders_get_as_df(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            symbol=symbol,
+            ticket=ticket,
+            position=position,
+        ),
+    )
+
+
+@app.command()
+def history_deals(
+    ctx: typer.Context,
+    date_from: Annotated[
+        datetime | None,
+        typer.Option(click_type=DATETIME_TYPE, help="Start date."),
+    ] = None,
+    date_to: Annotated[
+        datetime | None,
+        typer.Option(click_type=DATETIME_TYPE, help="End date."),
+    ] = None,
+    group: Annotated[str | None, typer.Option(help="Group filter.")] = None,
+    symbol: Annotated[str | None, typer.Option(help="Symbol filter.")] = None,
+    ticket: Annotated[int | None, typer.Option(help="Order ticket.")] = None,
+    position: Annotated[int | None, typer.Option(help="Position ticket.")] = None,
+) -> None:
+    """Export historical deals."""
+    _execute_export(
+        ctx,
+        lambda c: c.history_deals_get_as_df(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            symbol=symbol,
+            ticket=ticket,
+            position=position,
+        ),
+    )
+
+
+def main() -> None:
+    """Run the pdmt5 CLI."""
+    app()

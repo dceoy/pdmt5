@@ -2,33 +2,43 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sqlite3
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 from pytest_mock import MockerFixture  # noqa: TC002
+from typer.testing import CliRunner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from pdmt5.cli import (
+    DATETIME_TYPE,
     TICK_FLAG_MAP,
+    TICK_FLAGS_TYPE,
     TIMEFRAME_MAP,
-    _build_parser,  # type: ignore[reportPrivateUsage]
-    _fetch_info,  # type: ignore[reportPrivateUsage]
-    _fetch_rates,  # type: ignore[reportPrivateUsage]
-    _fetch_ticks,  # type: ignore[reportPrivateUsage]
-    _fetch_trading,  # type: ignore[reportPrivateUsage]
+    TIMEFRAME_TYPE,
+    _execute_export,  # type: ignore[reportPrivateUsage]
+    _ExportContext,  # type: ignore[reportPrivateUsage]
+    app,
     detect_format,
     export_dataframe,
-    fetch_data,
     main,
     parse_datetime,
     parse_tick_flags,
     parse_timeframe,
 )
+
+runner = CliRunner()
+
+
+# ---------------------------------------------------------------------------
+# detect_format
+# ---------------------------------------------------------------------------
 
 
 class TestDetectFormat:
@@ -68,6 +78,11 @@ class TestDetectFormat:
         """Test that unknown extension raises ValueError."""
         with pytest.raises(ValueError, match="Cannot detect format"):
             detect_format(tmp_path / "data.xyz")
+
+
+# ---------------------------------------------------------------------------
+# export_dataframe
+# ---------------------------------------------------------------------------
 
 
 class TestExportDataframe:
@@ -122,6 +137,11 @@ class TestExportDataframe:
             export_dataframe(sample_df, tmp_path / "out.txt", "xml")
 
 
+# ---------------------------------------------------------------------------
+# Parse helpers
+# ---------------------------------------------------------------------------
+
+
 class TestParseDatetime:
     """Tests for parse_datetime."""
 
@@ -136,8 +156,8 @@ class TestParseDatetime:
         assert result == datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
     def test_invalid_format_raises(self) -> None:
-        """Test that invalid format raises ArgumentTypeError."""
-        with pytest.raises(argparse.ArgumentTypeError, match="Invalid datetime"):
+        """Test that invalid format raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid datetime"):
             parse_datetime("not-a-date")
 
 
@@ -157,8 +177,8 @@ class TestParseTimeframe:
         assert parse_timeframe("42") == 42
 
     def test_invalid_timeframe_raises(self) -> None:
-        """Test that invalid timeframe raises ArgumentTypeError."""
-        with pytest.raises(argparse.ArgumentTypeError, match="Invalid timeframe"):
+        """Test that invalid timeframe raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid timeframe"):
             parse_timeframe("INVALID")
 
 
@@ -178,9 +198,14 @@ class TestParseTickFlags:
         assert parse_tick_flags("7") == 7
 
     def test_invalid_flag_raises(self) -> None:
-        """Test that invalid flag raises ArgumentTypeError."""
-        with pytest.raises(argparse.ArgumentTypeError, match="Invalid tick flags"):
+        """Test that invalid flag raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid tick flags"):
             parse_tick_flags("INVALID")
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 
 class TestConstants:
@@ -196,14 +221,101 @@ class TestConstants:
         assert set(TICK_FLAG_MAP) == {"ALL", "INFO", "TRADE"}
 
 
-def _make_args(**kwargs: object) -> argparse.Namespace:
-    """Create an argparse.Namespace with given attributes."""
-    return argparse.Namespace(**kwargs)
+# ---------------------------------------------------------------------------
+# Click ParamTypes
+# ---------------------------------------------------------------------------
+
+
+class TestDateTimeType:
+    """Tests for _DateTimeType."""
+
+    def test_convert_string(self) -> None:
+        """Test converting a string to datetime."""
+        result = DATETIME_TYPE.convert("2024-06-15", None, None)
+        assert result == datetime(2024, 6, 15, tzinfo=UTC)
+
+    def test_convert_datetime_passthrough(self) -> None:
+        """Test that datetime values pass through unchanged."""
+        dt = datetime(2024, 1, 1, tzinfo=UTC)
+        assert DATETIME_TYPE.convert(dt, None, None) is dt
+
+    def test_convert_invalid(self) -> None:
+        """Test that invalid values raise BadParameter."""
+        with pytest.raises(Exception, match="Invalid datetime"):
+            DATETIME_TYPE.convert("bad", None, None)
+
+
+class TestTimeframeType:
+    """Tests for _TimeframeType."""
+
+    def test_convert_string(self) -> None:
+        """Test converting a string to timeframe integer."""
+        assert TIMEFRAME_TYPE.convert("H1", None, None) == 16385
+
+    def test_convert_int_passthrough(self) -> None:
+        """Test that integer values pass through unchanged."""
+        assert TIMEFRAME_TYPE.convert(42, None, None) == 42
+
+    def test_convert_invalid(self) -> None:
+        """Test that invalid values raise BadParameter."""
+        with pytest.raises(Exception, match="Invalid timeframe"):
+            TIMEFRAME_TYPE.convert("bad", None, None)
+
+
+class TestTickFlagsType:
+    """Tests for _TickFlagsType."""
+
+    def test_convert_string(self) -> None:
+        """Test converting a string to tick flags integer."""
+        assert TICK_FLAGS_TYPE.convert("ALL", None, None) == 1
+
+    def test_convert_int_passthrough(self) -> None:
+        """Test that integer values pass through unchanged."""
+        assert TICK_FLAGS_TYPE.convert(7, None, None) == 7
+
+    def test_convert_invalid(self) -> None:
+        """Test that invalid values raise BadParameter."""
+        with pytest.raises(Exception, match="Invalid tick flags"):
+            TICK_FLAGS_TYPE.convert("bad", None, None)
+
+
+# ---------------------------------------------------------------------------
+# _execute_export
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteExport:
+    """Tests for _execute_export."""
+
+    def test_shutdown_on_error(
+        self,
+        tmp_path: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that shutdown is called even when fetch raises."""
+        mock_client = MagicMock()
+        mock_client.account_info_as_df.side_effect = RuntimeError("boom")
+        mocker.patch("pdmt5.cli.Mt5DataClient", return_value=mock_client)
+        ctx = MagicMock()
+        ctx.obj = _ExportContext(
+            output=tmp_path / "out.csv",
+            output_format="csv",
+            table="data",
+            config=MagicMock(),
+        )
+        with pytest.raises(RuntimeError, match="boom"):
+            _execute_export(ctx, lambda c: c.account_info_as_df())
+        mock_client.shutdown.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# CLI commands via CliRunner
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def mock_client() -> MagicMock:
-    """Create a mock Mt5DataClient."""
+def mock_client(mocker: MockerFixture) -> MagicMock:
+    """Create and patch a mock Mt5DataClient for CLI tests."""
     client = MagicMock()
     sample_df = pd.DataFrame({"col": [1]})
     client.copy_rates_from_as_df.return_value = sample_df
@@ -219,40 +331,129 @@ def mock_client() -> MagicMock:
     client.positions_get_as_df.return_value = sample_df
     client.history_orders_get_as_df.return_value = sample_df
     client.history_deals_get_as_df.return_value = sample_df
+    mocker.patch("pdmt5.cli.Mt5DataClient", return_value=client)
     return client
 
 
-class TestFetchRates:
-    """Tests for _fetch_rates."""
+class TestCommands:
+    """Tests for all CLI subcommands via CliRunner."""
 
-    def test_rates_from(self, mock_client: MagicMock) -> None:
-        """Test rates-from command dispatches correctly."""
-        dt = datetime(2024, 1, 1, tzinfo=UTC)
-        args = _make_args(
-            command="rates-from",
-            symbol="EURUSD",
-            timeframe=1,
-            date_from=dt,
-            count=100,
+    def test_account_info(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test account-info command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "account-info"],
         )
-        _fetch_rates(mock_client, args)
+        assert result.exit_code == 0, result.output
+        mock_client.account_info_as_df.assert_called_once()
+        assert output.exists()
+
+    def test_terminal_info(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test terminal-info command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "terminal-info"],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.terminal_info_as_df.assert_called_once()
+
+    def test_symbols(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test symbols command."""
+        output = tmp_path / "out.json"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "symbols", "--group", "*USD*"],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.symbols_get_as_df.assert_called_once_with(
+            group="*USD*",
+        )
+
+    def test_symbol_info(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test symbol-info command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "symbol-info", "--symbol", "EURUSD"],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.symbol_info_as_df.assert_called_once_with(
+            symbol="EURUSD",
+        )
+
+    def test_rates_from(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test rates-from command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "rates-from",
+                "--symbol",
+                "EURUSD",
+                "--timeframe",
+                "M1",
+                "--date-from",
+                "2024-01-01",
+                "--count",
+                "100",
+            ],
+        )
+        assert result.exit_code == 0, result.output
         mock_client.copy_rates_from_as_df.assert_called_once_with(
             symbol="EURUSD",
             timeframe=1,
-            date_from=dt,
+            date_from=datetime(2024, 1, 1, tzinfo=UTC),
             count=100,
         )
 
-    def test_rates_from_pos(self, mock_client: MagicMock) -> None:
-        """Test rates-from-pos command dispatches correctly."""
-        args = _make_args(
-            command="rates-from-pos",
-            symbol="GBPUSD",
-            timeframe=16385,
-            start_pos=0,
-            count=50,
+    def test_rates_from_pos(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test rates-from-pos command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "rates-from-pos",
+                "--symbol",
+                "GBPUSD",
+                "--timeframe",
+                "H1",
+                "--start-pos",
+                "0",
+                "--count",
+                "50",
+            ],
         )
-        _fetch_rates(mock_client, args)
+        assert result.exit_code == 0, result.output
         mock_client.copy_rates_from_pos_as_df.assert_called_once_with(
             symbol="GBPUSD",
             timeframe=16385,
@@ -260,560 +461,291 @@ class TestFetchRates:
             count=50,
         )
 
-    def test_rates_range(self, mock_client: MagicMock) -> None:
-        """Test rates-range command dispatches correctly."""
-        dt_from = datetime(2024, 1, 1, tzinfo=UTC)
-        dt_to = datetime(2024, 2, 1, tzinfo=UTC)
-        args = _make_args(
-            command="rates-range",
-            symbol="USDJPY",
-            timeframe=16408,
-            date_from=dt_from,
-            date_to=dt_to,
+    def test_rates_range(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test rates-range command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "rates-range",
+                "--symbol",
+                "USDJPY",
+                "--timeframe",
+                "D1",
+                "--date-from",
+                "2024-01-01",
+                "--date-to",
+                "2024-02-01",
+            ],
         )
-        _fetch_rates(mock_client, args)
+        assert result.exit_code == 0, result.output
         mock_client.copy_rates_range_as_df.assert_called_once_with(
             symbol="USDJPY",
             timeframe=16408,
-            date_from=dt_from,
-            date_to=dt_to,
+            date_from=datetime(2024, 1, 1, tzinfo=UTC),
+            date_to=datetime(2024, 2, 1, tzinfo=UTC),
         )
 
-
-class TestFetchTicks:
-    """Tests for _fetch_ticks."""
-
-    def test_ticks_from(self, mock_client: MagicMock) -> None:
-        """Test ticks-from command dispatches correctly."""
-        dt = datetime(2024, 1, 1, tzinfo=UTC)
-        args = _make_args(
-            command="ticks-from",
-            symbol="EURUSD",
-            date_from=dt,
-            count=100,
-            flags=1,
+    def test_ticks_from(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test ticks-from command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "ticks-from",
+                "--symbol",
+                "EURUSD",
+                "--date-from",
+                "2024-01-01",
+                "--count",
+                "100",
+                "--flags",
+                "ALL",
+            ],
         )
-        _fetch_ticks(mock_client, args)
+        assert result.exit_code == 0, result.output
         mock_client.copy_ticks_from_as_df.assert_called_once_with(
             symbol="EURUSD",
-            date_from=dt,
+            date_from=datetime(2024, 1, 1, tzinfo=UTC),
             count=100,
             flags=1,
         )
 
-    def test_ticks_range(self, mock_client: MagicMock) -> None:
-        """Test ticks-range command dispatches correctly."""
-        dt_from = datetime(2024, 1, 1, tzinfo=UTC)
-        dt_to = datetime(2024, 2, 1, tzinfo=UTC)
-        args = _make_args(
-            command="ticks-range",
-            symbol="EURUSD",
-            date_from=dt_from,
-            date_to=dt_to,
-            flags=2,
+    def test_ticks_range(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test ticks-range command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "ticks-range",
+                "--symbol",
+                "EURUSD",
+                "--date-from",
+                "2024-01-01",
+                "--date-to",
+                "2024-02-01",
+                "--flags",
+                "INFO",
+            ],
         )
-        _fetch_ticks(mock_client, args)
+        assert result.exit_code == 0, result.output
         mock_client.copy_ticks_range_as_df.assert_called_once_with(
             symbol="EURUSD",
-            date_from=dt_from,
-            date_to=dt_to,
+            date_from=datetime(2024, 1, 1, tzinfo=UTC),
+            date_to=datetime(2024, 2, 1, tzinfo=UTC),
             flags=2,
         )
 
-
-class TestFetchInfo:
-    """Tests for _fetch_info."""
-
-    def test_account_info(self, mock_client: MagicMock) -> None:
-        """Test account-info command dispatches correctly."""
-        args = _make_args(command="account-info")
-        _fetch_info(mock_client, args)
-        mock_client.account_info_as_df.assert_called_once()
-
-    def test_terminal_info(self, mock_client: MagicMock) -> None:
-        """Test terminal-info command dispatches correctly."""
-        args = _make_args(command="terminal-info")
-        _fetch_info(mock_client, args)
-        mock_client.terminal_info_as_df.assert_called_once()
-
-    def test_symbols(self, mock_client: MagicMock) -> None:
-        """Test symbols command dispatches correctly."""
-        args = _make_args(command="symbols", group="*USD*")
-        _fetch_info(mock_client, args)
-        mock_client.symbols_get_as_df.assert_called_once_with(group="*USD*")
-
-    def test_symbol_info(self, mock_client: MagicMock) -> None:
-        """Test symbol-info command dispatches correctly."""
-        args = _make_args(command="symbol-info", symbol="EURUSD")
-        _fetch_info(mock_client, args)
-        mock_client.symbol_info_as_df.assert_called_once_with(symbol="EURUSD")
-
-
-class TestFetchTrading:
-    """Tests for _fetch_trading."""
-
-    def test_orders(self, mock_client: MagicMock) -> None:
-        """Test orders command dispatches correctly."""
-        args = _make_args(
-            command="orders",
-            symbol="EURUSD",
-            group=None,
-            ticket=None,
-        )
-        _fetch_trading(mock_client, args)
-        mock_client.orders_get_as_df.assert_called_once_with(
-            symbol="EURUSD",
-            group=None,
-            ticket=None,
-        )
-
-    def test_positions(self, mock_client: MagicMock) -> None:
-        """Test positions command dispatches correctly."""
-        args = _make_args(
-            command="positions",
-            symbol=None,
-            group="*USD*",
-            ticket=None,
-        )
-        _fetch_trading(mock_client, args)
-        mock_client.positions_get_as_df.assert_called_once_with(
-            symbol=None,
-            group="*USD*",
-            ticket=None,
-        )
-
-    def test_history_orders(self, mock_client: MagicMock) -> None:
-        """Test history-orders command dispatches correctly."""
-        dt_from = datetime(2024, 1, 1, tzinfo=UTC)
-        dt_to = datetime(2024, 2, 1, tzinfo=UTC)
-        args = _make_args(
-            command="history-orders",
-            date_from=dt_from,
-            date_to=dt_to,
-            group=None,
-            symbol="EURUSD",
-            ticket=None,
-            position=None,
-        )
-        _fetch_trading(mock_client, args)
-        mock_client.history_orders_get_as_df.assert_called_once_with(
-            date_from=dt_from,
-            date_to=dt_to,
-            group=None,
-            symbol="EURUSD",
-            ticket=None,
-            position=None,
-        )
-
-    def test_history_deals(self, mock_client: MagicMock) -> None:
-        """Test history-deals command dispatches correctly."""
-        dt_from = datetime(2024, 1, 1, tzinfo=UTC)
-        dt_to = datetime(2024, 2, 1, tzinfo=UTC)
-        args = _make_args(
-            command="history-deals",
-            date_from=dt_from,
-            date_to=dt_to,
-            group=None,
-            symbol=None,
-            ticket=12345,
-            position=None,
-        )
-        _fetch_trading(mock_client, args)
-        mock_client.history_deals_get_as_df.assert_called_once_with(
-            date_from=dt_from,
-            date_to=dt_to,
-            group=None,
-            symbol=None,
-            ticket=12345,
-            position=None,
-        )
-
-
-class TestFetchData:
-    """Tests for fetch_data dispatch."""
-
-    @pytest.mark.parametrize(
-        "command",
-        ["rates-from", "rates-from-pos", "rates-range"],
-    )
-    def test_rates_dispatch(
-        self,
-        mock_client: MagicMock,
-        command: str,
-    ) -> None:
-        """Test that rates commands dispatch through fetch_data."""
-        args = _make_args(
-            command=command,
-            symbol="EURUSD",
-            timeframe=1,
-            date_from=datetime(2024, 1, 1, tzinfo=UTC),
-            date_to=datetime(2024, 2, 1, tzinfo=UTC),
-            count=100,
-            start_pos=0,
-        )
-        result = fetch_data(mock_client, args)
-        assert isinstance(result, pd.DataFrame)
-
-    @pytest.mark.parametrize("command", ["ticks-from", "ticks-range"])
-    def test_ticks_dispatch(
-        self,
-        mock_client: MagicMock,
-        command: str,
-    ) -> None:
-        """Test that ticks commands dispatch through fetch_data."""
-        args = _make_args(
-            command=command,
-            symbol="EURUSD",
-            date_from=datetime(2024, 1, 1, tzinfo=UTC),
-            date_to=datetime(2024, 2, 1, tzinfo=UTC),
-            count=100,
-            flags=1,
-        )
-        result = fetch_data(mock_client, args)
-        assert isinstance(result, pd.DataFrame)
-
-    @pytest.mark.parametrize(
-        "command",
-        ["account-info", "terminal-info", "symbols", "symbol-info"],
-    )
-    def test_info_dispatch(
-        self,
-        mock_client: MagicMock,
-        command: str,
-    ) -> None:
-        """Test that info commands dispatch through fetch_data."""
-        args = _make_args(
-            command=command,
-            symbol="EURUSD",
-            group=None,
-        )
-        result = fetch_data(mock_client, args)
-        assert isinstance(result, pd.DataFrame)
-
-    @pytest.mark.parametrize(
-        "command",
-        ["orders", "positions", "history-orders", "history-deals"],
-    )
-    def test_trading_dispatch(
-        self,
-        mock_client: MagicMock,
-        command: str,
-    ) -> None:
-        """Test that trading commands dispatch through fetch_data."""
-        args = _make_args(
-            command=command,
-            symbol=None,
-            group=None,
-            ticket=None,
-            position=None,
-            date_from=datetime(2024, 1, 1, tzinfo=UTC),
-            date_to=datetime(2024, 2, 1, tzinfo=UTC),
-        )
-        result = fetch_data(mock_client, args)
-        assert isinstance(result, pd.DataFrame)
-
-    def test_unknown_command_raises(self, mock_client: MagicMock) -> None:
-        """Test that unknown command raises ValueError."""
-        args = _make_args(command="unknown")
-        with pytest.raises(ValueError, match="Unknown command"):
-            fetch_data(mock_client, args)
-
-
-class TestBuildParser:
-    """Tests for _build_parser."""
-
-    def test_parser_creation(self) -> None:
-        """Test that parser is created successfully."""
-        parser = _build_parser()
-        assert parser.prog == "pdmt5"
-
-    @pytest.mark.parametrize(
-        ("argv", "expected_command"),
-        [
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "rates-from",
-                    "--symbol",
-                    "EURUSD",
-                    "--timeframe",
-                    "M1",
-                    "--date-from",
-                    "2024-01-01",
-                    "--count",
-                    "100",
-                ],
-                "rates-from",
-            ),
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "rates-from-pos",
-                    "--symbol",
-                    "EURUSD",
-                    "--timeframe",
-                    "H1",
-                    "--start-pos",
-                    "0",
-                    "--count",
-                    "50",
-                ],
-                "rates-from-pos",
-            ),
-            (
-                [
-                    "-o",
-                    "out.json",
-                    "rates-range",
-                    "--symbol",
-                    "EURUSD",
-                    "--timeframe",
-                    "D1",
-                    "--date-from",
-                    "2024-01-01",
-                    "--date-to",
-                    "2024-02-01",
-                ],
-                "rates-range",
-            ),
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "ticks-from",
-                    "--symbol",
-                    "EURUSD",
-                    "--date-from",
-                    "2024-01-01",
-                    "--count",
-                    "100",
-                    "--flags",
-                    "ALL",
-                ],
-                "ticks-from",
-            ),
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "ticks-range",
-                    "--symbol",
-                    "EURUSD",
-                    "--date-from",
-                    "2024-01-01",
-                    "--date-to",
-                    "2024-02-01",
-                    "--flags",
-                    "INFO",
-                ],
-                "ticks-range",
-            ),
-            (["-o", "out.csv", "account-info"], "account-info"),
-            (["-o", "out.csv", "terminal-info"], "terminal-info"),
-            (["-o", "out.csv", "symbols"], "symbols"),
-            (
-                ["-o", "out.csv", "symbol-info", "--symbol", "EURUSD"],
-                "symbol-info",
-            ),
-            (["-o", "out.csv", "orders"], "orders"),
-            (["-o", "out.csv", "positions"], "positions"),
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "history-orders",
-                    "--date-from",
-                    "2024-01-01",
-                    "--date-to",
-                    "2024-02-01",
-                ],
-                "history-orders",
-            ),
-            (
-                [
-                    "-o",
-                    "out.csv",
-                    "history-deals",
-                    "--ticket",
-                    "12345",
-                ],
-                "history-deals",
-            ),
-        ],
-    )
-    def test_parse_subcommands(
-        self,
-        argv: list[str],
-        expected_command: str,
-    ) -> None:
-        """Test parsing various subcommands."""
-        parser = _build_parser()
-        args = parser.parse_args(argv)
-        assert args.command == expected_command
-
-    def test_parse_connection_args(self) -> None:
-        """Test parsing connection arguments."""
-        parser = _build_parser()
-        args = parser.parse_args([
-            "--login",
-            "12345",
-            "--password",
-            "secret",
-            "--server",
-            "Demo",
-            "--path",
-            "/mt5/terminal.exe",
-            "--timeout",
-            "5000",
-            "-o",
-            "out.csv",
-            "account-info",
-        ])
-        assert args.login == 12345
-        assert args.password == "secret"  # noqa: S105
-        assert args.server == "Demo"
-        assert args.path == "/mt5/terminal.exe"
-        assert args.timeout == 5000
-
-    def test_parse_output_args(self) -> None:
-        """Test parsing output arguments."""
-        parser = _build_parser()
-        args = parser.parse_args([
-            "-o",
-            "out.db",
-            "--format",
-            "sqlite3",
-            "--table",
-            "rates",
-            "account-info",
-        ])
-        assert args.output == Path("out.db")
-        assert args.format == "sqlite3"
-        assert args.table == "rates"
-
-    def test_parse_log_level(self) -> None:
-        """Test parsing log level argument."""
-        parser = _build_parser()
-        args = parser.parse_args([
-            "--log-level",
-            "DEBUG",
-            "-o",
-            "out.csv",
-            "account-info",
-        ])
-        assert args.log_level == "DEBUG"
-
-
-class TestMain:
-    """Tests for main entry point."""
-
-    def test_main_success(
+    def test_orders(
         self,
         tmp_path: Path,
-        mocker: MockerFixture,
+        mock_client: MagicMock,
     ) -> None:
-        """Test successful main execution."""
-        sample_df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-        mock_client = MagicMock()
-        mock_client.account_info_as_df.return_value = sample_df
-        mocker.patch("pdmt5.cli.Mt5DataClient", return_value=mock_client)
+        """Test orders command."""
         output = tmp_path / "out.csv"
-        main(["-o", str(output), "account-info"])
-        mock_client.initialize_and_login_mt5.assert_called_once()
-        mock_client.shutdown.assert_called_once()
-        assert output.exists()
-        result = pd.read_csv(output)
-        pd.testing.assert_frame_equal(result, sample_df)
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "orders",
+                "--symbol",
+                "EURUSD",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.orders_get_as_df.assert_called_once()
 
-    def test_main_with_connection_args(
+    def test_positions(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test positions command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "positions"],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.positions_get_as_df.assert_called_once()
+
+    def test_history_orders(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test history-orders command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "history-orders",
+                "--date-from",
+                "2024-01-01",
+                "--date-to",
+                "2024-02-01",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.history_orders_get_as_df.assert_called_once()
+
+    def test_history_deals(
+        self,
+        tmp_path: Path,
+        mock_client: MagicMock,
+    ) -> None:
+        """Test history-deals command."""
+        output = tmp_path / "out.csv"
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "history-deals",
+                "--ticket",
+                "12345",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        mock_client.history_deals_get_as_df.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Callback / shared options
+# ---------------------------------------------------------------------------
+
+
+class TestCallback:
+    """Tests for callback (shared options)."""
+
+    def test_format_detection_error(self, tmp_path: Path) -> None:
+        """Test that bad extension triggers a user-friendly error."""
+        output = tmp_path / "out.xyz"
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "account-info"],
+        )
+        assert result.exit_code != 0
+        assert "Cannot detect format" in result.output
+
+    def test_connection_args_forwarded(
         self,
         tmp_path: Path,
         mocker: MockerFixture,
     ) -> None:
-        """Test main with connection arguments."""
+        """Test that connection arguments reach Mt5Config."""
         mock_client = MagicMock()
         mock_client.account_info_as_df.return_value = pd.DataFrame({"a": [1]})
-        mock_constructor = mocker.patch(
+        mocker.patch(
             "pdmt5.cli.Mt5DataClient",
             return_value=mock_client,
         )
-        mocker.patch("pdmt5.cli.Mt5Config")
-        output = tmp_path / "out.json"
-        main([
-            "--login",
-            "123",
-            "--password",
-            "pw",
-            "--server",
-            "srv",
-            "-o",
-            str(output),
-            "account-info",
-        ])
-        mock_constructor.assert_called_once()
-
-    def test_main_shutdown_on_error(
-        self,
-        tmp_path: Path,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test that shutdown is called even when fetch_data raises."""
-        mock_client = MagicMock()
-        mock_client.account_info_as_df.side_effect = RuntimeError("MT5 error")
-        mocker.patch("pdmt5.cli.Mt5DataClient", return_value=mock_client)
+        mock_config = mocker.patch("pdmt5.cli.Mt5Config")
         output = tmp_path / "out.csv"
-        with pytest.raises(RuntimeError, match="MT5 error"):
-            main(["-o", str(output), "account-info"])
-        mock_client.shutdown.assert_called_once()
+        result = runner.invoke(
+            app,
+            [
+                "--login",
+                "123",
+                "--password",
+                "pw",
+                "--server",
+                "srv",
+                "-o",
+                str(output),
+                "account-info",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        mock_config.assert_called_once_with(
+            path=None,
+            login=123,
+            password="pw",
+            server="srv",
+            timeout=None,
+        )
 
-    def test_main_format_detection_error(
+    def test_explicit_format(
         self,
         tmp_path: Path,
-        mocker: MockerFixture,
+        mock_client: MagicMock,  # noqa: ARG002
     ) -> None:
-        """Test main exits on format detection error."""
-        mocker.patch("pdmt5.cli.Mt5DataClient")
-        output = tmp_path / "out.xyz"
-        with pytest.raises(SystemExit):
-            main(["-o", str(output), "account-info"])
-
-    def test_main_explicit_format(
-        self,
-        tmp_path: Path,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test main with explicit format flag."""
-        mock_client = MagicMock()
-        mock_client.account_info_as_df.return_value = pd.DataFrame({"a": [1]})
-        mocker.patch("pdmt5.cli.Mt5DataClient", return_value=mock_client)
+        """Test explicit --format flag."""
         output = tmp_path / "out.txt"
-        main(["-o", str(output), "--format", "json", "account-info"])
+        result = runner.invoke(
+            app,
+            ["-o", str(output), "--format", "json", "account-info"],
+        )
+        assert result.exit_code == 0, result.output
         assert output.exists()
 
-    def test_main_sqlite3_with_table(
+    def test_sqlite3_with_table(
         self,
         tmp_path: Path,
         mocker: MockerFixture,
     ) -> None:
-        """Test main with SQLite3 format and custom table name."""
+        """Test SQLite3 output with custom table name."""
         mock_client = MagicMock()
-        mock_client.symbols_get_as_df.return_value = pd.DataFrame({"s": ["EURUSD"]})
-        mocker.patch("pdmt5.cli.Mt5DataClient", return_value=mock_client)
+        mock_client.symbols_get_as_df.return_value = pd.DataFrame(
+            {"s": ["EURUSD"]},
+        )
+        mocker.patch(
+            "pdmt5.cli.Mt5DataClient",
+            return_value=mock_client,
+        )
         output = tmp_path / "out.db"
-        main([
-            "-o",
-            str(output),
-            "--table",
-            "symbols",
-            "symbols",
-            "--group",
-            "*USD*",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "-o",
+                str(output),
+                "--table",
+                "symbols",
+                "symbols",
+                "--group",
+                "*USD*",
+            ],
+        )
+        assert result.exit_code == 0, result.output
         with sqlite3.connect(output) as conn:
-            result = pd.read_sql(  # type: ignore[reportUnknownMemberType]
+            result_df = pd.read_sql(  # type: ignore[reportUnknownMemberType]
                 "SELECT * FROM symbols",
                 conn,
             )
-        assert len(result) == 1
+        assert len(result_df) == 1
+
+
+# ---------------------------------------------------------------------------
+# main entry point
+# ---------------------------------------------------------------------------
+
+
+class TestMain:
+    """Tests for the main entry point."""
+
+    def test_main_invokes_app(self, mocker: MockerFixture) -> None:
+        """Test that main() calls the typer app."""
+        mock_app = mocker.patch("pdmt5.cli.app")
+        main()
+        mock_app.assert_called_once()
