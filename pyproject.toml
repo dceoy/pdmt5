@@ -24,6 +24,9 @@ classifiers = [
   "Topic :: Office/Business :: Financial :: Investment",
 ]
 
+[project.scripts]
+pdmt5 = "pdmt5.cli:main"
+
 [project.urls]
 Repository = "https://github.com/dceoy/pdmt5.git"
 
@@ -172,6 +175,7 @@ minversion = "6.0"
 source = ["pdmt5"]
 omit = [
   "**/__init__.py",
+  "**/__main__.py",
   "tests/**",
 ]
 

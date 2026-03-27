@@ -22,6 +22,9 @@ class TestInit:
             "Mt5RuntimeError",
             "Mt5TradingClient",
             "Mt5TradingError",
+            "detect_format",
+            "export_dataframe",
+            "fetch_data",
         ],
     )
     def test_exports_available(self, export: str) -> None:

@@ -2,6 +2,7 @@
 
 from importlib.metadata import version
 
+from .cli import detect_format, export_dataframe, fetch_data
 from .dataframe import Mt5Config, Mt5DataClient
 from .mt5 import Mt5Client, Mt5RuntimeError
 from .trading import Mt5TradingClient, Mt5TradingError
@@ -15,4 +16,7 @@ __all__ = [
     "Mt5RuntimeError",
     "Mt5TradingClient",
     "Mt5TradingError",
+    "detect_format",
+    "export_dataframe",
+    "fetch_data",
 ]
