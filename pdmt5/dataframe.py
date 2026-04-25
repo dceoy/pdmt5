@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime  # noqa: TC003
 from typing import Any, cast
@@ -14,6 +15,8 @@ from .utils import (
     detect_and_convert_time_to_datetime,
     set_index_if_possible,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Mt5Config(BaseModel):
@@ -79,7 +82,7 @@ class Mt5DataClient(Mt5Client):
         timeout_value = timeout if timeout is not None else self.config.timeout
         for i in range(1 + max(0, self.retry_count)):
             if i:
-                self.logger.warning(
+                logger.warning(
                     "Retrying MT5 initialization (%d/%d)...",
                     i,
                     self.retry_count,
