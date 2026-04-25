@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from functools import cached_property
 from math import floor
@@ -14,6 +15,8 @@ from .mt5 import Mt5RuntimeError
 
 if TYPE_CHECKING:
     import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class Mt5TradingError(Mt5RuntimeError):
@@ -116,7 +119,7 @@ class Mt5TradingClient(Mt5DataClient):
             symbol_list = symbols
         else:
             symbol_list = self.symbols_get()
-        self.logger.info("Fetching and closing positions for symbols: %s", symbol_list)
+        logger.info("Fetching and closing positions for symbols: %s", symbol_list)
         return {
             s: self._fetch_and_close_position(
                 symbol=s,
@@ -149,10 +152,10 @@ class Mt5TradingClient(Mt5DataClient):
         """
         positions_dict = self.positions_get_as_dicts(symbol=symbol)
         if not positions_dict:
-            self.logger.warning("No open positions found for symbol: %s", symbol)
+            logger.warning("No open positions found for symbol: %s", symbol)
             return []
         else:
-            self.logger.info("Closing open positions for symbol: %s", symbol)
+            logger.info("Closing open positions for symbol: %s", symbol)
             return [
                 self._send_or_check_order(
                     request={
@@ -197,7 +200,7 @@ class Mt5TradingClient(Mt5DataClient):
         Raises:
             Mt5TradingError: If the order operation fails.
         """
-        self.logger.debug("request: %s", request)
+        logger.debug("request: %s", request)
         if dry_run:
             response = self.order_check_as_dict(request=request)
             order_func = "order_check"
@@ -208,17 +211,17 @@ class Mt5TradingClient(Mt5DataClient):
         if (dry_run and retcode == 0) or (
             not dry_run and retcode in self.mt5_successful_trade_retcodes
         ):
-            self.logger.info("response: %s", response)
+            logger.info("response: %s", response)
             return response
         elif raise_on_error:
-            self.logger.error("response: %s", response)
+            logger.error("response: %s", response)
             comment = response.get("comment")
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
             raise Mt5TradingError(error_message)
         else:
-            self.logger.warning("response: %s", response)
+            logger.warning("response: %s", response)
             comment = response.get("comment")
-            self.logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
+            logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
             return response
 
     def place_market_order(
@@ -248,7 +251,7 @@ class Mt5TradingClient(Mt5DataClient):
         Returns:
             Dictionary with operation result.
         """
-        self.logger.info("Placing market order: %s %s %s", order_side, volume, symbol)
+        logger.info("Placing market order: %s %s %s", order_side, volume, symbol)
         return self._send_or_check_order(
             request={
                 "action": self.mt5.TRADE_ACTION_DEAL,
@@ -292,7 +295,7 @@ class Mt5TradingClient(Mt5DataClient):
         """
         positions_df = self.positions_get_as_df(symbol=symbol)
         if positions_df.empty:
-            self.logger.warning("No open positions found for symbol: %s", symbol)
+            logger.warning("No open positions found for symbol: %s", symbol)
             return []
         elif tickets:
             filtered_positions_df = positions_df.pipe(
@@ -301,7 +304,7 @@ class Mt5TradingClient(Mt5DataClient):
         else:
             filtered_positions_df = positions_df
         if filtered_positions_df.empty:
-            self.logger.warning(
+            logger.warning(
                 "No open positions found for symbol: %s with specified tickets: %s",
                 symbol,
                 tickets,
@@ -324,7 +327,7 @@ class Mt5TradingClient(Mt5DataClient):
                 if sl != p["sl"] or tp != p["tp"]
             ]
             if order_requests:
-                self.logger.info(
+                logger.info(
                     "Updating SL/TP for %d positions for %s: %s/%s",
                     len(order_requests),
                     symbol,
@@ -338,7 +341,7 @@ class Mt5TradingClient(Mt5DataClient):
                     for r in order_requests
                 ]
             else:
-                self.logger.info(
+                logger.info(
                     "No positions to update for symbol: %s with SL: %s and TP: %s",
                     symbol,
                     sl,
@@ -374,14 +377,14 @@ class Mt5TradingClient(Mt5DataClient):
         )
         result = {"volume": symbol_info["volume_min"], "margin": margin}
         if margin:
-            self.logger.info(
+            logger.info(
                 "Calculated minimum %s order margin for %s: %s",
                 order_side,
                 symbol,
                 result,
             )
         else:
-            self.logger.warning(
+            logger.warning(
                 "Calculated minimum order margin to %s %s: %s",
                 order_side,
                 symbol,
@@ -416,7 +419,7 @@ class Mt5TradingClient(Mt5DataClient):
             )
         else:
             result = 0.0
-        self.logger.info(
+        logger.info(
             "Calculated volume by margin to %s %s: %s",
             order_side,
             symbol,
@@ -442,7 +445,7 @@ class Mt5TradingClient(Mt5DataClient):
             / (symbol_info_tick["ask"] + symbol_info_tick["bid"])
             * 2
         )
-        self.logger.info("Calculated spread ratio for %s: %s", symbol, result)
+        logger.info("Calculated spread ratio for %s: %s", symbol, result)
         return result
 
     def fetch_latest_rates_as_df(
@@ -481,7 +484,7 @@ class Mt5TradingClient(Mt5DataClient):
                 count=count,
                 index_keys=index_keys,
             )
-            self.logger.info(
+            logger.info(
                 "Fetched latest %s rates for %s: %d rows",
                 granularity,
                 symbol,
@@ -513,7 +516,7 @@ class Mt5TradingClient(Mt5DataClient):
             flags=self.mt5.COPY_TICKS_ALL,
             index_keys=index_keys,
         )
-        self.logger.info(
+        logger.info(
             "Fetched latest ticks for %s: %d rows",
             symbol,
             result.shape[0],
@@ -552,7 +555,7 @@ class Mt5TradingClient(Mt5DataClient):
                     & d["type"].isin({self.mt5.DEAL_TYPE_BUY, self.mt5.DEAL_TYPE_SELL})
                 ]
             )
-        self.logger.info(
+        logger.info(
             "Collected entry deals for %s: %d rows",
             symbol,
             result.shape[0],
@@ -620,7 +623,7 @@ class Mt5TradingClient(Mt5DataClient):
                 )
                 .drop(columns=["buy_i", "sell_i", "sign", "underlier_increase_ratio"])
             )
-        self.logger.info(
+        logger.info(
             "Fetched positions with metrics for %s: %d rows",
             symbol,
             result.shape[0],
@@ -673,7 +676,7 @@ class Mt5TradingClient(Mt5DataClient):
             result = abs(
                 (new_signed_margin + current_signed_margin) / account_info["equity"]
             )
-        self.logger.info(
+        logger.info(
             "Calculated new position margin ratio for %s: %s",
             symbol,
             result,
