@@ -10,6 +10,8 @@ pdmt5 is a Python library that provides a pandas-based interface for handling Me
 
 - **MetaTrader 5 Integration**: Direct connection to MetaTrader 5 platform (Windows only)
 - **Pandas-based**: Leverages pandas for efficient data manipulation
+- **Canonical MT5 Constants**: Shared parsers for timeframes, COPY_TICKS flags,
+  and ORDER_TYPE values using official names, short aliases, or valid integers
 - **Type Safety**: Built with pydantic for robust data validation
 - **Financial Focus**: Designed specifically for trading and financial data analysis
 
@@ -22,7 +24,14 @@ pip install pdmt5
 ### Quick Start
 
 ```python
-from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5TradingClient
+from pdmt5 import (
+    Mt5Client,
+    Mt5Config,
+    Mt5DataClient,
+    Mt5TradingClient,
+    parse_copy_ticks,
+    parse_timeframe,
+)
 import MetaTrader5 as mt5
 from datetime import datetime
 
@@ -50,7 +59,7 @@ with Mt5DataClient(config=config) as client:
     symbols_df = client.symbols_get_as_df()
     # Get OHLCV data as DataFrame
     rates_df = client.copy_rates_from_as_df(
-        "EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100
+        "EURUSD", parse_timeframe("H1"), datetime.now(), 100
     )
     # Get account info as DataFrame
     account_df = client.account_info_as_df()
@@ -61,6 +70,10 @@ with Mt5TradingClient(config=config) as client:
     positions_df = client.positions_get_as_df()
     # Close positions for specific symbol (dry run)
     results = client.close_open_positions("EURUSD", dry_run=True)
+
+# Parse MT5 constants without importing the MetaTrader5 module
+timeframe = parse_timeframe("TIMEFRAME_H1")  # 16385
+tick_flags = parse_copy_ticks("ALL")  # 3
 ```
 
 ## Requirements
@@ -74,6 +87,7 @@ with Mt5TradingClient(config=config) as client:
 Browse the API documentation to learn about available modules and functions:
 
 - [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access with context manager support
+- [Constants](api/constants.md) - Canonical MT5 constant parsing and schema helper values
 - [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client with DataFrame conversions
 - [Mt5TradingClient](api/trading.md) - Advanced trading operations with position management
 - [Utility Functions](api/utils.md) - Helper decorators and functions for data processing

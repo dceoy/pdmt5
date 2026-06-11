@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ConfigDict
 
+from .constants import parse_copy_ticks, parse_order_type, parse_timeframe
 from .dataframe import Mt5DataClient
 from .mt5 import Mt5RuntimeError
 
@@ -257,7 +258,7 @@ class Mt5TradingClient(Mt5DataClient):
                 "action": self.mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
                 "volume": volume,
-                "type": getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+                "type": parse_order_type(order_side),
                 "type_filling": getattr(
                     self.mt5, f"ORDER_FILLING_{order_filling_mode.upper()}"
                 ),
@@ -366,7 +367,7 @@ class Mt5TradingClient(Mt5DataClient):
         symbol_info = self.symbol_info_as_dict(symbol=symbol)
         symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
         margin = self.order_calc_margin(
-            action=getattr(self.mt5, f"ORDER_TYPE_{order_side.upper()}"),
+            action=parse_order_type(order_side),
             symbol=symbol,
             volume=symbol_info["volume_min"],
             price=(
@@ -470,8 +471,8 @@ class Mt5TradingClient(Mt5DataClient):
             Mt5TradingError: If the granularity is not supported by MetaTrader5.
         """
         try:
-            timeframe = getattr(self.mt5, f"TIMEFRAME_{granularity.upper()}")
-        except AttributeError as e:
+            timeframe = parse_timeframe(granularity)
+        except ValueError as e:
             error_message = (
                 f"MetaTrader5 does not support the given granularity: {granularity}"
             )
@@ -513,7 +514,7 @@ class Mt5TradingClient(Mt5DataClient):
             symbol=symbol,
             date_from=(last_tick_time - timedelta(seconds=seconds)),
             date_to=(last_tick_time + timedelta(seconds=seconds)),
-            flags=self.mt5.COPY_TICKS_ALL,
+            flags=parse_copy_ticks("ALL"),
             index_keys=index_keys,
         )
         logger.info(
@@ -580,13 +581,13 @@ class Mt5TradingClient(Mt5DataClient):
         else:
             symbol_info_tick = self.symbol_info_tick_as_dict(symbol=symbol)
             ask_margin = self.order_calc_margin(
-                action=self.mt5.ORDER_TYPE_BUY,
+                action=parse_order_type("BUY"),
                 symbol=symbol,
                 volume=1,
                 price=symbol_info_tick["ask"],
             )
             bid_margin = self.order_calc_margin(
-                action=self.mt5.ORDER_TYPE_SELL,
+                action=parse_order_type("SELL"),
                 symbol=symbol,
                 volume=1,
                 price=symbol_info_tick["bid"],
@@ -659,14 +660,14 @@ class Mt5TradingClient(Mt5DataClient):
                 new_signed_margin = 0
             elif new_position_side.upper() == "BUY":
                 new_signed_margin = self.order_calc_margin(
-                    action=self.mt5.ORDER_TYPE_BUY,
+                    action=parse_order_type("BUY"),
                     symbol=symbol,
                     volume=new_position_volume,
                     price=symbol_info_tick["ask"],
                 )
             elif new_position_side.upper() == "SELL":
                 new_signed_margin = -self.order_calc_margin(
-                    action=self.mt5.ORDER_TYPE_SELL,
+                    action=parse_order_type("SELL"),
                     symbol=symbol,
                     volume=new_position_volume,
                     price=symbol_info_tick["bid"],
