@@ -51,6 +51,10 @@
 </li>
                                     
 <li>
+    <a href="../constants/" class="dropdown-item">Constants</a>
+</li>
+                                    
+<li>
     <a href="./" class="dropdown-item active" aria-current="page">DataFrame</a>
 </li>
                                     
@@ -72,7 +76,7 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="../mt5/" class="nav-link">
+                                <a rel="prev" href="../constants/" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
@@ -14056,13 +14060,13 @@ show_bases: false</p>
 </code></pre></div>
 <h3 id="retrieving-market-data">Retrieving Market Data<a class="headerlink" href="#retrieving-market-data" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">MetaTrader5</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt5</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pdmt5</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_copy_ticks</span><span class="p">,</span> <span class="n">parse_timeframe</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">with</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="c1"># Get OHLCV data</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">rates_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_rates_from_as_df</span><span class="p">(</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">timeframe</span><span class="o">=</span><span class="n">mt5</span><span class="o">.</span><span class="n">TIMEFRAME_H1</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">timeframe</span><span class="o">=</span><span class="n">parse_timeframe</span><span class="p">(</span><span class="s2">&quot;H1&quot;</span><span class="p">),</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        <span class="n">count</span><span class="o">=</span><span class="mi">1000</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="p">)</span>
@@ -14072,7 +14076,7 @@ show_bases: false</p>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span>
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        <span class="n">count</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        <span class="n">flags</span><span class="o">=</span><span class="n">mt5</span><span class="o">.</span><span class="n">COPY_TICKS_ALL</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        <span class="n">flags</span><span class="o">=</span><span class="n">parse_copy_ticks</span><span class="p">(</span><span class="s2">&quot;ALL&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="p">)</span>
 </code></pre></div>
 <h3 id="symbol-information">Symbol Information<a class="headerlink" href="#symbol-information" title="Permanent link">&para;</a></h3>
