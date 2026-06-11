@@ -55,30 +55,27 @@ _ORDER_TYPE_OFFICIAL_NAMES: Final[tuple[str, ...]] = tuple(
     f"ORDER_TYPE_{name}" for name in _ORDER_TYPE_ALIASES
 )
 
-_TIMEFRAME_OFFICIAL_MAP: Final[dict[str, int]] = {
-    name: value
-    for name, value in zip(
+_TIMEFRAME_OFFICIAL_MAP: Final[dict[str, int]] = dict(
+    zip(
         _TIMEFRAME_OFFICIAL_NAMES,
         _TIMEFRAME_ALIASES.values(),
         strict=True,
     )
-}
-_COPY_TICKS_OFFICIAL_MAP: Final[dict[str, int]] = {
-    name: value
-    for name, value in zip(
+)
+_COPY_TICKS_OFFICIAL_MAP: Final[dict[str, int]] = dict(
+    zip(
         _COPY_TICKS_OFFICIAL_NAMES,
         _COPY_TICKS_ALIASES.values(),
         strict=True,
     )
-}
-_ORDER_TYPE_OFFICIAL_MAP: Final[dict[str, int]] = {
-    name: value
-    for name, value in zip(
+)
+_ORDER_TYPE_OFFICIAL_MAP: Final[dict[str, int]] = dict(
+    zip(
         _ORDER_TYPE_OFFICIAL_NAMES,
         _ORDER_TYPE_ALIASES.values(),
         strict=True,
     )
-}
+)
 
 TIMEFRAME_MAP: Final[dict[str, int]] = {
     **_TIMEFRAME_OFFICIAL_MAP,
@@ -137,8 +134,6 @@ class _ConstantFamily:
         Returns:
             The matching constant name.
 
-        Raises:
-            ValueError: If the integer is not valid for this family.
         """
         parsed_value = _parse_constant(value, self)
         names = self.alias_names if prefer_alias else self.official_names
@@ -167,7 +162,18 @@ _ORDER_TYPE_FAMILY: Final[_ConstantFamily] = _ConstantFamily(
 
 
 def _parse_constant(value: int | str, family: _ConstantFamily) -> int:
-    """Parse a constant name or value for a family."""
+    """Parse a constant name or value for a family.
+
+    Args:
+        value: Constant name, alias, or integer value.
+        family: Constant family metadata.
+
+    Returns:
+        The validated integer constant.
+
+    Raises:
+        ValueError: If the name or integer value is not valid.
+    """
     if isinstance(value, str):
         normalized_value = value.strip().upper()
         if normalized_value in family.mapping:
@@ -181,9 +187,9 @@ def _parse_constant(value: int | str, family: _ConstantFamily) -> int:
                 "or a valid integer value."
             )
             raise ValueError(message) from None
-    elif isinstance(value, bool) or not isinstance(value, int):
+    elif isinstance(value, bool):
         message = f"Invalid {family.label}: {value!r}. Use a name or integer value."
-        raise ValueError(message)
+        raise ValueError(message)  # noqa: TRY004
     else:
         parsed_value = value
 
@@ -207,8 +213,6 @@ def parse_timeframe(value: int | str) -> int:
     Returns:
         The validated MetaTrader 5 timeframe integer.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 timeframes.
     """
     return _parse_constant(value=value, family=_TIMEFRAME_FAMILY)
 
@@ -223,8 +227,6 @@ def parse_copy_ticks(value: int | str) -> int:
     Returns:
         The validated MetaTrader 5 COPY_TICKS integer.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 COPY_TICKS flags.
     """
     return _parse_constant(value=value, family=_COPY_TICKS_FAMILY)
 
@@ -239,8 +241,6 @@ def parse_order_type(value: int | str) -> int:
     Returns:
         The validated MetaTrader 5 ORDER_TYPE integer.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 order types.
     """
     return _parse_constant(value=value, family=_ORDER_TYPE_FAMILY)
 
@@ -275,8 +275,6 @@ def get_timeframe_value(name: str) -> int:
     Returns:
         The matching timeframe integer.
 
-    Raises:
-        ValueError: If the name is not valid for MT5 timeframes.
     """
     return parse_timeframe(name)
 
@@ -291,8 +289,6 @@ def get_timeframe_name(value: int, *, prefer_alias: bool = False) -> str:
     Returns:
         The matching timeframe name.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 timeframes.
     """
     return _TIMEFRAME_FAMILY.name_by_value(value=value, prefer_alias=prefer_alias)
 
@@ -327,8 +323,6 @@ def get_copy_ticks_value(name: str) -> int:
     Returns:
         The matching COPY_TICKS integer.
 
-    Raises:
-        ValueError: If the name is not valid for MT5 COPY_TICKS flags.
     """
     return parse_copy_ticks(name)
 
@@ -343,8 +337,6 @@ def get_copy_ticks_name(value: int, *, prefer_alias: bool = False) -> str:
     Returns:
         The matching COPY_TICKS name.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 COPY_TICKS flags.
     """
     return _COPY_TICKS_FAMILY.name_by_value(value=value, prefer_alias=prefer_alias)
 
@@ -379,8 +371,6 @@ def get_order_type_value(name: str) -> int:
     Returns:
         The matching ORDER_TYPE integer.
 
-    Raises:
-        ValueError: If the name is not valid for MT5 order types.
     """
     return parse_order_type(name)
 
@@ -395,8 +385,6 @@ def get_order_type_name(value: int, *, prefer_alias: bool = False) -> str:
     Returns:
         The matching ORDER_TYPE name.
 
-    Raises:
-        ValueError: If the value is not valid for MT5 order types.
     """
     return _ORDER_TYPE_FAMILY.name_by_value(value=value, prefer_alias=prefer_alias)
 

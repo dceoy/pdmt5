@@ -30,14 +30,14 @@ __version__ = version(__package__) if __package__ else None
 
 __all__ = [
     "COPY_TICKS_MAP",
+    "ORDER_TYPE_MAP",
+    "TIMEFRAME_MAP",
     "Mt5Client",
     "Mt5Config",
     "Mt5DataClient",
     "Mt5RuntimeError",
     "Mt5TradingClient",
     "Mt5TradingError",
-    "ORDER_TYPE_MAP",
-    "TIMEFRAME_MAP",
     "get_copy_ticks_name",
     "get_copy_ticks_value",
     "get_order_type_name",
