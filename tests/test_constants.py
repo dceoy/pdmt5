@@ -2,8 +2,9 @@
 
 import importlib
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from types import ModuleType
+from typing import cast
 
 import pytest
 
@@ -105,17 +106,22 @@ def test_parse_order_type_accepts_official_names_aliases_and_values(
         (parse_timeframe, "M7", "Invalid MT5 timeframe"),
         (parse_timeframe, 8, "Unsupported MT5 timeframe value"),
         (parse_timeframe, True, "Invalid MT5 timeframe"),
+        (parse_timeframe, 1.0, "Invalid MT5 timeframe"),
+        (parse_timeframe, None, "Invalid MT5 timeframe"),
+        (parse_timeframe, object(), "Invalid MT5 timeframe"),
         (parse_copy_ticks, "QUOTE", "Invalid MT5 COPY_TICKS flag"),
         (parse_copy_ticks, 4, "Unsupported MT5 COPY_TICKS flag value"),
         (parse_copy_ticks, False, "Invalid MT5 COPY_TICKS flag"),
+        (parse_copy_ticks, 1.0, "Invalid MT5 COPY_TICKS flag"),
         (parse_order_type, "MARKET_BUY", "Invalid MT5 ORDER_TYPE"),
         (parse_order_type, 9, "Unsupported MT5 ORDER_TYPE value"),
         (parse_order_type, True, "Invalid MT5 ORDER_TYPE"),
+        (parse_order_type, 1.0, "Invalid MT5 ORDER_TYPE"),
     ],
 )
 def test_parse_constants_reject_invalid_inputs(
-    parser: Callable[[int | str], int],
-    value: int | str,
+    parser: Callable[[object], int],
+    value: object,
     match: str,
 ) -> None:
     """Test invalid names, invalid integers, and bool values are rejected."""
@@ -232,6 +238,30 @@ def test_name_helpers_reject_invalid_values(
     """Test name lookup helpers reject invalid integer constants."""
     with pytest.raises(ValueError, match="Unsupported MT5"):
         getter(value)
+
+
+@pytest.mark.parametrize(
+    ("constant_map", "key", "bad_value", "parser", "parser_value", "expected"),
+    [
+        (TIMEFRAME_MAP, "M1", 999, parse_timeframe, "M1", 1),
+        (COPY_TICKS_MAP, "ALL", 999, parse_copy_ticks, "ALL", -1),
+        (ORDER_TYPE_MAP, "BUY", 999, parse_order_type, "BUY", 0),
+    ],
+)
+def test_public_constant_maps_are_immutable_and_do_not_affect_parsers(
+    constant_map: Mapping[str, int],
+    key: str,
+    bad_value: int,
+    parser: Callable[[object], int],
+    parser_value: str,
+    expected: int,
+) -> None:
+    """Test exported maps cannot be mutated to change parser behavior."""
+    mutable_view = cast("dict[str, int]", constant_map)
+    with pytest.raises(TypeError):
+        mutable_view[key] = bad_value
+
+    assert parser(parser_value) == expected
 
 
 @pytest.mark.parametrize(

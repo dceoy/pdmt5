@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _TIMEFRAME_ALIASES: Final[dict[str, int]] = {
     "M1": 1,
@@ -77,18 +81,21 @@ _ORDER_TYPE_OFFICIAL_MAP: Final[dict[str, int]] = dict(
     )
 )
 
-TIMEFRAME_MAP: Final[dict[str, int]] = {
+_TIMEFRAME_MAP: Final[dict[str, int]] = {
     **_TIMEFRAME_OFFICIAL_MAP,
     **_TIMEFRAME_ALIASES,
 }
-COPY_TICKS_MAP: Final[dict[str, int]] = {
+_COPY_TICKS_MAP: Final[dict[str, int]] = {
     **_COPY_TICKS_OFFICIAL_MAP,
     **_COPY_TICKS_ALIASES,
 }
-ORDER_TYPE_MAP: Final[dict[str, int]] = {
+_ORDER_TYPE_MAP: Final[dict[str, int]] = {
     **_ORDER_TYPE_OFFICIAL_MAP,
     **_ORDER_TYPE_ALIASES,
 }
+TIMEFRAME_MAP: Final[Mapping[str, int]] = MappingProxyType(_TIMEFRAME_MAP)
+COPY_TICKS_MAP: Final[Mapping[str, int]] = MappingProxyType(_COPY_TICKS_MAP)
+ORDER_TYPE_MAP: Final[Mapping[str, int]] = MappingProxyType(_ORDER_TYPE_MAP)
 
 
 @dataclass(frozen=True)
@@ -96,7 +103,7 @@ class _ConstantFamily:
     """Metadata for one MT5 constant family."""
 
     label: str
-    mapping: dict[str, int]
+    mapping: Mapping[str, int]
     official_names: tuple[str, ...]
     alias_names: tuple[str, ...]
 
@@ -143,25 +150,25 @@ class _ConstantFamily:
 
 _TIMEFRAME_FAMILY: Final[_ConstantFamily] = _ConstantFamily(
     label="MT5 timeframe",
-    mapping=TIMEFRAME_MAP,
+    mapping=_TIMEFRAME_MAP,
     official_names=_TIMEFRAME_OFFICIAL_NAMES,
     alias_names=tuple(_TIMEFRAME_ALIASES),
 )
 _COPY_TICKS_FAMILY: Final[_ConstantFamily] = _ConstantFamily(
     label="MT5 COPY_TICKS flag",
-    mapping=COPY_TICKS_MAP,
+    mapping=_COPY_TICKS_MAP,
     official_names=_COPY_TICKS_OFFICIAL_NAMES,
     alias_names=tuple(_COPY_TICKS_ALIASES),
 )
 _ORDER_TYPE_FAMILY: Final[_ConstantFamily] = _ConstantFamily(
     label="MT5 ORDER_TYPE",
-    mapping=ORDER_TYPE_MAP,
+    mapping=_ORDER_TYPE_MAP,
     official_names=_ORDER_TYPE_OFFICIAL_NAMES,
     alias_names=tuple(_ORDER_TYPE_ALIASES),
 )
 
 
-def _parse_constant(value: int | str, family: _ConstantFamily) -> int:
+def _parse_constant(value: object, family: _ConstantFamily) -> int:
     """Parse a constant name or value for a family.
 
     Args:
@@ -187,7 +194,7 @@ def _parse_constant(value: int | str, family: _ConstantFamily) -> int:
                 "or a valid integer value."
             )
             raise ValueError(message) from None
-    elif isinstance(value, bool):
+    elif isinstance(value, bool) or not isinstance(value, int):
         message = f"Invalid {family.label}: {value!r}. Use a name or integer value."
         raise ValueError(message)  # noqa: TRY004
     else:
@@ -203,12 +210,12 @@ def _parse_constant(value: int | str, family: _ConstantFamily) -> int:
     return parsed_value
 
 
-def parse_timeframe(value: int | str) -> int:
+def parse_timeframe(value: object) -> int:
     """Parse a MetaTrader 5 timeframe name, alias, or integer value.
 
     Args:
-        value: Official name (``TIMEFRAME_M1``), short alias (``M1``), or integer
-            value.
+        value: Official name (``TIMEFRAME_M1``), short alias (``M1``), numeric
+            string, or integer value.
 
     Returns:
         The validated MetaTrader 5 timeframe integer.
@@ -217,12 +224,12 @@ def parse_timeframe(value: int | str) -> int:
     return _parse_constant(value=value, family=_TIMEFRAME_FAMILY)
 
 
-def parse_copy_ticks(value: int | str) -> int:
+def parse_copy_ticks(value: object) -> int:
     """Parse a MetaTrader 5 COPY_TICKS name, alias, or integer value.
 
     Args:
         value: Official name (``COPY_TICKS_ALL``), short alias (``ALL``), or
-            integer value.
+            numeric string, or integer value.
 
     Returns:
         The validated MetaTrader 5 COPY_TICKS integer.
@@ -231,12 +238,12 @@ def parse_copy_ticks(value: int | str) -> int:
     return _parse_constant(value=value, family=_COPY_TICKS_FAMILY)
 
 
-def parse_order_type(value: int | str) -> int:
+def parse_order_type(value: object) -> int:
     """Parse a MetaTrader 5 ORDER_TYPE name, alias, or integer value.
 
     Args:
         value: Official name (``ORDER_TYPE_BUY``), short alias (``BUY``), or
-            integer value.
+            numeric string, or integer value.
 
     Returns:
         The validated MetaTrader 5 ORDER_TYPE integer.
