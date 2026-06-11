@@ -1,6 +1,9 @@
 """Tests for pdmt5.constants module."""
 
+import importlib
+import sys
 from collections.abc import Callable
+from types import ModuleType
 
 import pytest
 
@@ -25,6 +28,17 @@ from pdmt5.constants import (
     parse_order_type,
     parse_timeframe,
 )
+
+_WINDOWS_ONLY = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="MetaTrader5 Python package is available only on Windows.",
+)
+
+
+@pytest.fixture(scope="module")
+def real_mt5_module() -> ModuleType:
+    """Import the real MetaTrader5 Python package for Windows parity tests."""
+    return importlib.import_module("MetaTrader5")
 
 
 @pytest.mark.parametrize(
@@ -247,3 +261,33 @@ def test_constants_exports_available(export: str) -> None:
     """Test new public constants APIs are exported by pdmt5."""
     assert hasattr(pdmt5, export), f"Missing export: {export}"
     assert export in pdmt5.__all__, f"Export {export} not in __all__"
+
+
+@_WINDOWS_ONLY
+@pytest.mark.parametrize("name", list_timeframe_names(include_aliases=False))
+def test_timeframe_constants_match_metatrader5_package(
+    real_mt5_module: ModuleType,
+    name: str,
+) -> None:
+    """Test pdmt5 timeframe constants match the real MetaTrader5 package."""
+    assert TIMEFRAME_MAP[name] == int(getattr(real_mt5_module, name))
+
+
+@_WINDOWS_ONLY
+@pytest.mark.parametrize("name", list_copy_ticks_names(include_aliases=False))
+def test_copy_ticks_constants_match_metatrader5_package(
+    real_mt5_module: ModuleType,
+    name: str,
+) -> None:
+    """Test pdmt5 COPY_TICKS constants match the real MetaTrader5 package."""
+    assert COPY_TICKS_MAP[name] == int(getattr(real_mt5_module, name))
+
+
+@_WINDOWS_ONLY
+@pytest.mark.parametrize("name", list_order_type_names(include_aliases=False))
+def test_order_type_constants_match_metatrader5_package(
+    real_mt5_module: ModuleType,
+    name: str,
+) -> None:
+    """Test pdmt5 ORDER_TYPE constants match the real MetaTrader5 package."""
+    assert ORDER_TYPE_MAP[name] == int(getattr(real_mt5_module, name))
