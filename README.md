@@ -16,6 +16,8 @@ Pandas-based data handler for MetaTrader 5
 - 📊 **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
 - 🔧 **Type Safety**: Full type hints with strict pyright checking and pydantic validation
 - 🏦 **Comprehensive MT5 Coverage**: Account info, market data, tick data, orders, positions, and more
+- 🧭 **Canonical MT5 Constants**: Shared parsing for timeframes, COPY_TICKS flags,
+  and ORDER_TYPE values with official names, short aliases, or valid integers
 - 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
 - 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
@@ -47,9 +49,8 @@ uv sync
 ## Quick Start
 
 ```python
-import MetaTrader5 as mt5
 from datetime import datetime
-from pdmt5 import Mt5DataClient, Mt5Config
+from pdmt5 import Mt5DataClient, Mt5Config, parse_timeframe
 
 # Configure connection
 config = Mt5Config(
@@ -71,7 +72,7 @@ with Mt5DataClient(config=config) as client:
     # Get OHLCV data as DataFrame
     rates = client.copy_rates_from_as_df(
         symbol="EURUSD",
-        timeframe=mt5.TIMEFRAME_H1,
+        timeframe=parse_timeframe("H1"),
         date_from=datetime(2024, 1, 1),
         count=100
     )
@@ -166,6 +167,58 @@ Extends Mt5Client with pandas DataFrame and dictionary conversions:
   - Input validation for dates, counts, and positions
   - Pydantic-based configuration via `Mt5Config`
 
+### MT5 Constant Parsing
+
+pdmt5 is the canonical source for parsing MT5 constants shared by CLI, HTTP API,
+and other application layers. The constants module does not import
+`MetaTrader5`, so it can be used for request validation and JSON schema
+generation without a live terminal.
+
+```python
+from pdmt5 import (
+    list_copy_ticks_names,
+    list_copy_ticks_values,
+    list_order_type_names,
+    list_order_type_values,
+    list_timeframe_names,
+    list_timeframe_values,
+    parse_copy_ticks,
+    parse_order_type,
+    parse_timeframe,
+)
+
+parse_timeframe("TIMEFRAME_M1")  # 1
+parse_timeframe("M1")  # 1
+parse_copy_ticks("COPY_TICKS_ALL")  # -1
+parse_copy_ticks("ALL")  # -1
+parse_order_type("ORDER_TYPE_BUY")  # 0
+parse_order_type("BUY")  # 0
+
+# Integer values are accepted only when they belong to the requested family.
+parse_timeframe(16385)  # TIMEFRAME_H1
+parse_order_type(16385)  # raises ValueError
+
+# Use these helpers to build Pydantic JSON schema enums.
+timeframe_schema = {
+    "anyOf": [
+        {"type": "string", "enum": list_timeframe_names()},
+        {"type": "integer", "enum": list_timeframe_values()},
+    ],
+}
+copy_ticks_schema = {
+    "anyOf": [
+        {"type": "string", "enum": list_copy_ticks_names()},
+        {"type": "integer", "enum": list_copy_ticks_values()},
+    ],
+}
+order_type_schema = {
+    "anyOf": [
+        {"type": "string", "enum": list_order_type_names()},
+        {"type": "integer", "enum": list_order_type_values()},
+    ],
+}
+```
+
 ### Mt5TradingClient
 
 Advanced trading operations client that extends Mt5DataClient:
@@ -208,14 +261,14 @@ config = Mt5Config(
 ### Getting Historical Data
 
 ```python
-import MetaTrader5 as mt5
 from datetime import datetime
+from pdmt5 import Mt5DataClient, parse_timeframe
 
 with Mt5DataClient(config=config) as client:
     # Get last 1000 H1 bars for EURUSD as DataFrame
     df = client.copy_rates_from_as_df(
         symbol="EURUSD",
-        timeframe=mt5.TIMEFRAME_H1,
+        timeframe=parse_timeframe("TIMEFRAME_H1"),
         date_from=datetime.now(),
         count=1000
     )
@@ -229,6 +282,7 @@ with Mt5DataClient(config=config) as client:
 
 ```python
 from datetime import datetime, timedelta
+from pdmt5 import parse_copy_ticks
 
 with Mt5DataClient(config=config) as client:
     # Get ticks for the last hour as DataFrame
@@ -236,7 +290,7 @@ with Mt5DataClient(config=config) as client:
         symbol="EURUSD",
         date_from=datetime.now() - timedelta(hours=1),
         count=10000,
-        flags=mt5.COPY_TICKS_ALL
+        flags=parse_copy_ticks("COPY_TICKS_ALL")
     )
 
     # Tick data includes: time, bid, ask, last, volume, flags
@@ -395,11 +449,13 @@ This project maintains high code quality standards:
 The package provides detailed error information:
 
 ```python
-from pdmt5 import Mt5RuntimeError
+from pdmt5 import Mt5RuntimeError, parse_timeframe
 
 try:
     with Mt5DataClient(config=config) as client:
-        data = client.copy_rates_from("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
+        data = client.copy_rates_from(
+            "INVALID", parse_timeframe("H1"), datetime.now(), 100
+        )
 except Mt5RuntimeError as e:
     print(f"MT5 Error: {e}")
     print(f"Error code: {e.error_code}")

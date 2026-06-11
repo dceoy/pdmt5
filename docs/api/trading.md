@@ -29,7 +29,6 @@ Custom runtime exception for trading-specific errors.
 ### Basic Trading Operations
 
 ```python
-import MetaTrader5 as mt5
 from pdmt5 import Mt5TradingClient, Mt5Config
 
 # Create configuration

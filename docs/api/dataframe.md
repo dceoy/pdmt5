@@ -59,13 +59,13 @@ with client:
 
 ```python
 from datetime import datetime
-import MetaTrader5 as mt5
+from pdmt5 import parse_copy_ticks, parse_timeframe
 
 with client:
     # Get OHLCV data
     rates_df = client.copy_rates_from_as_df(
         symbol="EURUSD",
-        timeframe=mt5.TIMEFRAME_H1,
+        timeframe=parse_timeframe("H1"),
         date_from=datetime(2024, 1, 1),
         count=1000
     )
@@ -75,7 +75,7 @@ with client:
         symbol="EURUSD",
         date_from=datetime(2024, 1, 1),
         count=1000,
-        flags=mt5.COPY_TICKS_ALL
+        flags=parse_copy_ticks("ALL")
     )
 ```
 

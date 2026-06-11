@@ -14,6 +14,13 @@ Base client class for MetaTrader 5 operations with connection management, low-le
 
 Core data client functionality and configuration, providing pandas-friendly interface to MetaTrader 5.
 
+### [Constants](constants.md)
+
+Canonical MT5 constant maps and parsers for timeframes, COPY_TICKS flags, and
+ORDER_TYPE values. Use these helpers when CLI, HTTP, or validation layers need
+to accept official names such as `TIMEFRAME_M1`, short aliases such as `M1`, or
+integer values.
+
 ### [Mt5TradingClient](trading.md)
 
 Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
@@ -25,7 +32,8 @@ The package follows a layered architecture:
 1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
 2. **Data Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
 3. **Trading Layer** (`trading.py`): Extends `Mt5DataClient` with advanced trading operations and `Mt5TradingError` exception
-4. **Utilities** (`utils.py`): Helper functions for time conversion and DataFrame manipulation
+4. **Constants** (`constants.py`): Shared MT5 constant parsing and schema helper values
+5. **Utilities** (`utils.py`): Helper functions for time conversion and DataFrame manipulation
 
 ## Usage Guidelines
 
@@ -41,7 +49,16 @@ All modules follow these conventions:
 ## Quick Start
 
 ```python
-from pdmt5 import Mt5Client, Mt5Config, Mt5DataClient, Mt5TradingClient
+from pdmt5 import (
+    Mt5Client,
+    Mt5Config,
+    Mt5DataClient,
+    Mt5TradingClient,
+    list_timeframe_names,
+    list_timeframe_values,
+    parse_copy_ticks,
+    parse_timeframe,
+)
 import MetaTrader5 as mt5
 from datetime import datetime
 
@@ -57,12 +74,19 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     # Optional: login when credentials are provided
     client.login(config.login, config.password, config.server)
     symbols_df = client.symbols_get_as_df()
-    rates_df = client.copy_rates_from_as_df("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
+    rates_df = client.copy_rates_from_as_df(
+        "EURUSD", parse_timeframe("H1"), datetime.now(), 100
+    )
 
 # Advanced trading operations with Mt5TradingClient
 with Mt5TradingClient(mt5=mt5, config=config) as client:
     # Close all positions for a symbol
     results = client.close_open_positions("EURUSD", dry_run=True)
+
+# Schema-friendly MT5 constant metadata
+timeframe_names = list_timeframe_names()
+timeframe_values = list_timeframe_values()
+tick_flags = parse_copy_ticks("COPY_TICKS_ALL")
 ```
 
 ## Examples

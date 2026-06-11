@@ -1182,7 +1182,7 @@ class TestMt5TradingClient:
         # Verify copy_ticks_range was called with correct arguments
         call_args = mock_mt5_import.copy_ticks_range.call_args[0]
         assert call_args[0] == "EURUSD"  # symbol
-        assert call_args[3] == 1  # flags (COPY_TICKS_ALL)
+        assert call_args[3] == -1  # flags (COPY_TICKS_ALL)
 
         # Verify result has the expected structure
         assert len(result) == 1
