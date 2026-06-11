@@ -64,8 +64,8 @@ def test_parse_timeframe_accepts_official_names_aliases_and_values(
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        ("COPY_TICKS_ALL", 3),
-        ("ALL", 3),
+        ("COPY_TICKS_ALL", -1),
+        ("ALL", -1),
         ("copy_ticks_info", 1),
         ("trade", 2),
         ("2", 2),
@@ -181,15 +181,15 @@ def test_timeframe_helpers_return_schema_friendly_names_and_values() -> None:
 
 def test_copy_ticks_helpers_return_schema_friendly_names_and_values() -> None:
     """Test COPY_TICKS helper names and values for JSON schemas."""
-    assert COPY_TICKS_MAP["COPY_TICKS_ALL"] == 3
-    assert COPY_TICKS_MAP["ALL"] == 3
+    assert COPY_TICKS_MAP["COPY_TICKS_ALL"] == -1
+    assert COPY_TICKS_MAP["ALL"] == -1
     assert list_copy_ticks_names(include_aliases=False) == [
         "COPY_TICKS_INFO",
         "COPY_TICKS_TRADE",
         "COPY_TICKS_ALL",
     ]
     assert "ALL" in list_copy_ticks_names()
-    assert list_copy_ticks_values() == [1, 2, 3]
+    assert list_copy_ticks_values() == [1, 2, -1]
     assert get_copy_ticks_value("COPY_TICKS_TRADE") == 2
     assert get_copy_ticks_name(2) == "COPY_TICKS_TRADE"
     assert get_copy_ticks_name(2, prefer_alias=True) == "TRADE"

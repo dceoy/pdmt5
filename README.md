@@ -189,8 +189,8 @@ from pdmt5 import (
 
 parse_timeframe("TIMEFRAME_M1")  # 1
 parse_timeframe("M1")  # 1
-parse_copy_ticks("COPY_TICKS_ALL")  # 3
-parse_copy_ticks("ALL")  # 3
+parse_copy_ticks("COPY_TICKS_ALL")  # -1
+parse_copy_ticks("ALL")  # -1
 parse_order_type("ORDER_TYPE_BUY")  # 0
 parse_order_type("BUY")  # 0
 

@@ -31,7 +31,7 @@ _TIMEFRAME_ALIASES: Final[dict[str, int]] = {
 _COPY_TICKS_ALIASES: Final[dict[str, int]] = {
     "INFO": 1,
     "TRADE": 2,
-    "ALL": 3,
+    "ALL": -1,
 }
 _ORDER_TYPE_ALIASES: Final[dict[str, int]] = {
     "BUY": 0,

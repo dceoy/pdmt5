@@ -73,7 +73,7 @@ with Mt5TradingClient(config=config) as client:
 
 # Parse MT5 constants without importing the MetaTrader5 module
 timeframe = parse_timeframe("TIMEFRAME_H1")  # 16385
-tick_flags = parse_copy_ticks("ALL")  # 3
+tick_flags = parse_copy_ticks("ALL")  # -1
 ```
 
 ## Requirements
