@@ -11,13 +11,88 @@ from pytest_mock import MockerFixture
 
 from pdmt5.mt5 import Mt5RuntimeError
 from pdmt5.trading import Mt5TradingClient, Mt5TradingError
+from tests.helpers import create_mock_mt5_module
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5TradingClient.model_rebuild()
 
+_MT5_METHODS = (
+    "initialize",
+    "shutdown",
+    "last_error",
+    "account_info",
+    "terminal_info",
+    "symbols_get",
+    "symbol_info",
+    "symbol_info_tick",
+    "positions_get",
+    "order_check",
+    "order_send",
+    "order_calc_margin",
+    "copy_rates_from_pos",
+    "copy_ticks_range",
+    "history_deals_get",
+)
+
+_MT5_CONSTANTS = {
+    "TRADE_ACTION_DEAL": 1,
+    "ORDER_TYPE_BUY": 0,
+    "ORDER_TYPE_SELL": 1,
+    "POSITION_TYPE_BUY": 0,
+    "POSITION_TYPE_SELL": 1,
+    "ORDER_FILLING_IOC": 1,
+    "ORDER_FILLING_FOK": 2,
+    "ORDER_FILLING_RETURN": 3,
+    "ORDER_TIME_GTC": 0,
+    "TRADE_RETCODE_REQUOTE": 10004,
+    "TRADE_RETCODE_REJECT": 10006,
+    "TRADE_RETCODE_CANCEL": 10007,
+    "TRADE_RETCODE_PLACED": 10008,
+    "TRADE_RETCODE_DONE": 10009,
+    "TRADE_RETCODE_DONE_PARTIAL": 10010,
+    "TRADE_RETCODE_ERROR": 10011,
+    "TRADE_RETCODE_TIMEOUT": 10012,
+    "TRADE_RETCODE_INVALID": 10013,
+    "TRADE_RETCODE_INVALID_VOLUME": 10014,
+    "TRADE_RETCODE_INVALID_PRICE": 10015,
+    "TRADE_RETCODE_INVALID_STOPS": 10016,
+    "TRADE_RETCODE_TRADE_DISABLED": 10017,
+    "TRADE_RETCODE_MARKET_CLOSED": 10018,
+    "TRADE_RETCODE_NO_MONEY": 10019,
+    "TRADE_RETCODE_PRICE_CHANGED": 10020,
+    "TRADE_RETCODE_PRICE_OFF": 10021,
+    "TRADE_RETCODE_INVALID_EXPIRATION": 10022,
+    "TRADE_RETCODE_ORDER_CHANGED": 10023,
+    "TRADE_RETCODE_TOO_MANY_REQUESTS": 10024,
+    "TRADE_RETCODE_NO_CHANGES": 10025,
+    "TRADE_RETCODE_SERVER_DISABLES_AT": 10026,
+    "TRADE_RETCODE_CLIENT_DISABLES_AT": 10027,
+    "TRADE_RETCODE_LOCKED": 10028,
+    "TRADE_RETCODE_FROZEN": 10029,
+    "TRADE_RETCODE_INVALID_FILL": 10030,
+    "TRADE_RETCODE_CONNECTION": 10031,
+    "TRADE_RETCODE_ONLY_REAL": 10032,
+    "TRADE_RETCODE_LIMIT_ORDERS": 10033,
+    "TRADE_RETCODE_LIMIT_VOLUME": 10034,
+    "TRADE_RETCODE_INVALID_ORDER": 10035,
+    "TRADE_RETCODE_POSITION_CLOSED": 10036,
+    "TRADE_RETCODE_INVALID_CLOSE_VOLUME": 10038,
+    "TRADE_RETCODE_CLOSE_ORDER_EXIST": 10039,
+    "TRADE_RETCODE_LIMIT_POSITIONS": 10040,
+    "TRADE_RETCODE_REJECT_CANCEL": 10041,
+    "TRADE_RETCODE_LONG_ONLY": 10042,
+    "TRADE_RETCODE_SHORT_ONLY": 10043,
+    "TRADE_RETCODE_CLOSE_ONLY": 10044,
+    "TRADE_RETCODE_FIFO_CLOSE": 10045,
+    "TRADE_RETCODE_HEDGE_PROHIBITED": 10046,
+    "RES_S_OK": 1,
+    "DEAL_TYPE_BUY": 0,
+    "DEAL_TYPE_SELL": 1,
+}
+
 
 @pytest.fixture(autouse=True)
-def mock_mt5_import(  # noqa: PLR0915
+def mock_mt5_import(
     request: pytest.FixtureRequest,
     mocker: MockerFixture,
 ) -> Generator[ModuleType | None, None, None]:
@@ -32,91 +107,20 @@ def mock_mt5_import(  # noqa: PLR0915
     if "initialize_import_error" in node_name:
         yield None
         return
-    else:
-        # Create a real module instance and add mock attributes to it
-        mock_mt5 = ModuleType("mock_mt5")
-        mock_mt5_any = cast("Any", mock_mt5)
-        # Make it a MagicMock while preserving module type
-        for attr in dir(mocker.MagicMock()):
-            if not attr.startswith("__") or attr == "__call__":
-                setattr(mock_mt5_any, attr, getattr(mocker.MagicMock(), attr))
 
-        # Configure common mock attributes
-        mock_mt5_any.initialize = mocker.MagicMock()
-        mock_mt5_any.shutdown = mocker.MagicMock()
-        mock_mt5_any.last_error = mocker.MagicMock()
-        mock_mt5_any.account_info = mocker.MagicMock()
-        mock_mt5_any.terminal_info = mocker.MagicMock()
-        mock_mt5_any.symbols_get = mocker.MagicMock()
-        mock_mt5_any.symbol_info = mocker.MagicMock()
-        mock_mt5_any.symbol_info_tick = mocker.MagicMock()
-        mock_mt5_any.positions_get = mocker.MagicMock()
-        mock_mt5_any.order_check = mocker.MagicMock()
-        mock_mt5_any.order_send = mocker.MagicMock()
-        mock_mt5_any.order_calc_margin = mocker.MagicMock()
-        mock_mt5_any.copy_rates_from_pos = mocker.MagicMock()
-        mock_mt5_any.copy_ticks_range = mocker.MagicMock()
-        mock_mt5_any.history_deals_get = mocker.MagicMock()
+    yield create_mock_mt5_module(
+        mocker,
+        methods=_MT5_METHODS,
+        constants=_MT5_CONSTANTS,
+    )
 
-        # Trading-specific constants
-        mock_mt5_any.TRADE_ACTION_DEAL = 1
-        mock_mt5_any.ORDER_TYPE_BUY = 0
-        mock_mt5_any.ORDER_TYPE_SELL = 1
-        mock_mt5_any.POSITION_TYPE_BUY = 0
-        mock_mt5_any.POSITION_TYPE_SELL = 1
-        mock_mt5_any.ORDER_FILLING_IOC = 1
-        mock_mt5_any.ORDER_FILLING_FOK = 2
-        mock_mt5_any.ORDER_FILLING_RETURN = 3
-        mock_mt5_any.ORDER_TIME_GTC = 0
 
-        # Trade return codes
-        mock_mt5_any.TRADE_RETCODE_REQUOTE = 10004
-        mock_mt5_any.TRADE_RETCODE_REJECT = 10006
-        mock_mt5_any.TRADE_RETCODE_CANCEL = 10007
-        mock_mt5_any.TRADE_RETCODE_PLACED = 10008
-        mock_mt5_any.TRADE_RETCODE_DONE = 10009
-        mock_mt5_any.TRADE_RETCODE_DONE_PARTIAL = 10010
-        mock_mt5_any.TRADE_RETCODE_ERROR = 10011
-        mock_mt5_any.TRADE_RETCODE_TIMEOUT = 10012
-        mock_mt5_any.TRADE_RETCODE_INVALID = 10013
-        mock_mt5_any.TRADE_RETCODE_INVALID_VOLUME = 10014
-        mock_mt5_any.TRADE_RETCODE_INVALID_PRICE = 10015
-        mock_mt5_any.TRADE_RETCODE_INVALID_STOPS = 10016
-        mock_mt5_any.TRADE_RETCODE_TRADE_DISABLED = 10017
-        mock_mt5_any.TRADE_RETCODE_MARKET_CLOSED = 10018
-        mock_mt5_any.TRADE_RETCODE_NO_MONEY = 10019
-        mock_mt5_any.TRADE_RETCODE_PRICE_CHANGED = 10020
-        mock_mt5_any.TRADE_RETCODE_PRICE_OFF = 10021
-        mock_mt5_any.TRADE_RETCODE_INVALID_EXPIRATION = 10022
-        mock_mt5_any.TRADE_RETCODE_ORDER_CHANGED = 10023
-        mock_mt5_any.TRADE_RETCODE_TOO_MANY_REQUESTS = 10024
-        mock_mt5_any.TRADE_RETCODE_NO_CHANGES = 10025
-        mock_mt5_any.TRADE_RETCODE_SERVER_DISABLES_AT = 10026
-        mock_mt5_any.TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
-        mock_mt5_any.TRADE_RETCODE_LOCKED = 10028
-        mock_mt5_any.TRADE_RETCODE_FROZEN = 10029
-        mock_mt5_any.TRADE_RETCODE_INVALID_FILL = 10030
-        mock_mt5_any.TRADE_RETCODE_CONNECTION = 10031
-        mock_mt5_any.TRADE_RETCODE_ONLY_REAL = 10032
-        mock_mt5_any.TRADE_RETCODE_LIMIT_ORDERS = 10033
-        mock_mt5_any.TRADE_RETCODE_LIMIT_VOLUME = 10034
-        mock_mt5_any.TRADE_RETCODE_INVALID_ORDER = 10035
-        mock_mt5_any.TRADE_RETCODE_POSITION_CLOSED = 10036
-        mock_mt5_any.TRADE_RETCODE_INVALID_CLOSE_VOLUME = 10038
-        mock_mt5_any.TRADE_RETCODE_CLOSE_ORDER_EXIST = 10039
-        mock_mt5_any.TRADE_RETCODE_LIMIT_POSITIONS = 10040
-        mock_mt5_any.TRADE_RETCODE_REJECT_CANCEL = 10041
-        mock_mt5_any.TRADE_RETCODE_LONG_ONLY = 10042
-        mock_mt5_any.TRADE_RETCODE_SHORT_ONLY = 10043
-        mock_mt5_any.TRADE_RETCODE_CLOSE_ONLY = 10044
-        mock_mt5_any.TRADE_RETCODE_FIFO_CLOSE = 10045
-        mock_mt5_any.TRADE_RETCODE_HEDGE_PROHIBITED = 10046
-
-        mock_mt5_any.RES_S_OK = 1
-        mock_mt5_any.DEAL_TYPE_BUY = 0
-        mock_mt5_any.DEAL_TYPE_SELL = 1
-
-        yield mock_mt5
+def create_initialized_client(mock_mt5_import: ModuleType) -> Mt5TradingClient:
+    """Create an initialized trading client."""
+    mock_mt5_import.initialize.return_value = True
+    client = Mt5TradingClient(mt5=mock_mt5_import)
+    client.initialize()
+    return client
 
 
 class MockPositionInfo(NamedTuple):
@@ -253,9 +257,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test close_position when no positions exist."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
@@ -271,9 +273,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_position with existing positions."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -296,9 +296,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_position with existing positions in dry run mode."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -323,9 +321,7 @@ class TestMt5TradingClient:
     ) -> None:
         """Test close_position with dry_run parameter override."""
         # Client initialized without dry_run
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -352,9 +348,7 @@ class TestMt5TradingClient:
     ) -> None:
         """Test close_position with real mode override."""
         # Client initialized without dry_run
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -379,9 +373,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test close_open_positions for all symbols."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbols and positions
         mock_mt5_import.symbols_get.return_value = ["EURUSD", "GBPUSD"]
@@ -400,9 +392,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test close_open_positions for specific symbols."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
@@ -418,9 +408,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test close_open_positions with tuple input."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
@@ -439,9 +427,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_open_positions with additional kwargs."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -471,9 +457,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test close_open_positions with additional kwargs and dry_run override."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -503,9 +487,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in dry run mode with success."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -535,9 +517,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in real mode with success."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -573,9 +553,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType, retcode: int, comment: str
     ) -> None:
         """Test _send_or_check_order with non-error retcodes."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -601,9 +579,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with failure."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -630,9 +606,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order in dry run mode with failure."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -663,9 +637,7 @@ class TestMt5TradingClient:
     ) -> None:
         """Test _send_or_check_order with dry_run parameter override."""
         # Client initialized without dry_run
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -699,9 +671,7 @@ class TestMt5TradingClient:
     ) -> None:
         """Test _send_or_check_order with real mode override."""
         # Client initialized without dry_run
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         request = {
             "action": 1,
@@ -734,9 +704,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test place_market_order method."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock MT5 constants
         mock_mt5_import.ORDER_TYPE_BUY = 0  # type: ignore[reportAttributeAccessIssue]
@@ -781,9 +749,7 @@ class TestMt5TradingClient:
         mock_position_buy: MockPositionInfo,
     ) -> None:
         """Test that order filling mode constants are used correctly."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock positions
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -810,9 +776,7 @@ class TestMt5TradingClient:
         mock_position_sell: MockPositionInfo,
     ) -> None:
         """Test that position types are handled correctly for closing."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Test buy position -> sell order
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
@@ -846,9 +810,7 @@ class TestMt5TradingClient:
         mock_position_sell: MockPositionInfo,
     ) -> None:
         """Test _fetch_and_close_position with dry_run parameter."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Test with multiple positions and dry_run override
         mock_mt5_import.positions_get.return_value = [
@@ -880,9 +842,7 @@ class TestMt5TradingClient:
     ) -> None:
         """Test _fetch_and_close_position does not inherit dry_run from instance."""
         # Client initialized without dry_run
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         mock_mt5_import.positions_get.return_value = [mock_position_buy]
 
@@ -919,9 +879,7 @@ class TestMt5TradingClient:
         expected_margin: float,
     ) -> None:
         """Test successful calculation of minimum order margin."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -964,9 +922,7 @@ class TestMt5TradingClient:
         expected_volume: float,
     ) -> None:
         """Test successful calculation of volume by margin."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -991,9 +947,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test calculation when order_calc_margin returns zero."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -1025,9 +979,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test calculation when minimum order margin is zero."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
@@ -1054,9 +1006,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test calculation of spread ratio."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
@@ -1076,9 +1026,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test successful fetching of rate data as DataFrame."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock TIMEFRAME constant
         mock_mt5_import.TIMEFRAME_M1 = 1  # type: ignore[reportAttributeAccessIssue]
@@ -1119,9 +1067,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test fetching rate data with invalid granularity."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Ensure the attribute doesn't exist for invalid granularity
         if hasattr(mock_mt5_import, "TIMEFRAME_INVALID"):
@@ -1138,9 +1084,7 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test fetching tick data as DataFrame."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol tick info with time
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
@@ -1194,9 +1138,7 @@ class TestMt5TradingClient:
 
     def test_collect_entry_deals_as_df(self, mock_mt5_import: ModuleType) -> None:
         """Test collecting entry deals as DataFrame."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
@@ -1260,9 +1202,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test collecting entry deals with custom parameters."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
@@ -1306,9 +1246,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test collecting entry deals without index."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
@@ -1342,9 +1280,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test fetching positions with metrics when no positions exist."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock empty positions
         mock_mt5_import.positions_get.return_value = []
@@ -1362,9 +1298,7 @@ class TestMt5TradingClient:
         mocker: MockerFixture,
     ) -> None:
         """Test fetching positions with metrics when positions exist."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Create a mock position that returns the right data when converted
         mock_position = mocker.MagicMock()
@@ -1428,9 +1362,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test calculating margin ratio when account has no equity."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info with zero equity
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1447,9 +1379,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType, mocker: MockerFixture
     ) -> None:
         """Test calculating margin ratio for a new buy position."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1501,9 +1431,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test calculating margin ratio for a new sell position."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1535,9 +1463,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test calculating margin ratio with zero volume."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1565,9 +1491,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test calculating margin ratio with invalid side."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1595,9 +1519,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test calculating margin ratio with invalid side string."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock account info
         mock_mt5_import.account_info.return_value._asdict.return_value = {
@@ -1625,9 +1547,7 @@ class TestMt5TradingClient:
 
     def test_update_sltp_for_open_positions(self, mock_mt5_import: ModuleType) -> None:
         """Test update_sltp_for_open_positions method."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock MT5 constants
         mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
@@ -1683,9 +1603,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test update_sltp_for_open_positions when no positions exist for symbol."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock empty positions result
         mock_mt5_import.positions_get.return_value = []
@@ -1706,9 +1624,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test update_sltp_for_open_positions when positions exist but no tickets match."""  # noqa: E501
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock MT5 constants
         mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
@@ -1753,9 +1669,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test update_sltp_for_open_positions when SL/TP values are already the same."""  # noqa: E501
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock MT5 constants
         mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
@@ -1802,9 +1716,7 @@ class TestMt5TradingClient:
         self, mock_mt5_import: ModuleType
     ) -> None:
         """Test update_sltp_for_open_positions without specifying tickets."""
-        client = Mt5TradingClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
+        client = create_initialized_client(mock_mt5_import)
 
         # Mock MT5 constants
         mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
