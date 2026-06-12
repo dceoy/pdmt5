@@ -6,7 +6,7 @@ import logging
 from datetime import timedelta
 from functools import cached_property
 from math import floor
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import ConfigDict
 
@@ -18,6 +18,30 @@ if TYPE_CHECKING:
     import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+_SUCCESSFUL_TRADE_RETCODE_NAMES: Final[str] = (
+    "TRADE_RETCODE_PLACED TRADE_RETCODE_DONE TRADE_RETCODE_DONE_PARTIAL"
+)
+_FAILED_TRADE_RETCODE_NAMES: Final[str] = (
+    "TRADE_RETCODE_REQUOTE TRADE_RETCODE_REJECT TRADE_RETCODE_CANCEL "
+    "TRADE_RETCODE_ERROR TRADE_RETCODE_TIMEOUT TRADE_RETCODE_INVALID "
+    "TRADE_RETCODE_INVALID_VOLUME TRADE_RETCODE_INVALID_PRICE "
+    "TRADE_RETCODE_INVALID_STOPS TRADE_RETCODE_TRADE_DISABLED "
+    "TRADE_RETCODE_MARKET_CLOSED TRADE_RETCODE_NO_MONEY "
+    "TRADE_RETCODE_PRICE_CHANGED TRADE_RETCODE_PRICE_OFF "
+    "TRADE_RETCODE_INVALID_EXPIRATION TRADE_RETCODE_ORDER_CHANGED "
+    "TRADE_RETCODE_TOO_MANY_REQUESTS TRADE_RETCODE_NO_CHANGES "
+    "TRADE_RETCODE_SERVER_DISABLES_AT TRADE_RETCODE_CLIENT_DISABLES_AT "
+    "TRADE_RETCODE_LOCKED TRADE_RETCODE_FROZEN TRADE_RETCODE_INVALID_FILL "
+    "TRADE_RETCODE_CONNECTION TRADE_RETCODE_ONLY_REAL "
+    "TRADE_RETCODE_LIMIT_ORDERS TRADE_RETCODE_LIMIT_VOLUME "
+    "TRADE_RETCODE_INVALID_ORDER TRADE_RETCODE_POSITION_CLOSED "
+    "TRADE_RETCODE_INVALID_CLOSE_VOLUME TRADE_RETCODE_CLOSE_ORDER_EXIST "
+    "TRADE_RETCODE_LIMIT_POSITIONS TRADE_RETCODE_REJECT_CANCEL "
+    "TRADE_RETCODE_LONG_ONLY TRADE_RETCODE_SHORT_ONLY "
+    "TRADE_RETCODE_CLOSE_ONLY TRADE_RETCODE_FIFO_CLOSE "
+    "TRADE_RETCODE_HEDGE_PROHIBITED"
+)
 
 
 class Mt5TradingError(Mt5RuntimeError):
@@ -41,9 +65,8 @@ class Mt5TradingClient(Mt5DataClient):
             Set of successful trade return codes.
         """
         return {
-            self.mt5.TRADE_RETCODE_PLACED,  # 10008
-            self.mt5.TRADE_RETCODE_DONE,  # 10009
-            self.mt5.TRADE_RETCODE_DONE_PARTIAL,  # 10010
+            int(getattr(self.mt5, name))
+            for name in _SUCCESSFUL_TRADE_RETCODE_NAMES.split()
         }
 
     @cached_property
@@ -54,44 +77,7 @@ class Mt5TradingClient(Mt5DataClient):
             Set of failed trade return codes.
         """
         return {
-            self.mt5.TRADE_RETCODE_REQUOTE,  # 10004
-            self.mt5.TRADE_RETCODE_REJECT,  # 10006
-            self.mt5.TRADE_RETCODE_CANCEL,  # 10007
-            self.mt5.TRADE_RETCODE_ERROR,  # 10011
-            self.mt5.TRADE_RETCODE_TIMEOUT,  # 10012
-            self.mt5.TRADE_RETCODE_INVALID,  # 10013
-            self.mt5.TRADE_RETCODE_INVALID_VOLUME,  # 10014
-            self.mt5.TRADE_RETCODE_INVALID_PRICE,  # 10015
-            self.mt5.TRADE_RETCODE_INVALID_STOPS,  # 10016
-            self.mt5.TRADE_RETCODE_TRADE_DISABLED,  # 10017
-            self.mt5.TRADE_RETCODE_MARKET_CLOSED,  # 10018
-            self.mt5.TRADE_RETCODE_NO_MONEY,  # 10019
-            self.mt5.TRADE_RETCODE_PRICE_CHANGED,  # 10020
-            self.mt5.TRADE_RETCODE_PRICE_OFF,  # 10021
-            self.mt5.TRADE_RETCODE_INVALID_EXPIRATION,  # 10022
-            self.mt5.TRADE_RETCODE_ORDER_CHANGED,  # 10023
-            self.mt5.TRADE_RETCODE_TOO_MANY_REQUESTS,  # 10024
-            self.mt5.TRADE_RETCODE_NO_CHANGES,  # 10025
-            self.mt5.TRADE_RETCODE_SERVER_DISABLES_AT,  # 10026
-            self.mt5.TRADE_RETCODE_CLIENT_DISABLES_AT,  # 10027
-            self.mt5.TRADE_RETCODE_LOCKED,  # 10028
-            self.mt5.TRADE_RETCODE_FROZEN,  # 10029
-            self.mt5.TRADE_RETCODE_INVALID_FILL,  # 10030
-            self.mt5.TRADE_RETCODE_CONNECTION,  # 10031
-            self.mt5.TRADE_RETCODE_ONLY_REAL,  # 10032
-            self.mt5.TRADE_RETCODE_LIMIT_ORDERS,  # 10033
-            self.mt5.TRADE_RETCODE_LIMIT_VOLUME,  # 10034
-            self.mt5.TRADE_RETCODE_INVALID_ORDER,  # 10035
-            self.mt5.TRADE_RETCODE_POSITION_CLOSED,  # 10036
-            self.mt5.TRADE_RETCODE_INVALID_CLOSE_VOLUME,  # 10038
-            self.mt5.TRADE_RETCODE_CLOSE_ORDER_EXIST,  # 10039
-            self.mt5.TRADE_RETCODE_LIMIT_POSITIONS,  # 10040
-            self.mt5.TRADE_RETCODE_REJECT_CANCEL,  # 10041
-            self.mt5.TRADE_RETCODE_LONG_ONLY,  # 10042
-            self.mt5.TRADE_RETCODE_SHORT_ONLY,  # 10043
-            self.mt5.TRADE_RETCODE_CLOSE_ONLY,  # 10044
-            self.mt5.TRADE_RETCODE_FIFO_CLOSE,  # 10045
-            self.mt5.TRADE_RETCODE_HEDGE_PROHIBITED,  # 10046
+            int(getattr(self.mt5, name)) for name in _FAILED_TRADE_RETCODE_NAMES.split()
         }
 
     def close_open_positions(
@@ -155,32 +141,31 @@ class Mt5TradingClient(Mt5DataClient):
         if not positions_dict:
             logger.warning("No open positions found for symbol: %s", symbol)
             return []
-        else:
-            logger.info("Closing open positions for symbol: %s", symbol)
-            return [
-                self._send_or_check_order(
-                    request={
-                        "action": self.mt5.TRADE_ACTION_DEAL,
-                        "symbol": p["symbol"],
-                        "volume": p["volume"],
-                        "type": (
-                            self.mt5.ORDER_TYPE_SELL
-                            if p["type"] == self.mt5.POSITION_TYPE_BUY
-                            else self.mt5.ORDER_TYPE_BUY
-                        ),
-                        "type_filling": getattr(
-                            self.mt5,
-                            f"ORDER_FILLING_{order_filling_mode}",
-                        ),
-                        "type_time": self.mt5.ORDER_TIME_GTC,
-                        "position": p["ticket"],
-                        **kwargs,
-                    },
-                    raise_on_error=raise_on_error,
-                    dry_run=dry_run,
-                )
-                for p in positions_dict
-            ]
+        logger.info("Closing open positions for symbol: %s", symbol)
+        return [
+            self._send_or_check_order(
+                request={
+                    "action": self.mt5.TRADE_ACTION_DEAL,
+                    "symbol": p["symbol"],
+                    "volume": p["volume"],
+                    "type": (
+                        self.mt5.ORDER_TYPE_SELL
+                        if p["type"] == self.mt5.POSITION_TYPE_BUY
+                        else self.mt5.ORDER_TYPE_BUY
+                    ),
+                    "type_filling": getattr(
+                        self.mt5,
+                        f"ORDER_FILLING_{order_filling_mode}",
+                    ),
+                    "type_time": self.mt5.ORDER_TIME_GTC,
+                    "position": p["ticket"],
+                    **kwargs,
+                },
+                raise_on_error=raise_on_error,
+                dry_run=dry_run,
+            )
+            for p in positions_dict
+        ]
 
     def _send_or_check_order(
         self,
@@ -214,16 +199,15 @@ class Mt5TradingClient(Mt5DataClient):
         ):
             logger.info("response: %s", response)
             return response
-        elif raise_on_error:
+        if raise_on_error:
             logger.error("response: %s", response)
             comment = response.get("comment")
             error_message = f"{order_func}() failed and aborted. <= `{comment}`"
             raise Mt5TradingError(error_message)
-        else:
-            logger.warning("response: %s", response)
-            comment = response.get("comment")
-            logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
-            return response
+        logger.warning("response: %s", response)
+        comment = response.get("comment")
+        logger.warning("%s() failed and skipped. <= `%s`", order_func, comment)
+        return response
 
     def place_market_order(
         self,
@@ -298,7 +282,7 @@ class Mt5TradingClient(Mt5DataClient):
         if positions_df.empty:
             logger.warning("No open positions found for symbol: %s", symbol)
             return []
-        elif tickets:
+        if tickets:
             filtered_positions_df = positions_df.pipe(
                 lambda d: d[d["ticket"].isin(tickets)]
             )
@@ -311,44 +295,44 @@ class Mt5TradingClient(Mt5DataClient):
                 tickets,
             )
             return []
-        else:
-            symbol_info = self.symbol_info_as_dict(symbol=symbol)
-            sl = round(stop_loss, symbol_info["digits"]) if stop_loss else None
-            tp = round(take_profit, symbol_info["digits"]) if take_profit else None
-            order_requests = [
-                {
-                    "action": self.mt5.TRADE_ACTION_SLTP,
-                    "symbol": p["symbol"],
-                    "position": p["ticket"],
-                    "sl": (sl or p["sl"]),
-                    "tp": (tp or p["tp"]),
-                    **kwargs,
-                }
-                for _, p in filtered_positions_df.iterrows()
-                if sl != p["sl"] or tp != p["tp"]
-            ]
-            if order_requests:
-                logger.info(
-                    "Updating SL/TP for %d positions for %s: %s/%s",
-                    len(order_requests),
-                    symbol,
-                    sl,
-                    tp,
-                )
-                return [
-                    self._send_or_check_order(
-                        request=r, raise_on_error=raise_on_error, dry_run=dry_run
-                    )
-                    for r in order_requests
-                ]
-            else:
-                logger.info(
-                    "No positions to update for symbol: %s with SL: %s and TP: %s",
-                    symbol,
-                    sl,
-                    tp,
-                )
-                return []
+        symbol_info = self.symbol_info_as_dict(symbol=symbol)
+        sl = round(stop_loss, symbol_info["digits"]) if stop_loss else None
+        tp = round(take_profit, symbol_info["digits"]) if take_profit else None
+        order_requests = [
+            {
+                "action": self.mt5.TRADE_ACTION_SLTP,
+                "symbol": p["symbol"],
+                "position": p["ticket"],
+                "sl": (sl or p["sl"]),
+                "tp": (tp or p["tp"]),
+                **kwargs,
+            }
+            for _, p in filtered_positions_df.iterrows()
+            if sl != p["sl"] or tp != p["tp"]
+        ]
+        if not order_requests:
+            logger.info(
+                "No positions to update for symbol: %s with SL: %s and TP: %s",
+                symbol,
+                sl,
+                tp,
+            )
+            return []
+        logger.info(
+            "Updating SL/TP for %d positions for %s: %s/%s",
+            len(order_requests),
+            symbol,
+            sl,
+            tp,
+        )
+        return [
+            self._send_or_check_order(
+                request=request,
+                raise_on_error=raise_on_error,
+                dry_run=dry_run,
+            )
+            for request in order_requests
+        ]
 
     def calculate_minimum_order_margin(
         self,
@@ -477,21 +461,20 @@ class Mt5TradingClient(Mt5DataClient):
                 f"MetaTrader5 does not support the given granularity: {granularity}"
             )
             raise Mt5TradingError(error_message) from e
-        else:
-            result = self.copy_rates_from_pos_as_df(
-                symbol=symbol,
-                timeframe=timeframe,
-                start_pos=0,
-                count=count,
-                index_keys=index_keys,
-            )
-            logger.info(
-                "Fetched latest %s rates for %s: %d rows",
-                granularity,
-                symbol,
-                result.shape[0],
-            )
-            return result
+        result = self.copy_rates_from_pos_as_df(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_pos=0,
+            count=count,
+            index_keys=index_keys,
+        )
+        logger.info(
+            "Fetched latest %s rates for %s: %d rows",
+            granularity,
+            symbol,
+            result.shape[0],
+        )
+        return result
 
     def fetch_latest_ticks_as_df(
         self,

@@ -53,6 +53,29 @@ class Mt5DataClient(Mt5Client):
         description="Number of retry attempts for connection initialization",
     )
 
+    @staticmethod
+    def _as_dicts(items: Any) -> list[dict[str, Any]]:  # noqa: ANN401
+        """Return MT5 namedtuple-like results as dictionaries."""
+        return [item._asdict() for item in items]
+
+    @staticmethod
+    def _as_order_result_dict(result: Any) -> dict[str, Any]:  # noqa: ANN401
+        """Return order result data with nested request data flattened one level."""
+        return {
+            key: (value._asdict() if key == "request" else value)
+            for key, value in result._asdict().items()
+        }
+
+    @staticmethod
+    def _as_record_dicts(df: pd.DataFrame) -> list[dict[str, Any]]:
+        """Return DataFrame rows as dictionaries."""
+        return cast("list[dict[str, Any]]", df.to_dict(orient="records"))
+
+    @staticmethod
+    def _as_single_row_df(data: dict[str, Any]) -> pd.DataFrame:
+        """Return a one-row DataFrame from a dictionary."""
+        return pd.DataFrame([data])
+
     def initialize_and_login_mt5(
         self,
         path: str | None = None,
@@ -133,7 +156,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with MetaTrader5 version information.
         """
-        return pd.DataFrame([self.version_as_dict()])
+        return self._as_single_row_df(self.version_as_dict())
 
     def last_error_as_dict(self) -> dict[str, Any]:
         """Get the last error information as a dictionary.
@@ -154,7 +177,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with last error information.
         """
-        return pd.DataFrame([self.last_error_as_dict()])
+        return self._as_single_row_df(self.last_error_as_dict())
 
     def account_info_as_dict(self) -> dict[str, Any]:
         """Get info on the current account as a dictionary.
@@ -174,7 +197,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with account information.
         """
-        return pd.DataFrame([self.account_info_as_dict()])
+        return self._as_single_row_df(self.account_info_as_dict())
 
     def terminal_info_as_dict(self) -> dict[str, Any]:
         """Get the connected terminal status and settings as a dictionary.
@@ -194,7 +217,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with terminal information.
         """
-        return pd.DataFrame([self.terminal_info_as_dict()])
+        return self._as_single_row_df(self.terminal_info_as_dict())
 
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbols_get_as_dicts(
@@ -211,7 +234,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with symbol information.
         """
-        return [s._asdict() for s in self.symbols_get(group=group)]
+        return self._as_dicts(self.symbols_get(group=group))
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -270,9 +293,9 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with symbol information.
         """
-        return pd.DataFrame([
+        return self._as_single_row_df(
             self.symbol_info_as_dict(symbol=symbol, skip_to_datetime=True)
-        ])
+        )
 
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def symbol_info_tick_as_dict(
@@ -309,9 +332,9 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with tick information.
         """
-        return pd.DataFrame([
+        return self._as_single_row_df(
             self.symbol_info_tick_as_dict(symbol=symbol, skip_to_datetime=True)
-        ])
+        )
 
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def market_book_get_as_dicts(
@@ -328,7 +351,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with market depth data.
         """
-        return [b._asdict() for b in self.market_book_get(symbol=symbol)]
+        return self._as_dicts(self.market_book_get(symbol=symbol))
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -372,8 +395,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return cast(
-            "list[dict[str, Any]]",
+        return self._as_record_dicts(
             self.copy_rates_from_as_df(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -381,7 +403,7 @@ class Mt5DataClient(Mt5Client):
                 count=count,
                 skip_to_datetime=skip_to_datetime,
                 index_keys=None,
-            ).to_dict(orient="records"),
+            )
         )
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -438,8 +460,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return cast(
-            "list[dict[str, Any]]",
+        return self._as_record_dicts(
             self.copy_rates_from_pos_as_df(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -447,7 +468,7 @@ class Mt5DataClient(Mt5Client):
                 count=count,
                 skip_to_datetime=skip_to_datetime,
                 index_keys=None,
-            ).to_dict(orient="records"),
+            )
         )
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -505,8 +526,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with OHLCV data.
         """
-        return cast(
-            "list[dict[str, Any]]",
+        return self._as_record_dicts(
             self.copy_rates_range_as_df(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -514,7 +534,7 @@ class Mt5DataClient(Mt5Client):
                 date_to=date_to,
                 skip_to_datetime=skip_to_datetime,
                 index_keys=None,
-            ).to_dict(orient="records"),
+            )
         )
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -571,8 +591,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        return cast(
-            "list[dict[str, Any]]",
+        return self._as_record_dicts(
             self.copy_ticks_from_as_df(
                 symbol=symbol,
                 date_from=date_from,
@@ -580,7 +599,7 @@ class Mt5DataClient(Mt5Client):
                 flags=flags,
                 skip_to_datetime=skip_to_datetime,
                 index_keys=None,
-            ).to_dict(orient="records"),
+            )
         )
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -637,8 +656,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with tick data.
         """
-        return cast(
-            "list[dict[str, Any]]",
+        return self._as_record_dicts(
             self.copy_ticks_range_as_df(
                 symbol=symbol,
                 date_from=date_from,
@@ -646,7 +664,7 @@ class Mt5DataClient(Mt5Client):
                 flags=flags,
                 skip_to_datetime=skip_to_datetime,
                 index_keys=None,
-            ).to_dict(orient="records"),
+            )
         )
 
     @set_index_if_possible(index_parameters="index_keys")
@@ -702,10 +720,9 @@ class Mt5DataClient(Mt5Client):
         Returns:
             List of dictionaries with order information or empty list if no orders.
         """
-        return [
-            o._asdict()
-            for o in self.orders_get(symbol=symbol, group=group, ticket=ticket)
-        ]
+        return self._as_dicts(
+            self.orders_get(symbol=symbol, group=group, ticket=ticket)
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -747,10 +764,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             Dictionary with order check results.
         """  # noqa: E501
-        return {
-            k: (v._asdict() if k == "request" else v)
-            for k, v in self.order_check(request=request)._asdict().items()
-        }
+        return self._as_order_result_dict(self.order_check(request=request))
 
     @set_index_if_possible(index_parameters="index_keys")
     def order_check_as_df(
@@ -767,11 +781,11 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with order check results.
         """  # noqa: E501
-        return pd.DataFrame([
+        return self._as_single_row_df(
             self._flatten_dict_to_one_level(
                 dictionary=self.order_check_as_dict(request=request),
             )
-        ])
+        )
 
     def order_send_as_dict(self, request: dict[str, Any]) -> dict[str, Any]:
         """Send a request to perform a trading operation from the terminal to the trade server as a dictionary.
@@ -782,10 +796,7 @@ class Mt5DataClient(Mt5Client):
         Returns:
             Dictionary with order send results.
         """  # noqa: E501
-        return {
-            k: (v._asdict() if k == "request" else v)
-            for k, v in self.order_send(request=request)._asdict().items()
-        }
+        return self._as_order_result_dict(self.order_send(request=request))
 
     @set_index_if_possible(index_parameters="index_keys")
     def order_send_as_df(
@@ -802,11 +813,11 @@ class Mt5DataClient(Mt5Client):
         Returns:
             DataFrame with order send results.
         """  # noqa: E501
-        return pd.DataFrame([
+        return self._as_single_row_df(
             self._flatten_dict_to_one_level(
                 dictionary=self.order_send_as_dict(request=request),
             )
-        ])
+        )
 
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
     def positions_get_as_dicts(
@@ -828,10 +839,9 @@ class Mt5DataClient(Mt5Client):
             List of dictionaries with position information or empty list if no
             positions.
         """
-        return [
-            p._asdict()
-            for p in self.positions_get(symbol=symbol, group=group, ticket=ticket)
-        ]
+        return self._as_dicts(
+            self.positions_get(symbol=symbol, group=group, ticket=ticket)
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -895,16 +905,15 @@ class Mt5DataClient(Mt5Client):
             ticket=ticket,
             position=position,
         )
-        return [
-            o._asdict()
-            for o in self.history_orders_get(
+        return self._as_dicts(
+            self.history_orders_get(
                 date_from=date_from,
                 date_to=date_to,
                 group=(f"*{symbol}*" if symbol else group),
                 ticket=ticket,
                 position=position,
             )
-        ]
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -977,16 +986,15 @@ class Mt5DataClient(Mt5Client):
             ticket=ticket,
             position=position,
         )
-        return [
-            d._asdict()
-            for d in self.history_deals_get(
+        return self._as_dicts(
+            self.history_deals_get(
                 date_from=date_from,
                 date_to=date_to,
                 group=(f"*{symbol}*" if symbol else group),
                 ticket=ticket,
                 position=position,
             )
-        ]
+        )
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
