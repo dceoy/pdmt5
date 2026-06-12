@@ -11,7 +11,7 @@ from pytest_mock import MockerFixture
 
 from pdmt5.mt5 import Mt5RuntimeError
 from pdmt5.trading import Mt5TradingClient, Mt5TradingError
-from tests.conftest import create_mock_mt5_module
+from tests.helpers import create_mock_mt5_module
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5TradingClient.model_rebuild()

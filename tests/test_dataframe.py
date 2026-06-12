@@ -16,7 +16,7 @@ from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 from pdmt5.utils import (
     detect_and_convert_time_to_datetime,
 )
-from tests.conftest import create_mock_mt5_module
+from tests.helpers import create_mock_mt5_module
 
 # Rebuild models to ensure they are fully defined for testing
 Mt5DataClient.model_rebuild()
