@@ -1,81 +1,62 @@
 # Repository Guidelines
 
-## Commands
+## Project Structure & Module Organization
 
-### Development Setup
+This is a Python package for pandas-friendly MetaTrader 5 access. Core code
+lives in `pdmt5/`: `mt5.py` wraps MT5 calls, `dataframe.py` adds DataFrame/dict
+conversions, `trading.py` contains trading helpers, and `constants.py`/`utils.py`
+hold shared parsing and utilities. Tests live in `tests/`, documentation in
+`docs/`, and project settings in `pyproject.toml`. Keep `uv.lock` in sync.
 
-```bash
-uv sync
-```
+## Build, Test, and Development Commands
 
-### Code Quality and Documentation
+- `uv sync --group dev`: install runtime and development dependencies.
+- `.agents/skills/local-qa/scripts/qa.sh`: run the required local QA workflow
+  after any file update.
+- `uv run pytest`: run tests, doctests, and coverage.
+- `uv run ruff check .`: lint all Python files.
+- `uv run ruff format .`: format Python files.
+- `uv run pyright`: run strict static type checking.
+- `uv run mkdocs serve`: preview documentation locally.
 
-**Important**: Run these before committing or creating a PR.
+MetaTrader5 and live terminal access are Windows-specific; CI runs on Windows.
 
-1. **format, lint, and test**: Use `local-qa` skill.
-2. **Documentation build** (if any public API changes): `uv run mkdocs build`
+## Coding Style & Naming Conventions
 
-## Architecture
+Target Python 3.11+. Use type hints throughout and keep Pyright strict mode
+clean. Ruff enforces 88-character lines, import sorting, Google-style
+docstrings, pandas-vet rules, security checks, and bug-prevention rules.
+Use `snake_case` for functions, methods, variables, and modules; `PascalCase`
+for classes; and uppercase names for constants. Prefer small typed helpers over
+duplicated conversion logic, especially around MT5 result normalization.
 
-### Key Dependencies
+## Design Principles
 
-- **MetaTrader5**: Windows-only trading platform API for market data
-- **pandas**: Core data manipulation and analysis
-- **pydantic**: Data validation and serialization for financial data models
+Apply KISS, DRY, and YAGNI. Keep changes straightforward, remove duplication
+only when it improves clarity, and do not add extension points or features before
+they are needed. Prefer small, test-backed changes that are easy to review.
 
-### Package Structure
+## Testing Guidelines
 
-- `pdmt5/`: Main package directory
-  - `__init__.py`: Package initialization and exports (`Mt5Client`, `Mt5Config`, `Mt5DataClient`, `Mt5RuntimeError`, `Mt5TradingClient`)
-  - `mt5.py`: MT5 terminal client with context manager support (`Mt5Client`, `Mt5RuntimeError`)
-  - `dataframe.py`: MT5 data client with pandas DataFrame conversion (`Mt5Config`, `Mt5DataClient`)
-  - `trading.py`: Trading operations client (`Mt5TradingClient`, `Mt5TradingError`)
-  - `utils.py`: Utility decorators and functions for time conversion and DataFrame indexing
-- `tests/`: Comprehensive test suite (pytest-based)
-  - `test_init.py`, `test_mt5.py`, `test_dataframe.py`, `test_trading.py`, `test_utils.py`
-- `docs/`: MkDocs documentation with API reference
-  - `docs/index.md`: Main documentation
-  - `docs/api/`: Auto-generated API documentation for all modules
-- Modern Python packaging with `pyproject.toml` and uv dependency management
-
-### Quality Standards
-
-- Type hints required (pyright strict mode)
-- Comprehensive linting with 35+ rule categories (ruff)
-- Test coverage tracking with 100% (pytest-cov)
-- Parametrized tests for input/result matrices using `pytest.mark.parametrize` (pytest)
-- Test doubles (mocks, stubs) using `pytest_mock` for external dependencies (pytest-mock)
-- Pydantic models for data validation and configuration
-- Context manager support for resource management
-
-### Documentation workflow
-
-1. Add Google-style docstrings to functions/classes
-2. Local preview: `uv run mkdocs serve`
-3. Build: `uv run mkdocs build`
-4. Deploy: `uv run mkdocs gh-deploy`
+Tests use `pytest`, `pytest-mock`, doctests, and `pytest-cov`. Name files
+`test_*.py`, classes `Test*`, and functions `test_*`. Coverage targets `pdmt5`
+with branch coverage and a 100% threshold. Add tests for behavior changes,
+including MT5 import failures, validation errors, and DataFrame conversion paths.
 
 ## Commit & Pull Request Guidelines
 
-- Run QA checks using `local-qa` skill before committing or creating a PR.
-- Branch names use appropriate prefixes on creation (e.g., `feature/...`, `bugfix/...`, `refactor/...`, `docs/...`, `chore/...`).
-- When instructed to create a PR, create it as a draft with appropriate labels by default.
+Recent history uses concise imperative subjects, often with PR numbers, such as
+`Refactor dataframe and trading helpers to reduce duplication (#65)`. Dependency
+automation may use Conventional Commit style, for example `build(deps): ...`.
+Keep commits focused.
 
-## Code Design Principles
+Pull requests should include a short summary, QA result, and related issues when
+applicable. For API or docs changes, update `README.md` or `docs/`. Note any
+Windows/MT5 assumptions reviewers need to verify.
 
-Always prefer the simplest design that works.
+## Security & Configuration Tips
 
-- **KISS**: Choose straightforward solutions and avoid unnecessary abstraction.
-- **DRY**: Remove duplication when it improves clarity and maintainability.
-- **YAGNI**: Do not add features, hooks, or flexibility until they are needed.
-- **SOLID/Clean Code**: Apply these as tools, only when they keep the design simpler and easier to change.
-
-## Development Methodology
-
-Keep delivery incremental, test-backed, and easy to review.
-
-- Make small, safe, reversible changes.
-- Prefer `Red -> Green -> Refactor`.
-- Do not mix feature work and refactoring in the same commit.
-- Refactor when it improves clarity or removes real duplication (Rule of Three).
-- Keep tests fast, focused, and self-validating.
+Do not commit MT5 account credentials, terminal paths containing secrets, or live
+trading configuration. Use `Mt5Config` inputs or environment-specific setup in
+local scripts. Preserve dry-run pathways and mock-based tests when modifying
+trading behavior.
