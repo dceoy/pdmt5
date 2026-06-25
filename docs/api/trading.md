@@ -7,21 +7,6 @@
 The trading module extends `Mt5DataClient` with direct order primitives around
 `order_check` / `order_send` and convenience wrappers for common single-call patterns.
 
-### Responsibility boundary
-
-`pdmt5` is the **core MT5 / pandas adapter**. Its scope covers the MT5 connection
-lifecycle, low-level MT5 method wrappers, DataFrame / dict conversion helpers,
-canonical MT5 constant parsing, and minimal direct order primitives.
-
-Generic operational orchestration — margin-budget sizing, normalised
-execution-result handling, broker constraint pre-checks, and downstream trading
-workflows — belongs in **`mt5cli`**, the canonical downstream operational SDK /
-CLI / batch / SQLite history layer built on top of `pdmt5`.
-
-`mt5api` is the sibling HTTP/FastAPI adapter that exposes `pdmt5` over a REST
-interface. Downstream strategy applications own signal generation, risk policy,
-backtesting, optimisation, and strategy-specific order decisions.
-
 ### Method classification
 
 Methods in `Mt5TradingClient` fall into two categories:
@@ -44,8 +29,7 @@ show_bases: false
 Trading client that extends `Mt5DataClient` with direct order primitives
 (`place_market_order`, `_send_or_check_order`) and convenience wrappers
 (`calculate_minimum_order_margin`, `fetch_latest_rates_as_df`,
-`fetch_latest_ticks_as_df`). Higher-level operational orchestration belongs in
-`mt5cli`.
+`fetch_latest_ticks_as_df`).
 
 ### Mt5TradingError
 

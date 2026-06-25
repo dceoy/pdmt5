@@ -24,8 +24,7 @@ integer values.
 ### [Mt5TradingClient](trading.md)
 
 Direct order primitives around `order_check` / `order_send` and convenience
-wrappers for common single-call patterns. Higher-level operational orchestration
-belongs in `mt5cli`.
+wrappers for common single-call patterns.
 
 ## Architecture Overview
 
@@ -36,18 +35,6 @@ belongs in `mt5cli`.
 3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and convenience wrappers
 4. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
 5. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
-
-### Ecosystem boundary
-
-`pdmt5` is the **core MT5 / pandas adapter** and does not depend on any
-downstream package. The table below shows where each concern belongs:
-
-| Layer           | Package        | Responsibility                                                                                              |
-| --------------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| Core adapter    | **pdmt5**      | MT5 lifecycle, low-level wrappers, DataFrame/dict helpers, constant parsing, minimal order primitives       |
-| Operational SDK | **mt5cli**     | Margin-budget sizing, normalised execution results, broker pre-checks, batch workflows, CLI, SQLite history |
-| HTTP adapter    | **mt5api**     | REST/FastAPI interface over `pdmt5`                                                                         |
-| Strategy apps   | _(downstream)_ | Signal generation, risk policy, backtesting, optimisation, strategy-specific decisions                      |
 
 ## Usage Guidelines
 

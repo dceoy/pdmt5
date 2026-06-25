@@ -11,19 +11,6 @@ Pandas-based data handler for MetaTrader 5
 
 **pdmt5** is a Python package that provides a pandas-based interface for MetaTrader 5 (MT5), making it easier to work with financial market data in Python. It provides helpers to convert MT5's native data structures into pandas DataFrames and dictionaries, enabling seamless integration with data science workflows.
 
-### Ecosystem and Responsibility Boundary
-
-**pdmt5** sits at the core of a layered ecosystem:
-
-| Layer           | Package                  | Responsibility                                                                                                                                                                                                                                                                            |
-| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Core adapter    | **pdmt5** (this package) | MT5 connection lifecycle, low-level MT5 method wrappers, DataFrame/dict conversion helpers, canonical MT5 constant parsing, minimal direct order primitives around `order_check` / `order_send`                                                                                           |
-| Operational SDK | **mt5cli**               | Canonical downstream operational SDK / CLI / batch processing / SQLite history layer built on top of `pdmt5`. Generic operational orchestration belongs here: margin-budget sizing, normalised execution-result handling, broker constraint pre-checks, and downstream trading workflows. |
-| HTTP adapter    | **mt5api**               | Sibling HTTP/FastAPI adapter that exposes `pdmt5` over a REST interface.                                                                                                                                                                                                                  |
-| Strategy apps   | _(downstream)_           | Signal generation, risk policy, backtesting, optimisation, and strategy-specific order decisions. These concerns belong in the application layer, not in `pdmt5` or `mt5cli`.                                                                                                             |
-
-`pdmt5` does **not** depend on `mt5cli`.
-
 ### Key Features
 
 - 📊 **Pandas Integration**: DataFrame and dictionary helpers for easy analysis

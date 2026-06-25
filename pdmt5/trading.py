@@ -77,8 +77,8 @@ class Mt5TradingClient(Mt5DataClient):
     single-call patterns.
 
     Higher-level operational orchestration (margin-budget sizing, broker
-    constraint pre-checks, position-metric computation, batch workflows) belongs
-    in ``mt5cli``, the canonical downstream operational SDK built on ``pdmt5``.
+    constraint pre-checks, position-metric computation, batch workflows) is out
+    of scope for this package.
     """
 
     model_config = ConfigDict(frozen=True)
