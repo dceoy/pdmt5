@@ -4,7 +4,38 @@
 
 ## Overview
 
-The trading module extends Mt5DataClient with advanced trading operations including position management, order execution, and dry run support for testing trading strategies without actual execution.
+The trading module extends `Mt5DataClient` with direct order primitives around
+`order_check` / `order_send` and a set of compatibility helpers retained from
+earlier versions of the library.
+
+### Responsibility boundary
+
+`pdmt5` is the **core MT5 / pandas adapter**. Its scope covers the MT5 connection
+lifecycle, low-level MT5 method wrappers, DataFrame / dict conversion helpers,
+canonical MT5 constant parsing, and minimal direct order primitives.
+
+Generic operational orchestration — margin-budget sizing, normalised
+execution-result handling, broker constraint pre-checks, and downstream trading
+workflows — belongs in **`mt5cli`**, the canonical downstream operational SDK /
+CLI / batch / SQLite history layer built on top of `pdmt5`.
+
+`mt5api` is the sibling HTTP/FastAPI adapter that exposes `pdmt5` over a REST
+interface. Downstream strategy applications own signal generation, risk policy,
+backtesting, optimisation, and strategy-specific order decisions.
+
+### Method classification
+
+Methods in `Mt5TradingClient` fall into three categories:
+
+- **Core MT5 primitive**: thin wrapper or constant mapping directly over the
+  MetaTrader5 Python API. Always appropriate in `pdmt5`.
+- **Convenience wrapper**: slightly higher-level helper that remains closely
+  coupled to a single MT5 call and is appropriate in `pdmt5`.
+- **Compatibility helper**: higher-level operational helper retained for backward
+  compatibility. New downstream applications should implement this logic in
+  `mt5cli` or their own layer instead.
+
+See the docstring of each method for its individual classification.
 
 ## Classes
 
@@ -14,7 +45,14 @@ The trading module extends Mt5DataClient with advanced trading operations includ
 options:
 show_bases: false
 
-Advanced trading client class that inherits from `Mt5DataClient` and provides specialized trading functionality.
+Trading client that extends `Mt5DataClient` with direct order primitives
+(`place_market_order`, `_send_or_check_order`) and compatibility helpers
+retained for backward compatibility (`close_open_positions`,
+`update_sltp_for_open_positions`, `calculate_volume_by_margin`,
+`calculate_spread_ratio`, `collect_entry_deals_as_df`,
+`fetch_positions_with_metrics_as_df`, `calculate_new_position_margin_ratio`).
+New downstream applications should implement the compatibility-helper logic in
+`mt5cli` rather than adding new usage of those methods here.
 
 ### Mt5TradingError
 
@@ -132,11 +170,15 @@ with client:
 
 ## Position Management Features
 
-The Mt5TradingClient provides intelligent position management:
+`close_open_positions` and `update_sltp_for_open_positions` are **compatibility
+helpers** retained for backward compatibility. New downstream applications
+should implement position-management workflows in `mt5cli` instead.
 
-- **Automatic Position Reversal**: Automatically determines the correct order type to close positions
+The helpers provide:
+
+- **Automatic Position Reversal**: Determines the correct order type to close positions
 - **Batch Operations**: Close multiple positions for one or more symbols
-- **Dry Run Support**: Test trading logic without executing real trades
+- **Dry Run Support**: Validate orders via `order_check` without executing real trades
 - **Flexible Filtering**: Close positions by symbol(s) or all positions
 - **Custom Parameters**: Support for additional order parameters like comment, deviation, etc.
 
@@ -203,7 +245,11 @@ The `close_open_positions()` method returns a dictionary with symbols as keys:
 
 ## Margin Calculation Methods
 
-The trading client provides advanced margin calculation capabilities:
+`calculate_minimum_order_margin` is a **convenience wrapper** over
+`order_calc_margin` and is appropriate in `pdmt5`. `calculate_volume_by_margin`
+and `calculate_new_position_margin_ratio` are **compatibility helpers** retained
+for backward compatibility; new downstream applications should implement
+margin-budget logic in `mt5cli` instead.
 
 ### Calculate Minimum Order Margin
 
@@ -301,6 +347,12 @@ with client:
 ```
 
 ## Market Data and Analysis Methods
+
+`fetch_latest_rates_as_df` and `fetch_latest_ticks_as_df` are **convenience
+wrappers** appropriate in `pdmt5`. `calculate_spread_ratio`,
+`collect_entry_deals_as_df`, and `fetch_positions_with_metrics_as_df` are
+**compatibility helpers** retained for backward compatibility; new downstream
+applications should implement this logic in `mt5cli` instead.
 
 ### Spread Analysis
 

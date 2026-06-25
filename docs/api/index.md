@@ -23,17 +23,32 @@ integer values.
 
 ### [Mt5TradingClient](trading.md)
 
-Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
+Direct order primitives around `order_check` / `order_send` and a set of
+compatibility helpers retained for backward compatibility. New downstream
+applications should implement higher-level operational trading logic in
+`mt5cli` rather than adding new usage of the compatibility helpers here.
 
 ## Architecture Overview
 
-The package follows a layered architecture:
+### Internal package layers
 
-1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
-2. **Data Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
-3. **Trading Layer** (`trading.py`): Extends `Mt5DataClient` with advanced trading operations and `Mt5TradingError` exception
-4. **Constants** (`constants.py`): Shared MT5 constant parsing and schema helper values
-5. **Utilities** (`utils.py`): Helper functions for time conversion and DataFrame manipulation
+1. **Base Layer** (`mt5.py`): `Mt5Client` — low-level MT5 API access and `Mt5RuntimeError`
+2. **Data Layer** (`dataframe.py`): `Mt5DataClient` / `Mt5Config` — pandas-friendly interface and configuration
+3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and backward-compatible helpers
+4. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
+5. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
+
+### Ecosystem boundary
+
+`pdmt5` is the **core MT5 / pandas adapter** and does not depend on any
+downstream package. The table below shows where each concern belongs:
+
+| Layer | Package | Responsibility |
+|---|---|---|
+| Core adapter | **pdmt5** | MT5 lifecycle, low-level wrappers, DataFrame/dict helpers, constant parsing, minimal order primitives |
+| Operational SDK | **mt5cli** | Margin-budget sizing, normalised execution results, broker pre-checks, batch workflows, CLI, SQLite history |
+| HTTP adapter | **mt5api** | REST/FastAPI interface over `pdmt5` |
+| Strategy apps | *(downstream)* | Signal generation, risk policy, backtesting, optimisation, strategy-specific decisions |
 
 ## Usage Guidelines
 
