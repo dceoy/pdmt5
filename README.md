@@ -11,6 +11,21 @@ Pandas-based data handler for MetaTrader 5
 
 **pdmt5** is a Python package that provides a pandas-based interface for MetaTrader 5 (MT5), making it easier to work with financial market data in Python. It provides helpers to convert MT5's native data structures into pandas DataFrames and dictionaries, enabling seamless integration with data science workflows.
 
+### Ecosystem and Responsibility Boundary
+
+**pdmt5** sits at the core of a layered ecosystem:
+
+| Layer           | Package                  | Responsibility                                                                                                                                                                                                                                                                            |
+| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core adapter    | **pdmt5** (this package) | MT5 connection lifecycle, low-level MT5 method wrappers, DataFrame/dict conversion helpers, canonical MT5 constant parsing, minimal direct order primitives around `order_check` / `order_send`                                                                                           |
+| Operational SDK | **mt5cli**               | Canonical downstream operational SDK / CLI / batch processing / SQLite history layer built on top of `pdmt5`. Generic operational orchestration belongs here: margin-budget sizing, normalised execution-result handling, broker constraint pre-checks, and downstream trading workflows. |
+| HTTP adapter    | **mt5api**               | Sibling HTTP/FastAPI adapter that exposes `pdmt5` over a REST interface.                                                                                                                                                                                                                  |
+| Strategy apps   | _(downstream)_           | Signal generation, risk policy, backtesting, optimisation, and strategy-specific order decisions. These concerns belong in the application layer, not in `pdmt5` or `mt5cli`.                                                                                                             |
+
+`pdmt5` does **not** depend on `mt5cli`. `Mt5TradingClient` includes a set of
+higher-level convenience helpers retained for backward compatibility; see the
+[Mt5TradingClient](#mt5tradingclient) section for the classification of each method.
+
 ### Key Features
 
 - 📊 **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
@@ -21,8 +36,8 @@ Pandas-based data handler for MetaTrader 5
 - 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
 - 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
-- 💰 **Advanced Trading Operations**: Position management, margin calculations, and risk analysis tools
-- 🧪 **Dry Run Mode**: Test trading strategies without executing real trades
+- 💰 **Direct Order Primitives**: `order_check` / `order_send` wrappers with retcode validation
+- 🧪 **Dry Run Mode**: Test order requests without executing real trades
 
 ## Requirements
 
@@ -221,27 +236,36 @@ order_type_schema = {
 
 ### Mt5TradingClient
 
-Advanced trading operations client that extends Mt5DataClient:
+Trading client that extends `Mt5DataClient` with direct order primitives and
+compatibility helpers. Methods are classified as follows:
 
-- **Position Management**:
-  - `close_open_positions()` - Close all positions for specified symbol(s)
-  - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
-  - `update_sltp_for_open_positions()` - Modify stop loss and take profit levels for open positions
-- **Margin Calculations**:
-  - `calculate_minimum_order_margin()` - Calculate minimum required margin for a specific order side
-  - `calculate_volume_by_margin()` - Calculate maximum volume for given margin amount
-  - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
-  - `calculate_new_position_margin_ratio()` - Calculate margin ratio for potential new positions
-- **Simplified Data Access**:
-  - `fetch_latest_rates_as_df()` - Get recent OHLC data with timeframe strings (e.g., "M1", "H1", "D1")
-  - `fetch_latest_ticks_as_df()` - Get tick data for specified seconds around last tick
-  - `collect_entry_deals_as_df()` - Filter and collect entry deals (BUY/SELL) from history
-  - `fetch_positions_with_metrics_as_df()` - Get open positions with calculated metrics (elapsed time, margin, profit ratios)
-- **Features**:
-  - Smart order routing with configurable filling modes
-  - Comprehensive error handling with `Mt5TradingError`
-  - Support for batch operations on multiple symbols
-  - Automatic position closing with proper order type reversal
+- **Core MT5 primitives** — thin wrappers or constant mappings directly over the
+  MetaTrader5 API. Always appropriate in `pdmt5`:
+  - `mt5_successful_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating success
+  - `mt5_failed_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating failure
+
+- **Convenience wrappers** — slightly higher-level helpers that remain closely coupled
+  to a single MT5 call and are appropriate in `pdmt5`:
+  - `place_market_order()` — builds a `TRADE_ACTION_DEAL` request and sends/checks it
+  - `calculate_minimum_order_margin()` — combines `symbol_info` + `order_calc_margin`
+    to return the margin for the minimum allowable volume
+  - `fetch_latest_rates_as_df()` — calls `copy_rates_from_pos_as_df` from position 0
+    after resolving a `granularity` string (e.g. `"M1"`, `"H1"`) via `parse_timeframe`
+  - `fetch_latest_ticks_as_df()` — calls `copy_ticks_range_as_df` centred on the last tick
+
+- **Compatibility helpers** — higher-level operational helpers retained for backward
+  compatibility. New downstream applications should implement this logic in
+  `mt5cli` or their own layer instead:
+  - `close_open_positions()` — orchestrates fetching and closing positions across symbols
+  - `update_sltp_for_open_positions()` — fetches, filters, and updates SL/TP for open positions
+  - `calculate_volume_by_margin()` — margin-budget volume sizing
+  - `calculate_spread_ratio()` — normalised bid-ask spread pre-check
+  - `collect_entry_deals_as_df()` — deal-history fetching with BUY/SELL entry filtering
+  - `fetch_positions_with_metrics_as_df()` — positions DataFrame augmented with derived metrics
+  - `calculate_new_position_margin_ratio()` — margin-utilisation ratio for a prospective position
+
+- **Error handling**: `Mt5TradingError` (extends `Mt5RuntimeError`) is raised when
+  an order operation returns a failed retcode and `raise_on_error=True`.
 
 ### Configuration
 
@@ -315,6 +339,12 @@ with Mt5DataClient(config=config) as client:
 ```
 
 ### Trading Operations
+
+> **Note**: `place_market_order()` is a convenience wrapper appropriate in
+> `pdmt5`. Methods such as `close_open_positions()`, `update_sltp_for_open_positions()`,
+> `calculate_new_position_margin_ratio()`, and the market-analysis helpers below are
+> compatibility helpers retained for backward compatibility. New downstream
+> applications should implement this operational logic in `mt5cli` instead.
 
 ```python
 from pdmt5 import Mt5TradingClient

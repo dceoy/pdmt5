@@ -71,10 +71,34 @@ class Mt5TradingError(Mt5RuntimeError):
 
 
 class Mt5TradingClient(Mt5DataClient):
-    """MetaTrader5 trading client with advanced trading operations.
+    """MetaTrader5 trading client for direct order primitives and convenience helpers.
 
-    This class extends Mt5DataClient to provide specialized trading functionality
-    including position management, order analysis, and trading performance metrics.
+    This class extends Mt5DataClient with thin wrappers around ``order_check`` /
+    ``order_send`` and a set of compatibility helpers retained from earlier versions
+    of the library.
+
+    **Responsibility boundary**
+
+    ``pdmt5`` is the core MetaTrader 5 Python API / pandas adapter.  Its scope
+    covers the MT5 connection lifecycle, low-level MT5 method wrappers, DataFrame
+    and dict conversion helpers, canonical MT5 constant parsing, and minimal direct
+    order primitives around ``order_check`` / ``order_send``.
+
+    Generic operational orchestration — such as margin-budget sizing, normalised
+    execution-result handling, broker constraint pre-checks, position-metric
+    computation, and downstream trading workflows — belongs in ``mt5cli``, which
+    is the canonical downstream operational SDK / CLI / batch / SQLite history
+    layer built on top of ``pdmt5``.
+
+    **Method classification**
+
+    * *Core MT5 primitive*: thin wrapper or constant mapping directly over the
+      MetaTrader5 Python API.  Always appropriate in ``pdmt5``.
+    * *Convenience wrapper*: slightly higher-level helper that remains closely
+      coupled to a single MT5 call and is appropriate in ``pdmt5``.
+    * *Compatibility helper*: higher-level operational helper retained for
+      backward compatibility.  New downstream applications should implement this
+      logic in ``mt5cli`` or their own layer instead.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -82,6 +106,9 @@ class Mt5TradingClient(Mt5DataClient):
     @cached_property
     def mt5_successful_trade_retcodes(self) -> set[int]:
         """Set of successful trade return codes.
+
+        *Classification*: core MT5 primitive — maps ``TRADE_RETCODE_*`` constants
+        from the MetaTrader5 module into an integer set for retcode validation.
 
         Returns:
             Set of successful trade return codes.
@@ -93,6 +120,9 @@ class Mt5TradingClient(Mt5DataClient):
     @cached_property
     def mt5_failed_trade_retcodes(self) -> set[int]:
         """Set of failed trade return codes.
+
+        *Classification*: core MT5 primitive — maps ``TRADE_RETCODE_*`` constants
+        from the MetaTrader5 module into an integer set for retcode validation.
 
         Returns:
             Set of failed trade return codes.
@@ -107,6 +137,11 @@ class Mt5TradingClient(Mt5DataClient):
         **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, list[dict[str, Any]]]:
         """Close all open positions for specified symbols.
+
+        *Classification*: compatibility helper — orchestrates position fetching and
+        closing across one or more symbols.  New downstream applications should
+        implement this workflow in ``mt5cli`` or their own layer rather than
+        relying on this method.
 
         Args:
             symbols: Optional symbol or list of symbols to filter positions.
@@ -194,6 +229,9 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> dict[str, Any]:
         """Send or check an order request.
 
+        *Classification*: core MT5 primitive — routes to ``order_check`` or
+        ``order_send`` and validates the returned retcode.
+
         Args:
             request: Order request dictionary.
             raise_on_error: If True, raise an error on operation failure.
@@ -241,6 +279,10 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> dict[str, Any]:
         """Send or check an order request to place a market order.
 
+        *Classification*: convenience wrapper — builds a ``TRADE_ACTION_DEAL``
+        request and delegates to ``_send_or_check_order``.  This is a minimal
+        direct order primitive appropriate in ``pdmt5``.
+
         Args:
             symbol: Symbol for the order.
             volume: Volume of the order.
@@ -283,6 +325,11 @@ class Mt5TradingClient(Mt5DataClient):
         **kwargs: Any,  # noqa: ANN401
     ) -> list[dict[str, Any]]:
         """Change Stop Loss and Take Profit for open positions.
+
+        *Classification*: compatibility helper — orchestrates position fetching,
+        filtering, and ``TRADE_ACTION_SLTP`` request dispatch.  New downstream
+        applications should implement this workflow in ``mt5cli`` or their own
+        layer rather than relying on this method.
 
         Args:
             symbol: Symbol for the position.
@@ -360,6 +407,10 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> dict[str, float]:
         """Calculate the minimum order margins for a given symbol.
 
+        *Classification*: convenience wrapper — combines ``symbol_info`` and
+        ``order_calc_margin`` to return the margin required for the minimum
+        allowable volume.  This is a thin utility helper appropriate in ``pdmt5``.
+
         Args:
             symbol: Symbol for which to calculate the minimum order margins.
             order_side: Optional side of the order, either "BUY" or "SELL".
@@ -404,6 +455,11 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> float:
         """Calculate volume based on margin for a given symbol and order side.
 
+        *Classification*: compatibility helper — implements margin-budget sizing
+        logic retained for backward compatibility.  New downstream applications
+        should implement margin-budget sizing in ``mt5cli`` or their own layer
+        rather than relying on this method.
+
         Args:
             symbol: Symbol for which to calculate the volume.
             margin: Margin amount to use for the calculation.
@@ -437,6 +493,11 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> float:
         """Calculate the spread ratio for a given symbol.
 
+        *Classification*: compatibility helper — computes a normalised bid-ask
+        spread ratio as a broker constraint pre-check.  New downstream
+        applications should implement this pre-check in ``mt5cli`` or their own
+        layer rather than relying on this method.
+
         Args:
             symbol: Symbol for which to calculate the spread ratio.
 
@@ -460,6 +521,10 @@ class Mt5TradingClient(Mt5DataClient):
         index_keys: str | None = "time",
     ) -> pd.DataFrame:
         """Fetch rate (OHLC) data as a DataFrame.
+
+        *Classification*: convenience wrapper — calls ``copy_rates_from_pos_as_df``
+        from position 0 after resolving the ``granularity`` string via
+        ``parse_timeframe``.  Appropriate in ``pdmt5``.
 
         Args:
             symbol: Symbol to fetch data for.
@@ -503,6 +568,10 @@ class Mt5TradingClient(Mt5DataClient):
     ) -> pd.DataFrame:
         """Fetch tick data as a DataFrame.
 
+        *Classification*: convenience wrapper — calls ``copy_ticks_range_as_df``
+        centred on the last tick time after deriving the date range from ``seconds``.
+        Appropriate in ``pdmt5``.
+
         Args:
             symbol: Symbol to fetch tick data for.
             seconds: Time range in seconds to fetch ticks around the last tick time.
@@ -533,6 +602,12 @@ class Mt5TradingClient(Mt5DataClient):
         index_keys: str | None = "ticket",
     ) -> pd.DataFrame:
         """Collect entry deals as a DataFrame.
+
+        *Classification*: compatibility helper — fetches deal history and filters
+        to BUY/SELL entry deals.  This is operational deal-history logic retained
+        for backward compatibility; new downstream applications should implement
+        deal filtering in ``mt5cli`` or their own layer rather than relying on
+        this method.
 
         Args:
             symbol: Symbol to collect entry deals for.
@@ -570,6 +645,13 @@ class Mt5TradingClient(Mt5DataClient):
         symbol: str,
     ) -> pd.DataFrame:
         """Fetch open positions as a DataFrame with additional metrics.
+
+        *Classification*: compatibility helper — augments the raw positions
+        DataFrame with derived columns such as elapsed time, margin, and profit
+        ratios.  This is position-metric computation logic retained for backward
+        compatibility; new downstream applications should implement position
+        analytics in ``mt5cli`` or their own layer rather than relying on this
+        method.
 
         Args:
             symbol: Symbol to fetch positions for.
@@ -640,6 +722,13 @@ class Mt5TradingClient(Mt5DataClient):
         new_position_volume: float = 0,
     ) -> float:
         """Calculate the margin ratio for a new position.
+
+        *Classification*: compatibility helper — combines account equity, existing
+        position signed margins, and a prospective new-position margin to compute
+        a margin-utilisation ratio.  This is margin-budget sizing logic retained
+        for backward compatibility; new downstream applications should implement
+        margin-budget logic in ``mt5cli`` or their own layer rather than relying
+        on this method.
 
         Args:
             symbol: Symbol for which to calculate the margin ratio.
