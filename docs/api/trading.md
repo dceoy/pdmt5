@@ -5,8 +5,7 @@
 ## Overview
 
 The trading module extends `Mt5DataClient` with direct order primitives around
-`order_check` / `order_send` and a set of compatibility helpers retained from
-earlier versions of the library.
+`order_check` / `order_send` and convenience wrappers for common single-call patterns.
 
 ### Responsibility boundary
 
@@ -25,15 +24,12 @@ backtesting, optimisation, and strategy-specific order decisions.
 
 ### Method classification
 
-Methods in `Mt5TradingClient` fall into three categories:
+Methods in `Mt5TradingClient` fall into two categories:
 
 - **Core MT5 primitive**: thin wrapper or constant mapping directly over the
   MetaTrader5 Python API. Always appropriate in `pdmt5`.
 - **Convenience wrapper**: slightly higher-level helper that remains closely
   coupled to a single MT5 call and is appropriate in `pdmt5`.
-- **Compatibility helper**: higher-level operational helper retained for backward
-  compatibility. New downstream applications should implement this logic in
-  `mt5cli` or their own layer instead.
 
 See the docstring of each method for its individual classification.
 
@@ -46,13 +42,10 @@ options:
 show_bases: false
 
 Trading client that extends `Mt5DataClient` with direct order primitives
-(`place_market_order`, `_send_or_check_order`) and compatibility helpers
-retained for backward compatibility (`close_open_positions`,
-`update_sltp_for_open_positions`, `calculate_volume_by_margin`,
-`calculate_spread_ratio`, `collect_entry_deals_as_df`,
-`fetch_positions_with_metrics_as_df`, `calculate_new_position_margin_ratio`).
-New downstream applications should implement the compatibility-helper logic in
-`mt5cli` rather than adding new usage of those methods here.
+(`place_market_order`, `_send_or_check_order`) and convenience wrappers
+(`calculate_minimum_order_margin`, `fetch_latest_rates_as_df`,
+`fetch_latest_ticks_as_df`). Higher-level operational orchestration belongs in
+`mt5cli`.
 
 ### Mt5TradingError
 
@@ -64,12 +57,13 @@ Custom runtime exception for trading-specific errors.
 
 ## Usage Examples
 
-### Basic Trading Operations
+### Market Order Placement
+
+Place market orders with flexible configuration:
 
 ```python
 from pdmt5 import Mt5TradingClient, Mt5Config
 
-# Create configuration
 config = Mt5Config(
     login=123456,
     password="your_password",
@@ -77,229 +71,7 @@ config = Mt5Config(
     timeout=60000,
 )
 
-# Create client
-client = Mt5TradingClient(config=config)
-
-# Use as context manager
-with client:
-    # Get current positions as DataFrame
-    positions_df = client.positions_get_as_df()
-    print(f"Open positions: {len(positions_df)}")
-
-    # Close positions for specific symbol
-    results = client.close_open_positions("EURUSD", dry_run=True)
-    print(f"Closed positions: {results}")
-```
-
-### Production Trading
-
-```python
-# Create client for live trading (default execution)
-client = Mt5TradingClient(config=config)
-
-with client:
-    # Close all positions for multiple symbols
-    results = client.close_open_positions(["EURUSD", "GBPUSD", "USDJPY"])
-
-    # Close all positions (all symbols)
-    all_results = client.close_open_positions()
-```
-
-### Order Filling Modes
-
-```python
 with Mt5TradingClient(config=config) as client:
-    # Use IOC (Immediate or Cancel) - default
-    results_ioc = client.close_open_positions(
-        symbols="EURUSD",
-        order_filling_mode="IOC"
-    )
-
-    # Use FOK (Fill or Kill)
-    results_fok = client.close_open_positions(
-        symbols="GBPUSD",
-        order_filling_mode="FOK"
-    )
-
-    # Use RETURN (Return if not filled)
-    results_return = client.close_open_positions(
-        symbols="USDJPY",
-        order_filling_mode="RETURN"
-    )
-```
-
-### Custom Order Parameters
-
-```python
-with client:
-    # Close positions with custom parameters and order filling mode
-    results = client.close_open_positions(
-        "EURUSD",
-        order_filling_mode="IOC",  # Specify per method call
-        comment="Closing all EURUSD positions",
-        deviation=10  # Maximum price deviation
-    )
-```
-
-### Error Handling
-
-```python
-from pdmt5.trading import Mt5TradingError
-
-try:
-    with client:
-        results = client.close_open_positions("EURUSD")
-except Mt5TradingError as e:
-    print(f"Trading error: {e}")
-    # Handle specific trading errors
-```
-
-### Checking Order Status
-
-```python
-with client:
-    # Check order (note: send_or_check_order is an internal method)
-    # For trading operations, use the provided methods like close_open_positions
-
-    # Example: Check if we can close a position
-    positions = client.positions_get_as_df()
-    if not positions.empty:
-        # Close specific position
-        results = client.close_open_positions("EURUSD")
-```
-
-## Position Management Features
-
-`close_open_positions` and `update_sltp_for_open_positions` are **compatibility
-helpers** retained for backward compatibility. New downstream applications
-should implement position-management workflows in `mt5cli` instead.
-
-The helpers provide:
-
-- **Automatic Position Reversal**: Determines the correct order type to close positions
-- **Batch Operations**: Close multiple positions for one or more symbols
-- **Dry Run Support**: Validate orders via `order_check` without executing real trades
-- **Flexible Filtering**: Close positions by symbol(s) or all positions
-- **Custom Parameters**: Support for additional order parameters like comment, deviation, etc.
-
-## Dry Run Mode
-
-Dry run mode is essential for testing trading strategies:
-
-```python
-# Test mode - validates orders without execution
-test_client = Mt5TradingClient(config=config)
-
-with test_client:
-    _ = test_client.close_open_positions("EURUSD", dry_run=True)
-
-# Production mode - executes real orders (default)
-prod_client = Mt5TradingClient(config=config)
-```
-
-In dry run mode:
-
-- Orders are validated using `order_check()` instead of `order_send()`
-- No actual trades are executed
-- Full validation of margin requirements and order parameters
-- Same return structure as live trading for easy testing
-
-## Return Values
-
-The `close_open_positions()` method returns a dictionary with symbols as keys:
-
-```python
-{
-    "EURUSD": [
-        {
-            "retcode": 10009,  # Trade done
-            "deal": 123456,
-            "order": 789012,
-            "volume": 1.0,
-            "price": 1.1000,
-            "comment": "Request executed",
-            ...
-        }
-    ],
-    "GBPUSD": [...]
-}
-```
-
-## Best Practices
-
-1. **Always use dry run mode first** to test your trading logic
-2. **Handle Mt5TradingError exceptions** for proper error management
-3. **Check return codes** to verify successful execution
-4. **Use context managers** for automatic connection handling
-5. **Log trading operations** for audit trails
-6. **Validate positions exist** before attempting to close them
-7. **Consider market hours** and trading session times
-
-## Common Return Codes
-
-- `TRADE_RETCODE_DONE` (10009): Trade operation completed successfully
-- `TRADE_RETCODE_TRADE_DISABLED`: Trading disabled for the account
-- `TRADE_RETCODE_MARKET_CLOSED`: Market is closed
-- `TRADE_RETCODE_NO_MONEY`: Insufficient funds
-- `TRADE_RETCODE_INVALID_VOLUME`: Invalid trade volume
-
-## Margin Calculation Methods
-
-`calculate_minimum_order_margin` is a **convenience wrapper** over
-`order_calc_margin` and is appropriate in `pdmt5`. `calculate_volume_by_margin`
-and `calculate_new_position_margin_ratio` are **compatibility helpers** retained
-for backward compatibility; new downstream applications should implement
-margin-budget logic in `mt5cli` instead.
-
-### Calculate Minimum Order Margin
-
-```python
-with client:
-    # Calculate minimum margin required for BUY order
-    min_margin_buy = client.calculate_minimum_order_margin("EURUSD", "BUY")
-    print(f"Minimum volume: {min_margin_buy['volume']}")
-    print(f"Minimum margin: {min_margin_buy['margin']}")
-
-    # Calculate minimum margin required for SELL order
-    min_margin_sell = client.calculate_minimum_order_margin("EURUSD", "SELL")
-```
-
-### Calculate Volume by Margin
-
-```python
-with client:
-    # Calculate maximum volume for given margin amount
-    available_margin = 1000.0  # USD
-    max_volume_buy = client.calculate_volume_by_margin("EURUSD", available_margin, "BUY")
-    max_volume_sell = client.calculate_volume_by_margin("EURUSD", available_margin, "SELL")
-
-    print(f"Max BUY volume for ${available_margin}: {max_volume_buy}")
-    print(f"Max SELL volume for ${available_margin}: {max_volume_sell}")
-```
-
-### Calculate New Position Margin Ratio
-
-```python
-with client:
-    # Calculate margin ratio for potential new position
-    margin_ratio = client.calculate_new_position_margin_ratio(
-        symbol="EURUSD",
-        new_position_side="BUY",
-        new_position_volume=1.0
-    )
-    print(f"New position would use {margin_ratio:.2%} of account equity")
-
-    # Check if adding position would exceed risk limits
-    if margin_ratio > 0.1:  # 10% risk limit
-        print("Position size too large for risk management")
-```
-
-## Market Order Placement
-
-Place market orders with flexible configuration:
-
-```python
-with client:
     # Place a BUY market order
     result = client.place_market_order(
         symbol="EURUSD",
@@ -323,50 +95,74 @@ with client:
     print(f"Order result: {result}")
 ```
 
-## Stop Loss and Take Profit Management
-
-Update SL/TP for existing positions:
+### Error Handling
 
 ```python
-with client:
-    # Update SL/TP for all EURUSD positions
-    results = client.update_sltp_for_open_positions(
-        symbol="EURUSD",
-        stop_loss=1.0950,
-        take_profit=1.1100,
-        dry_run=False
-    )
+from pdmt5.trading import Mt5TradingError
 
-    # Update only specific positions by ticket
-    results = client.update_sltp_for_open_positions(
+try:
+    with Mt5TradingClient(config=config) as client:
+        result = client.place_market_order("EURUSD", 1.0, "BUY", raise_on_error=True)
+except Mt5TradingError as e:
+    print(f"Trading error: {e}")
+```
+
+## Dry Run Mode
+
+Dry run mode validates orders without executing real trades:
+
+```python
+with Mt5TradingClient(config=config) as client:
+    # Validates the order request via order_check() without sending it
+    result = client.place_market_order(
         symbol="EURUSD",
-        stop_loss=1.0950,
-        tickets=[123456, 789012],  # Specific position tickets
-        dry_run=True
+        volume=0.1,
+        order_side="BUY",
+        dry_run=True,
     )
 ```
 
-## Market Data and Analysis Methods
+In dry run mode:
+
+- Orders are validated using `order_check()` instead of `order_send()`
+- No actual trades are executed
+- Full validation of margin requirements and order parameters
+- Same return structure as live trading for easy testing
+
+## Common Return Codes
+
+- `TRADE_RETCODE_DONE` (10009): Trade operation completed successfully
+- `TRADE_RETCODE_TRADE_DISABLED`: Trading disabled for the account
+- `TRADE_RETCODE_MARKET_CLOSED`: Market is closed
+- `TRADE_RETCODE_NO_MONEY`: Insufficient funds
+- `TRADE_RETCODE_INVALID_VOLUME`: Invalid trade volume
+
+## Margin Calculation
+
+`calculate_minimum_order_margin` is a **convenience wrapper** over
+`order_calc_margin` that returns the margin required for the broker's minimum
+allowable volume.
+
+```python
+with Mt5TradingClient(config=config) as client:
+    # Calculate minimum margin required for BUY order
+    min_margin_buy = client.calculate_minimum_order_margin("EURUSD", "BUY")
+    print(f"Minimum volume: {min_margin_buy['volume']}")
+    print(f"Minimum margin: {min_margin_buy['margin']}")
+
+    # Calculate minimum margin required for SELL order
+    min_margin_sell = client.calculate_minimum_order_margin("EURUSD", "SELL")
+```
+
+## Market Data Methods
 
 `fetch_latest_rates_as_df` and `fetch_latest_ticks_as_df` are **convenience
-wrappers** appropriate in `pdmt5`. `calculate_spread_ratio`,
-`collect_entry_deals_as_df`, and `fetch_positions_with_metrics_as_df` are
-**compatibility helpers** retained for backward compatibility; new downstream
-applications should implement this logic in `mt5cli` instead.
-
-### Spread Analysis
-
-```python
-with client:
-    # Calculate spread ratio for symbol
-    spread_ratio = client.calculate_spread_ratio("EURUSD")
-    print(f"EURUSD spread ratio: {spread_ratio:.6f}")
-```
+wrappers** appropriate in `pdmt5`.
 
 ### OHLC Data Retrieval
 
 ```python
-with client:
+with Mt5TradingClient(config=config) as client:
     # Fetch latest rate data as DataFrame
     rates_df = client.fetch_latest_rates_as_df(
         symbol="EURUSD",
@@ -380,7 +176,7 @@ with client:
 ### Tick Data Analysis
 
 ```python
-with client:
+with Mt5TradingClient(config=config) as client:
     # Fetch recent tick data
     ticks_df = client.fetch_latest_ticks_as_df(
         symbol="EURUSD",
@@ -388,65 +184,4 @@ with client:
         index_keys="time_msc"
     )
     print(f"Tick count: {len(ticks_df)}")
-```
-
-### Position Analytics with Enhanced Metrics
-
-```python
-with client:
-    # Get positions with additional calculated metrics
-    positions_df = client.fetch_positions_with_metrics_as_df("EURUSD")
-
-    if not positions_df.empty:
-        print("Position metrics:")
-        print(f"Total signed volume: {positions_df['signed_volume'].sum()}")
-        print(f"Total signed margin: {positions_df['signed_margin'].sum()}")
-        print(f"Average profit ratio: {positions_df['underlier_profit_ratio'].mean():.4f}")
-```
-
-### Deal History Analysis
-
-```python
-with client:
-    # Collect entry deals for analysis
-    deals_df = client.collect_entry_deals_as_df(
-        symbol="EURUSD",
-        history_seconds=3600,  # Last hour
-        index_keys="ticket"
-    )
-
-    if not deals_df.empty:
-        print(f"Entry deals found: {len(deals_df)}")
-        print(f"Deal types: {deals_df['type'].value_counts()}")
-```
-
-## Integration with Mt5DataClient
-
-Since Mt5TradingClient inherits from Mt5DataClient, all data retrieval methods are available:
-
-```python
-with Mt5TradingClient(config=config) as client:
-    # Get current positions as DataFrame
-    positions_df = client.positions_get_as_df()
-
-    # Analyze positions
-    if not positions_df.empty:
-        # Calculate total exposure
-        total_volume = positions_df['volume'].sum()
-
-        # Close losing positions
-        losing_positions = positions_df[positions_df['profit'] < 0]
-        for symbol in losing_positions['symbol'].unique():
-            client.close_open_positions(symbol)
-
-    # Risk management with margin calculations
-    for symbol in ["EURUSD", "GBPUSD", "USDJPY"]:
-        # Calculate current margin usage
-        current_ratio = client.calculate_new_position_margin_ratio(symbol)
-        print(f"{symbol} current margin ratio: {current_ratio:.2%}")
-
-        # Calculate maximum safe position size
-        safe_margin = 500.0  # USD
-        max_safe_volume = client.calculate_volume_by_margin(symbol, safe_margin, "BUY")
-        print(f"{symbol} max safe volume: {max_safe_volume}")
 ```

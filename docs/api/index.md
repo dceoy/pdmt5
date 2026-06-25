@@ -23,10 +23,9 @@ integer values.
 
 ### [Mt5TradingClient](trading.md)
 
-Direct order primitives around `order_check` / `order_send` and a set of
-compatibility helpers retained for backward compatibility. New downstream
-applications should implement higher-level operational trading logic in
-`mt5cli` rather than adding new usage of the compatibility helpers here.
+Direct order primitives around `order_check` / `order_send` and convenience
+wrappers for common single-call patterns. Higher-level operational orchestration
+belongs in `mt5cli`.
 
 ## Architecture Overview
 
@@ -34,7 +33,7 @@ applications should implement higher-level operational trading logic in
 
 1. **Base Layer** (`mt5.py`): `Mt5Client` — low-level MT5 API access and `Mt5RuntimeError`
 2. **Data Layer** (`dataframe.py`): `Mt5DataClient` / `Mt5Config` — pandas-friendly interface and configuration
-3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and backward-compatible helpers
+3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and convenience wrappers
 4. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
 5. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
 
@@ -43,12 +42,12 @@ applications should implement higher-level operational trading logic in
 `pdmt5` is the **core MT5 / pandas adapter** and does not depend on any
 downstream package. The table below shows where each concern belongs:
 
-| Layer | Package | Responsibility |
-|---|---|---|
-| Core adapter | **pdmt5** | MT5 lifecycle, low-level wrappers, DataFrame/dict helpers, constant parsing, minimal order primitives |
-| Operational SDK | **mt5cli** | Margin-budget sizing, normalised execution results, broker pre-checks, batch workflows, CLI, SQLite history |
-| HTTP adapter | **mt5api** | REST/FastAPI interface over `pdmt5` |
-| Strategy apps | *(downstream)* | Signal generation, risk policy, backtesting, optimisation, strategy-specific decisions |
+| Layer           | Package        | Responsibility                                                                                              |
+| --------------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| Core adapter    | **pdmt5**      | MT5 lifecycle, low-level wrappers, DataFrame/dict helpers, constant parsing, minimal order primitives       |
+| Operational SDK | **mt5cli**     | Margin-budget sizing, normalised execution results, broker pre-checks, batch workflows, CLI, SQLite history |
+| HTTP adapter    | **mt5api**     | REST/FastAPI interface over `pdmt5`                                                                         |
+| Strategy apps   | _(downstream)_ | Signal generation, risk policy, backtesting, optimisation, strategy-specific decisions                      |
 
 ## Usage Guidelines
 
@@ -93,10 +92,10 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
         "EURUSD", parse_timeframe("H1"), datetime.now(), 100
     )
 
-# Advanced trading operations with Mt5TradingClient
+# Direct order primitives with Mt5TradingClient
 with Mt5TradingClient(mt5=mt5, config=config) as client:
-    # Close all positions for a symbol
-    results = client.close_open_positions("EURUSD", dry_run=True)
+    # Place a market order (dry-run validates without executing)
+    result = client.place_market_order("EURUSD", 0.1, "BUY", dry_run=True)
 
 # Schema-friendly MT5 constant metadata
 timeframe_names = list_timeframe_names()

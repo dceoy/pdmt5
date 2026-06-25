@@ -2,10 +2,9 @@
 
 from collections.abc import Generator
 from types import ModuleType
-from typing import Any, Literal, NamedTuple, cast
+from typing import Any, Literal, cast
 
 import numpy as np
-import pandas as pd
 import pytest
 from pytest_mock import MockerFixture
 
@@ -31,15 +30,13 @@ _MT5_METHODS = (
     "order_calc_margin",
     "copy_rates_from_pos",
     "copy_ticks_range",
-    "history_deals_get",
 )
 
 _MT5_CONSTANTS = {
+    "RES_S_OK": 1,
     "TRADE_ACTION_DEAL": 1,
     "ORDER_TYPE_BUY": 0,
     "ORDER_TYPE_SELL": 1,
-    "POSITION_TYPE_BUY": 0,
-    "POSITION_TYPE_SELL": 1,
     "ORDER_FILLING_IOC": 1,
     "ORDER_FILLING_FOK": 2,
     "ORDER_FILLING_RETURN": 3,
@@ -85,9 +82,6 @@ _MT5_CONSTANTS = {
     "TRADE_RETCODE_CLOSE_ONLY": 10044,
     "TRADE_RETCODE_FIFO_CLOSE": 10045,
     "TRADE_RETCODE_HEDGE_PROHIBITED": 10046,
-    "RES_S_OK": 1,
-    "DEAL_TYPE_BUY": 0,
-    "DEAL_TYPE_SELL": 1,
 }
 
 
@@ -123,82 +117,6 @@ def create_initialized_client(mock_mt5_import: ModuleType) -> Mt5TradingClient:
     return client
 
 
-class MockPositionInfo(NamedTuple):
-    """Mock position info structure."""
-
-    ticket: int
-    symbol: str
-    volume: float
-    type: int
-    time: int
-    identifier: int
-    reason: int
-    price_open: float
-    sl: float
-    tp: float
-    price_current: float
-    swap: float
-    profit: float
-    magic: int
-    comment: str
-    external_id: str
-
-
-class MockDealInfo(NamedTuple):
-    """Mock deal info structure."""
-
-    ticket: int
-    type: int
-    entry: bool
-    time: int
-
-
-@pytest.fixture
-def mock_position_buy() -> MockPositionInfo:
-    """Mock buy position."""
-    return MockPositionInfo(
-        ticket=12345,
-        symbol="EURUSD",
-        volume=0.1,
-        type=0,  # POSITION_TYPE_BUY
-        time=1234567890,
-        identifier=12345,
-        reason=0,
-        price_open=1.2000,
-        sl=0.0,
-        tp=0.0,
-        price_current=1.2050,
-        swap=0.0,
-        profit=5.0,
-        magic=0,
-        comment="test",
-        external_id="",
-    )
-
-
-@pytest.fixture
-def mock_position_sell() -> MockPositionInfo:
-    """Mock sell position."""
-    return MockPositionInfo(
-        ticket=12346,
-        symbol="GBPUSD",
-        volume=0.2,
-        type=1,  # POSITION_TYPE_SELL
-        time=1234567890,
-        identifier=12346,
-        reason=0,
-        price_open=1.3000,
-        sl=0.0,
-        tp=0.0,
-        price_current=1.2950,
-        swap=0.0,
-        profit=10.0,
-        magic=0,
-        comment="test",
-        external_id="",
-    )
-
-
 class TestMt5TradingError:
     """Tests for Mt5TradingError exception class."""
 
@@ -225,262 +143,12 @@ class TestMt5TradingClient:
     def test_client_initialization_default(self, mock_mt5_import: ModuleType) -> None:
         """Test client initialization with default parameters."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
-        # Order filling mode is now a parameter, not an attribute
         assert isinstance(client, Mt5TradingClient)
 
     def test_client_initialization_custom(self, mock_mt5_import: ModuleType) -> None:
         """Test client initialization with custom parameters."""
-        # Order filling mode is now a parameter to methods, not a class attribute
-        client = Mt5TradingClient(
-            mt5=mock_mt5_import,
-        )
-        assert isinstance(client, Mt5TradingClient)
-
-    def test_client_initialization_invalid_filling_mode(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test client initialization with invalid filling mode."""
-        # Order filling mode is now a parameter to methods, not a class attribute
         client = Mt5TradingClient(mt5=mock_mt5_import)
-        # Test that the method validates the parameter
-        mock_mt5_import.initialize.return_value = True
-        client.initialize()
-        mock_mt5_import.positions_get.return_value = []
-        # Should not raise as validation happens at method level
-        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
-            order_filling_mode="IOC"
-        )
-        assert result == []
-
-    def test_close_position_no_positions(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test close_position when no positions exist."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        result = client.close_open_positions("EURUSD")
-
-        assert result == {"EURUSD": []}
-        mock_mt5_import.positions_get.assert_called_once_with(symbol="EURUSD")
-
-    def test_close_position_with_positions(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_position with existing positions."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009,
-            "result": "success",
-        }
-
-        result = client.close_open_positions("EURUSD")
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 10009
-        mock_mt5_import.order_send.assert_called_once()
-
-    def test_close_position_with_positions_dry_run(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_position with existing positions in dry run mode."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_check.return_value.retcode = 0
-        mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 0,
-            "result": "check_success",
-        }
-
-        result = client.close_open_positions("EURUSD", dry_run=True)
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 0
-        mock_mt5_import.order_check.assert_called_once()
-        mock_mt5_import.order_send.assert_not_called()
-
-    def test_close_position_with_dry_run_override(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_position with dry_run parameter override."""
-        # Client initialized without dry_run
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_check.return_value.retcode = 0
-        mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 0,
-            "result": "check_success",
-        }
-
-        # Override with dry_run=True
-        result = client.close_open_positions("EURUSD", dry_run=True)
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 0
-        # Should use order_check instead of order_send
-        mock_mt5_import.order_check.assert_called_once()
-        mock_mt5_import.order_send.assert_not_called()
-
-    def test_close_position_with_real_mode_override(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_position with real mode override."""
-        # Client initialized without dry_run
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009,
-            "result": "send_success",
-        }
-
-        # Override with dry_run=False
-        result = client.close_open_positions("EURUSD", dry_run=False)
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 10009
-        # Should use order_send instead of order_check
-        mock_mt5_import.order_send.assert_called_once()
-        mock_mt5_import.order_check.assert_not_called()
-
-    def test_close_open_positions_all_symbols(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test close_open_positions for all symbols."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbols and positions
-        mock_mt5_import.symbols_get.return_value = ["EURUSD", "GBPUSD"]
-        mock_mt5_import.positions_get.return_value = []  # No positions
-
-        result = client.close_open_positions()
-
-        assert len(result) == 2
-        assert "EURUSD" in result
-        assert "GBPUSD" in result
-        assert result["EURUSD"] == []
-        assert result["GBPUSD"] == []
-
-    def test_close_open_positions_specific_symbols(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test close_open_positions for specific symbols."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        result = client.close_open_positions(["EURUSD"])
-
-        assert len(result) == 1
-        assert "EURUSD" in result
-        assert result["EURUSD"] == []
-
-    def test_close_open_positions_tuple_input(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test close_open_positions with tuple input."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        result = client.close_open_positions(("EURUSD", "GBPUSD"))
-
-        assert len(result) == 2
-        assert "EURUSD" in result
-        assert "GBPUSD" in result
-        assert result["EURUSD"] == []
-        assert result["GBPUSD"] == []
-
-    def test_close_open_positions_with_kwargs(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_open_positions with additional kwargs."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009,
-            "result": "success",
-        }
-
-        # Pass custom kwargs
-        result = client.close_open_positions(
-            "EURUSD", comment="custom_close", magic=12345
-        )
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 10009
-
-        # Check that kwargs were passed through
-        call_args = mock_mt5_import.order_send.call_args[0][0]
-        assert call_args["comment"] == "custom_close"
-        assert call_args["magic"] == 12345
-
-    def test_close_open_positions_with_kwargs_and_dry_run(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test close_open_positions with additional kwargs and dry_run override."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_check.return_value.retcode = 0
-        mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 0,
-            "result": "check_success",
-        }
-
-        # Pass custom kwargs with dry_run override
-        result = client.close_open_positions(
-            "EURUSD", dry_run=True, comment="custom_close", magic=12345
-        )
-
-        assert len(result["EURUSD"]) == 1
-        assert result["EURUSD"][0]["retcode"] == 0
-
-        # Check that kwargs were passed through to order_check
-        call_args = mock_mt5_import.order_check.call_args[0][0]
-        assert call_args["comment"] == "custom_close"
-        assert call_args["magic"] == 12345
-        mock_mt5_import.order_send.assert_not_called()
+        assert isinstance(client, Mt5TradingClient)
 
     def test_send_or_check_order_dry_run_success(
         self,
@@ -496,7 +164,6 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock successful order check
         mock_mt5_import.order_check.return_value.retcode = 0
         mock_mt5_import.order_check.return_value._asdict.return_value = {
             "retcode": 0,
@@ -526,7 +193,6 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock successful order send
         mock_mt5_import.order_send.return_value.retcode = 10009
         mock_mt5_import.order_send.return_value._asdict.return_value = {
             "retcode": 10009,
@@ -588,7 +254,6 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock failure response with error retcode
         mock_mt5_import.order_send.return_value.retcode = 10006
         mock_mt5_import.order_send.return_value._asdict.return_value = {
             "retcode": 10006,
@@ -615,7 +280,6 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock failure response with non-zero retcode for dry run
         mock_mt5_import.order_check.return_value.retcode = 10013
         mock_mt5_import.order_check.return_value._asdict.return_value = {
             "retcode": 10013,
@@ -636,7 +300,6 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with dry_run parameter override."""
-        # Client initialized without dry_run
         client = create_initialized_client(mock_mt5_import)
 
         request = {
@@ -646,14 +309,12 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock successful order check
         mock_mt5_import.order_check.return_value.retcode = 0
         mock_mt5_import.order_check.return_value._asdict.return_value = {
             "retcode": 0,
             "result": "check_success",
         }
 
-        # Override with dry_run=True
         result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
             request,
             dry_run=True,
@@ -661,7 +322,6 @@ class TestMt5TradingClient:
 
         assert result["retcode"] == 0
         assert result["result"] == "check_success"
-        # Should call order_check, not order_send
         mock_mt5_import.order_check.assert_called_once_with(request)
         mock_mt5_import.order_send.assert_not_called()
 
@@ -670,7 +330,6 @@ class TestMt5TradingClient:
         mock_mt5_import: ModuleType,
     ) -> None:
         """Test _send_or_check_order with real mode override."""
-        # Client initialized without dry_run
         client = create_initialized_client(mock_mt5_import)
 
         request = {
@@ -680,14 +339,12 @@ class TestMt5TradingClient:
             "type": 1,
         }
 
-        # Mock successful order send
         mock_mt5_import.order_send.return_value.retcode = 10009
         mock_mt5_import.order_send.return_value._asdict.return_value = {
             "retcode": 10009,
             "result": "send_success",
         }
 
-        # Override with dry_run=False
         result = client._send_or_check_order(  # type: ignore[reportPrivateUsage]
             request,
             dry_run=False,
@@ -695,7 +352,6 @@ class TestMt5TradingClient:
 
         assert result["retcode"] == 10009
         assert result["result"] == "send_success"
-        # Should call order_send, not order_check
         mock_mt5_import.order_send.assert_called_once_with(request)
         mock_mt5_import.order_check.assert_not_called()
 
@@ -706,13 +362,11 @@ class TestMt5TradingClient:
         """Test place_market_order method."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Mock MT5 constants
         mock_mt5_import.ORDER_TYPE_BUY = 0  # type: ignore[reportAttributeAccessIssue]
         mock_mt5_import.ORDER_FILLING_IOC = 1  # type: ignore[reportAttributeAccessIssue]
         mock_mt5_import.ORDER_TIME_GTC = 0  # type: ignore[reportAttributeAccessIssue]
         mock_mt5_import.TRADE_ACTION_DEAL = 1  # type: ignore[reportAttributeAccessIssue]
 
-        # Mock successful order send
         mock_mt5_import.order_send.return_value.retcode = 10009
         mock_mt5_import.order_send.return_value._asdict.return_value = {
             "retcode": 10009,
@@ -732,7 +386,6 @@ class TestMt5TradingClient:
         assert result["deal"] == 123456
         assert result["order"] == 789012
 
-        # Verify the request was built correctly
         expected_request = {
             "action": 1,  # TRADE_ACTION_DEAL
             "symbol": "EURUSD",
@@ -742,126 +395,6 @@ class TestMt5TradingClient:
             "type_time": 0,  # ORDER_TIME_GTC
         }
         mock_mt5_import.order_send.assert_called_once_with(expected_request)
-
-    def test_order_filling_mode_constants(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test that order filling mode constants are used correctly."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock positions
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009
-        }
-
-        # Call _fetch_and_close_position with FOK mode
-        client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
-            "EURUSD",
-            order_filling_mode="FOK",
-        )
-
-        # Verify that ORDER_FILLING_FOK was used
-        call_args = mock_mt5_import.order_send.call_args[0][0]
-        assert call_args["type_filling"] == mock_mt5_import.ORDER_FILLING_FOK
-
-    def test_position_type_handling(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-        mock_position_sell: MockPositionInfo,
-    ) -> None:
-        """Test that position types are handled correctly for closing."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Test buy position -> sell order
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009
-        }
-
-        client.close_open_positions("EURUSD")
-
-        # Buy position should result in sell order
-        call_args = mock_mt5_import.order_send.call_args[0][0]
-        assert call_args["type"] == mock_mt5_import.ORDER_TYPE_SELL
-
-        # Test sell position -> buy order
-        mock_mt5_import.positions_get.return_value = [mock_position_sell]
-
-        mock_mt5_import.order_send.reset_mock()
-
-        client.close_open_positions("GBPUSD")
-
-        # Sell position should result in buy order
-        call_args = mock_mt5_import.order_send.call_args[0][0]
-        assert call_args["type"] == mock_mt5_import.ORDER_TYPE_BUY
-
-    def test_fetch_and_close_position_with_dry_run(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-        mock_position_sell: MockPositionInfo,
-    ) -> None:
-        """Test _fetch_and_close_position with dry_run parameter."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Test with multiple positions and dry_run override
-        mock_mt5_import.positions_get.return_value = [
-            mock_position_buy,
-            mock_position_sell,
-        ]
-
-        mock_mt5_import.order_check.return_value.retcode = 0
-        mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 0,
-            "result": "check_success",
-        }
-
-        # Call internal method directly with dry_run=True
-        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
-            symbol="EURUSD",
-            dry_run=True,
-        )
-
-        assert len(result) == 2
-        assert all(r["retcode"] == 0 for r in result)
-        assert mock_mt5_import.order_check.call_count == 2
-        mock_mt5_import.order_send.assert_not_called()
-
-    def test_fetch_and_close_position_inherits_instance_dry_run(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,
-    ) -> None:
-        """Test _fetch_and_close_position does not inherit dry_run from instance."""
-        # Client initialized without dry_run
-        client = create_initialized_client(mock_mt5_import)
-
-        mock_mt5_import.positions_get.return_value = [mock_position_buy]
-
-        mock_mt5_import.order_check.return_value.retcode = 0
-        mock_mt5_import.order_check.return_value._asdict.return_value = {
-            "retcode": 0,
-            "result": "check_success",
-        }
-
-        # Call with dry_run=True explicitly
-        result = client._fetch_and_close_position(  # type: ignore[reportPrivateUsage]
-            symbol="EURUSD",
-            dry_run=True,
-        )
-
-        assert len(result) == 1
-        assert result[0]["retcode"] == 0
-        mock_mt5_import.order_check.assert_called_once()
-        mock_mt5_import.order_send.assert_not_called()
 
     @pytest.mark.parametrize(
         ("order_side", "order_type_attr", "price_key", "expected_margin"),
@@ -881,18 +414,14 @@ class TestMt5TradingClient:
         """Test successful calculation of minimum order margin."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
             "volume_min": 0.01,
             "name": "EURUSD",
         }
-
-        # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
             "ask": 1.1000,
             "bid": 1.0998,
         }
-
         mock_mt5_import.order_calc_margin.return_value = expected_margin
 
         result = client.calculate_minimum_order_margin("EURUSD", order_side)
@@ -906,42 +435,6 @@ class TestMt5TradingClient:
             tick_info[price_key],
         )
 
-    @pytest.mark.parametrize(
-        ("order_side", "budget", "order_calc_margin_return", "expected_volume"),
-        [
-            ("BUY", 1000.0, 100.5, 0.09),
-            ("SELL", 500.0, 99.8, 0.05),
-        ],
-    )
-    def test_calculate_volume_by_margin_success(
-        self,
-        mock_mt5_import: ModuleType,
-        order_side: Literal["BUY", "SELL"],
-        budget: float,
-        order_calc_margin_return: float,
-        expected_volume: float,
-    ) -> None:
-        """Test successful calculation of volume by margin."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "volume_min": 0.01,
-            "name": "EURUSD",
-        }
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "ask": 1.1000,
-            "bid": 1.0998,
-        }
-
-        mock_mt5_import.order_calc_margin.return_value = order_calc_margin_return
-
-        result = client.calculate_volume_by_margin("EURUSD", budget, order_side)
-
-        assert result == expected_volume
-
     def test_calculate_minimum_order_margin_no_margin(
         self,
         mock_mt5_import: ModuleType,
@@ -949,19 +442,14 @@ class TestMt5TradingClient:
         """Test calculation when order_calc_margin returns zero."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Mock symbol info
         mock_mt5_import.symbol_info.return_value._asdict.return_value = {
             "volume_min": 0.01,
             "name": "EURUSD",
         }
-
-        # Mock symbol tick info
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
             "ask": 1.1000,
             "bid": 1.0998,
         }
-
-        # Mock order_calc_margin to return 0.0 (no margin required)
         mock_mt5_import.order_calc_margin.return_value = 0.0
 
         result = client.calculate_minimum_order_margin("EURUSD", "BUY")
@@ -974,53 +462,6 @@ class TestMt5TradingClient:
             1.1000,
         )
 
-    def test_calculate_volume_by_margin_zero_margin(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test calculation when minimum order margin is zero."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "volume_min": 0.01,
-            "name": "EURUSD",
-        }
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "ask": 1.1000,
-            "bid": 1.0998,
-        }
-
-        # Mock order_calc_margin to return 0.0 (no margin required)
-        mock_mt5_import.order_calc_margin.return_value = 0.0
-
-        result = client.calculate_volume_by_margin("EURUSD", 1000.0, "BUY")
-
-        # Should return 0.0 when margin is zero
-        assert result == 0.0
-
-    def test_calculate_spread_ratio(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test calculation of spread ratio."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        result = client.calculate_spread_ratio("EURUSD")
-
-        # Expected calculation: (1.1002 - 1.1000) / (1.1002 + 1.1000) * 2
-        expected = (1.1002 - 1.1000) / (1.1002 + 1.1000) * 2
-        assert result == expected
-        mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
-
     def test_fetch_latest_rates_as_df_success(
         self,
         mock_mt5_import: ModuleType,
@@ -1028,10 +469,8 @@ class TestMt5TradingClient:
         """Test successful fetching of rate data as DataFrame."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Mock TIMEFRAME constant
         mock_mt5_import.TIMEFRAME_M1 = 1  # type: ignore[reportAttributeAccessIssue]
 
-        # Create structured array that mimics MT5 rates structure
         rates_dtype = np.dtype([
             ("time", "i8"),
             ("open", "f8"),
@@ -1042,21 +481,17 @@ class TestMt5TradingClient:
             ("spread", "i4"),
             ("real_volume", "i8"),
         ])
-
         mock_rates_data = np.array(
-            [
-                (1234567890, 1.1000, 1.1010, 1.0990, 1.1005, 100, 2, 10000),
-            ],
+            [(1234567890, 1.1000, 1.1010, 1.0990, 1.1005, 100, 2, 10000)],
             dtype=rates_dtype,
         )
-
         mock_mt5_import.copy_rates_from_pos.return_value = mock_rates_data
 
         result = client.fetch_latest_rates_as_df("EURUSD", granularity="M1", count=10)
 
         assert result is not None
         mock_mt5_import.copy_rates_from_pos.assert_called_once_with(
-            "EURUSD",  # symbol
+            "EURUSD",
             1,  # timeframe
             0,  # start_pos
             10,  # count
@@ -1069,7 +504,6 @@ class TestMt5TradingClient:
         """Test fetching rate data with invalid granularity."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Ensure the attribute doesn't exist for invalid granularity
         if hasattr(mock_mt5_import, "TIMEFRAME_INVALID"):
             delattr(mock_mt5_import, "TIMEFRAME_INVALID")
 
@@ -1086,17 +520,13 @@ class TestMt5TradingClient:
         """Test fetching tick data as DataFrame."""
         client = create_initialized_client(mock_mt5_import)
 
-        # Mock symbol tick info with time
         mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
             "time": 1234567890,
             "ask": 1.1002,
             "bid": 1.1000,
         }
-
-        # Mock copy ticks flag
         mock_mt5_import.COPY_TICKS_ALL = 1  # type: ignore[reportAttributeAccessIssue]
 
-        # Create structured array that mimics MT5 ticks structure
         ticks_dtype = np.dtype([
             ("time", "i8"),
             ("bid", "f8"),
@@ -1107,684 +537,26 @@ class TestMt5TradingClient:
             ("flags", "i4"),
             ("volume_real", "f8"),
         ])
-
         mock_ticks_data = np.array(
-            [
-                (1234567890, 1.1000, 1.1002, 1.1001, 100, 1234567890000, 0, 100.0),
-            ],
+            [(1234567890, 1.1000, 1.1002, 1.1001, 100, 1234567890000, 0, 100.0)],
             dtype=ticks_dtype,
         )
-
         mock_mt5_import.copy_ticks_range.return_value = mock_ticks_data
 
         result = client.fetch_latest_ticks_as_df("EURUSD", seconds=60)
 
         assert result is not None
-        # Verify the method was called
         mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
 
-        # Verify copy_ticks_range was called with correct arguments
         call_args = mock_mt5_import.copy_ticks_range.call_args[0]
-        assert call_args[0] == "EURUSD"  # symbol
-        assert call_args[3] == -1  # flags (COPY_TICKS_ALL)
+        assert call_args[0] == "EURUSD"
+        assert call_args[3] == -1  # COPY_TICKS_ALL
 
-        # Verify result has the expected structure
         assert len(result) == 1
-        # time_msc is likely the index, not a column
         assert "bid" in result.columns
         assert "ask" in result.columns
         assert "last" in result.columns
         assert "volume" in result.columns
-
-    def test_collect_entry_deals_as_df(self, mock_mt5_import: ModuleType) -> None:
-        """Test collecting entry deals as DataFrame."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": 1234567890,
-        }
-
-        # Create mock deal objects
-        mock_deals = [
-            # BUY, entry
-            MockDealInfo(ticket=1001, type=0, entry=True, time=1234567890),
-            # SELL, entry
-            MockDealInfo(ticket=1002, type=1, entry=True, time=1234567891),
-            # other type, entry
-            MockDealInfo(ticket=1003, type=2, entry=True, time=1234567892),
-            # BUY, not entry
-            MockDealInfo(ticket=1004, type=0, entry=False, time=1234567893),
-            # SELL, entry
-            MockDealInfo(ticket=1005, type=1, entry=True, time=1234567894),
-        ]
-
-        # Mock history_deals_get to return the mock deals
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        result = client.collect_entry_deals_as_df("EURUSD", history_seconds=3600)
-
-        # Verify symbol_info_tick was called
-        mock_mt5_import.symbol_info_tick.assert_called_once_with("EURUSD")
-
-        # Verify history_deals_get was called with correct parameters
-        mock_mt5_import.history_deals_get.assert_called_once()
-        call_args = mock_mt5_import.history_deals_get.call_args
-        # Check positional args (date_from, date_to)
-        assert len(call_args[0]) == 2
-        date_from, date_to = call_args[0]
-        # Compare timestamps to avoid timezone issues
-        if isinstance(date_from, pd.Timestamp):
-            date_from_ts = date_from.timestamp()
-        else:
-            date_from_ts = date_from.timestamp()
-        if isinstance(date_to, pd.Timestamp):
-            date_to_ts = date_to.timestamp()
-        else:
-            date_to_ts = date_to.timestamp()
-
-        expected_from_ts = 1234567890 - 3600
-        expected_to_ts = 1234567890 + 3600
-        assert abs(date_from_ts - expected_from_ts) < 1  # Allow 1 second tolerance
-        assert abs(date_to_ts - expected_to_ts) < 1  # Allow 1 second tolerance
-        # Check group parameter
-        assert call_args[1]["group"] == "*EURUSD*"
-
-        # Verify filtered results - should only have entry deals with BUY/SELL types
-        assert len(result) == 3  # tickets 1001, 1002, 1005
-        assert 1001 in result.index  # entry=True, type=BUY
-        assert 1002 in result.index  # entry=True, type=SELL
-        assert 1003 not in result.index  # entry=True but type=2 (not BUY/SELL)
-        assert 1004 not in result.index  # entry=False
-        assert 1005 in result.index  # entry=True, type=SELL
-
-    def test_collect_entry_deals_as_df_custom_parameters(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test collecting entry deals with custom parameters."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": 1234567890,
-        }
-
-        # Mock empty deals
-        mock_mt5_import.history_deals_get.return_value = []
-
-        result = client.collect_entry_deals_as_df(
-            "GBPUSD", history_seconds=7200, index_keys="time"
-        )
-
-        # Verify parameters were passed through
-        mock_mt5_import.history_deals_get.assert_called_once()
-        call_args = mock_mt5_import.history_deals_get.call_args
-        # Check positional args
-        date_from, date_to = call_args[0]
-
-        # Compare timestamps to avoid timezone issues
-        if isinstance(date_from, pd.Timestamp):
-            date_from_ts = date_from.timestamp()
-        else:
-            date_from_ts = date_from.timestamp()
-        if isinstance(date_to, pd.Timestamp):
-            date_to_ts = date_to.timestamp()
-        else:
-            date_to_ts = date_to.timestamp()
-
-        expected_from_ts = 1234567890 - 7200
-        expected_to_ts = 1234567890 + 7200
-        assert abs(date_from_ts - expected_from_ts) < 1  # Allow 1 second tolerance
-        assert abs(date_to_ts - expected_to_ts) < 1  # Allow 1 second tolerance
-        # Check group parameter
-        assert call_args[1]["group"] == "*GBPUSD*"
-
-        # Result should be empty DataFrame
-        assert len(result) == 0
-
-    def test_collect_entry_deals_as_df_no_index(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test collecting entry deals without index."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": 1234567890,
-        }
-
-        # Create mock deal objects
-        mock_deals = [
-            # BUY, entry
-            MockDealInfo(ticket=1001, type=0, entry=True, time=1234567890),
-            # SELL, entry
-            MockDealInfo(ticket=1002, type=1, entry=True, time=1234567891),
-        ]
-
-        # Mock history_deals_get to return the mock deals
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-
-        result = client.collect_entry_deals_as_df(
-            "USDJPY", history_seconds=1800, index_keys=None
-        )
-
-        # Verify results
-        assert len(result) == 2
-        # When index_keys is None, result should not have ticket as index
-        assert result.index.name is None
-        # Check that both deals are in the result
-        assert 1001 in result["ticket"].to_numpy()
-        assert 1002 in result["ticket"].to_numpy()
-
-    def test_fetch_positions_with_metrics_as_df_empty(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test fetching positions with metrics when no positions exist."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        result = client.fetch_positions_with_metrics_as_df("EURUSD")
-
-        # Should return empty DataFrame
-        assert result.empty
-        assert isinstance(result, pd.DataFrame)
-
-    def test_fetch_positions_with_metrics_as_df_with_positions(
-        self,
-        mock_mt5_import: ModuleType,
-        mock_position_buy: MockPositionInfo,  # noqa: ARG002
-        mocker: MockerFixture,
-    ) -> None:
-        """Test fetching positions with metrics when positions exist."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Create a mock position that returns the right data when converted
-        mock_position = mocker.MagicMock()
-        mock_position._asdict.return_value = {
-            "ticket": 12345,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,  # POSITION_TYPE_BUY
-            "time": 1234567890,  # This will be converted by decorator
-            "price_open": 1.2,
-            "price_current": 1.205,
-            "profit": 5.0,
-            "sl": 0.0,
-            "tp": 0.0,
-            "identifier": 12345,
-            "reason": 0,
-            "swap": 0.0,
-            "magic": 0,
-            "comment": "test",
-            "external_id": "",
-        }
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp(
-                "2009-02-14 00:31:30"
-            ),  # tz-naive to match decorated positions
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        # Mock order calc margin
-        mock_mt5_import.order_calc_margin.return_value = 1000.0
-
-        result = client.fetch_positions_with_metrics_as_df("EURUSD")
-
-        # Verify DataFrame is not empty and has expected columns
-        assert not result.empty
-        assert isinstance(result, pd.DataFrame)
-        assert "elapsed_seconds" in result.columns
-        assert "underlier_profit_ratio" in result.columns
-        assert "buy" in result.columns
-        assert "sell" in result.columns
-        assert "margin" in result.columns
-        assert "signed_volume" in result.columns
-        assert "signed_margin" in result.columns
-
-        # Verify calculations
-        row = result.iloc[0]
-        assert row["buy"]  # mock_position_buy has type=0 (BUY)
-        assert not row["sell"]
-        assert row["margin"] == 100.0  # 0.1 volume * 1000 margin
-        assert row["signed_volume"] == 0.1  # buy position has positive volume
-        assert row["signed_margin"] == 100.0  # buy position has positive margin
-
-        # Verify order_calc_margin was called twice (ask and bid)
-        assert mock_mt5_import.order_calc_margin.call_count == 2
-
-    def test_calculate_new_position_margin_ratio_no_equity(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test calculating margin ratio when account has no equity."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info with zero equity
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 0.0,
-        }
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_position_side="BUY", new_position_volume=0.1
-        )
-
-        assert result == 0.0
-
-    def test_calculate_new_position_margin_ratio_buy_position(
-        self, mock_mt5_import: ModuleType, mocker: MockerFixture
-    ) -> None:
-        """Test calculating margin ratio for a new buy position."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 10000.0,
-        }
-
-        # Mock existing positions
-        mock_position = mocker.MagicMock()
-        mock_position._asdict.return_value = {
-            "ticket": 12345,
-            "symbol": "EURUSD",
-            "volume": 0.1,
-            "type": 0,  # POSITION_TYPE_BUY
-            "time": 1234567890,
-            "price_open": 1.2,
-            "price_current": 1.205,
-            "profit": 5.0,
-            "sl": 0.0,
-            "tp": 0.0,
-            "identifier": 12345,
-            "reason": 0,
-            "swap": 0.0,
-            "magic": 0,
-            "comment": "test",
-            "external_id": "",
-        }
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp("2009-02-14 00:31:30"),
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        # Mock order calc margin
-        mock_mt5_import.order_calc_margin.return_value = 1000.0
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_position_side="BUY", new_position_volume=0.1
-        )
-
-        # Should return (new_margin + current_margin) / equity
-        # current_margin = 100.0 (from position), new_margin = 1000.0
-        expected_ratio = abs((1000.0 + 100.0) / 10000.0)
-        assert result == expected_ratio
-
-    def test_calculate_new_position_margin_ratio_sell_position(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test calculating margin ratio for a new sell position."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 10000.0,
-        }
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp("2009-02-14 00:31:30"),
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        # Mock order calc margin
-        mock_mt5_import.order_calc_margin.return_value = 1000.0
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_position_side="SELL", new_position_volume=0.1
-        )
-
-        # Should return abs(-new_margin / equity) for sell
-        expected_ratio = abs(-1000.0 / 10000.0)
-        assert result == expected_ratio
-
-    def test_calculate_new_position_margin_ratio_zero_volume(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test calculating margin ratio with zero volume."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 10000.0,
-        }
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp("2009-02-14 00:31:30"),
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_position_side="BUY", new_position_volume=0
-        )
-
-        # Should return 0 since new_position_volume is 0
-        assert result == 0.0
-
-    def test_calculate_new_position_margin_ratio_invalid_side(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test calculating margin ratio with invalid side."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 10000.0,
-        }
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp("2009-02-14 00:31:30"),
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD", new_position_side=None, new_position_volume=0.1
-        )
-
-        # Should return 0 since side is invalid
-        assert result == 0.0
-
-    def test_calculate_new_position_margin_ratio_invalid_side_string(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test calculating margin ratio with invalid side string."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock account info
-        mock_mt5_import.account_info.return_value._asdict.return_value = {
-            "equity": 10000.0,
-        }
-
-        # Mock empty positions
-        mock_mt5_import.positions_get.return_value = []
-
-        # Mock symbol tick info
-        mock_mt5_import.symbol_info_tick.return_value._asdict.return_value = {
-            "time": pd.Timestamp("2009-02-14 00:31:30"),
-            "ask": 1.1002,
-            "bid": 1.1000,
-        }
-
-        result = client.calculate_new_position_margin_ratio(
-            symbol="EURUSD",
-            new_position_side="INVALID",  # type: ignore[arg-type]
-            new_position_volume=0.1,
-        )
-
-        # Should return 0 since side is invalid string
-        assert result == 0.0
-
-    def test_update_sltp_for_open_positions(self, mock_mt5_import: ModuleType) -> None:
-        """Test update_sltp_for_open_positions method."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "digits": 5,
-        }
-
-        # Mock positions for the symbol
-        mock_position = MockPositionInfo(
-            ticket=123456,
-            time=123456789,
-            type=0,  # buy
-            magic=0,
-            identifier=123456,
-            reason=0,
-            volume=0.1,
-            price_open=1.1000,
-            sl=1.0900,
-            tp=1.1100,
-            price_current=1.1050,
-            swap=0.0,
-            profit=50.0,
-            symbol="EURUSD",
-            comment="test",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        # Mock successful order send
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009,
-            "deal": 0,
-            "order": 789012,
-        }
-
-        result = client.update_sltp_for_open_positions(
-            symbol="EURUSD",
-            tickets=[123456],
-            stop_loss=1.0950,
-            take_profit=1.1050,
-        )
-
-        # Now returns a list of dictionaries
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["retcode"] == 10009
-        assert result[0]["order"] == 789012
-
-    def test_update_sltp_for_open_positions_no_positions(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test update_sltp_for_open_positions when no positions exist for symbol."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock empty positions result
-        mock_mt5_import.positions_get.return_value = []
-
-        result = client.update_sltp_for_open_positions(
-            symbol="EURUSD",
-            tickets=[123456],
-            stop_loss=1.0950,
-            take_profit=1.1050,
-        )
-
-        # Should return empty list and log warning
-        assert result == []
-        # Verify positions_get was called with correct symbol
-        mock_mt5_import.positions_get.assert_called_with(symbol="EURUSD")
-
-    def test_update_sltp_for_open_positions_no_matching_tickets(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test update_sltp_for_open_positions when positions exist but no tickets match."""  # noqa: E501
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "digits": 5,
-        }
-
-        # Mock positions with different tickets
-        mock_position = MockPositionInfo(
-            ticket=999999,  # Different ticket
-            time=123456789,
-            type=0,  # buy
-            magic=0,
-            identifier=999999,
-            reason=0,
-            volume=0.1,
-            price_open=1.1000,
-            sl=1.0900,
-            tp=1.1100,
-            price_current=1.1050,
-            swap=0.0,
-            profit=50.0,
-            symbol="EURUSD",
-            comment="test",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        result = client.update_sltp_for_open_positions(
-            symbol="EURUSD",
-            tickets=[123456],  # This ticket doesn't exist
-            stop_loss=1.0950,
-            take_profit=1.1050,
-        )
-
-        # Should return empty list and log warning
-        assert result == []
-
-    def test_update_sltp_for_open_positions_same_sltp_values(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test update_sltp_for_open_positions when SL/TP values are already the same."""  # noqa: E501
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "digits": 5,
-        }
-
-        # Mock positions with same SL/TP as requested
-        mock_position = MockPositionInfo(
-            ticket=123456,
-            time=123456789,
-            type=0,  # buy
-            magic=0,
-            identifier=123456,
-            reason=0,
-            volume=0.1,
-            price_open=1.1000,
-            sl=1.0950,  # Same as requested stop_loss
-            tp=1.1050,  # Same as requested take_profit
-            price_current=1.1050,
-            swap=0.0,
-            profit=50.0,
-            symbol="EURUSD",
-            comment="test",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        result = client.update_sltp_for_open_positions(
-            symbol="EURUSD",
-            tickets=[123456],
-            stop_loss=1.0950,  # Same as position's sl
-            take_profit=1.1050,  # Same as position's tp
-        )
-
-        # Should return empty list since no update is needed
-        assert result == []
-        # Verify order_send was NOT called
-        mock_mt5_import.order_send.assert_not_called()
-
-    def test_update_sltp_for_open_positions_no_tickets(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test update_sltp_for_open_positions without specifying tickets."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Mock MT5 constants
-        mock_mt5_import.TRADE_ACTION_SLTP = 6  # type: ignore[reportAttributeAccessIssue]
-
-        # Mock symbol info
-        mock_mt5_import.symbol_info.return_value._asdict.return_value = {
-            "digits": 5,
-        }
-
-        # Mock positions for the symbol
-        mock_position1 = MockPositionInfo(
-            ticket=123456,
-            time=123456789,
-            type=0,  # buy
-            magic=0,
-            identifier=123456,
-            reason=0,
-            volume=0.1,
-            price_open=1.1000,
-            sl=1.0900,
-            tp=1.1100,
-            price_current=1.1050,
-            swap=0.0,
-            profit=50.0,
-            symbol="EURUSD",
-            comment="test",
-            external_id="",
-        )
-        mock_position2 = MockPositionInfo(
-            ticket=654321,
-            time=123456789,
-            type=1,  # sell
-            magic=0,
-            identifier=654321,
-            reason=0,
-            volume=0.2,
-            price_open=1.1050,
-            sl=1.1150,
-            tp=1.0950,
-            price_current=1.1050,
-            swap=0.0,
-            profit=-20.0,
-            symbol="EURUSD",
-            comment="test2",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position1, mock_position2]
-
-        # Mock successful order send
-        mock_mt5_import.order_send.return_value.retcode = 10009
-        mock_mt5_import.order_send.return_value._asdict.return_value = {
-            "retcode": 10009,
-            "deal": 0,
-            "order": 789012,
-        }
-
-        # Call without tickets to update all positions
-        result = client.update_sltp_for_open_positions(
-            symbol="EURUSD",
-            tickets=None,  # No tickets specified
-            stop_loss=1.0950,
-            take_profit=1.1050,
-        )
-
-        # Should return results for both positions
-        assert isinstance(result, list)
-        assert len(result) == 2
-        assert all(r["retcode"] == 10009 for r in result)
 
     def test_mt5_successful_trade_retcodes_property(
         self, mock_mt5_import: ModuleType
@@ -1792,17 +564,13 @@ class TestMt5TradingClient:
         """Test mt5_successful_trade_retcodes property returns correct set of codes."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
 
-        # Get the property value
         retcodes = client.mt5_successful_trade_retcodes
 
-        # Verify it's a set
         assert isinstance(retcodes, set)
-
-        # Verify the expected codes are present
         assert retcodes == {
-            mock_mt5_import.TRADE_RETCODE_PLACED,  # 10008
-            mock_mt5_import.TRADE_RETCODE_DONE,  # 10009
-            mock_mt5_import.TRADE_RETCODE_DONE_PARTIAL,  # 10010
+            mock_mt5_import.TRADE_RETCODE_PLACED,
+            mock_mt5_import.TRADE_RETCODE_DONE,
+            mock_mt5_import.TRADE_RETCODE_DONE_PARTIAL,
         }
 
     def test_mt5_failed_trade_retcodes_property(
@@ -1811,53 +579,47 @@ class TestMt5TradingClient:
         """Test mt5_failed_trade_retcodes property returns correct set of codes."""
         client = Mt5TradingClient(mt5=mock_mt5_import)
 
-        # Get the property value
         retcodes = client.mt5_failed_trade_retcodes
 
-        # Verify it's a set
         assert isinstance(retcodes, set)
-
-        # Verify it contains the expected codes
         expected_codes = {
-            mock_mt5_import.TRADE_RETCODE_REQUOTE,  # 10004
-            mock_mt5_import.TRADE_RETCODE_REJECT,  # 10006
-            mock_mt5_import.TRADE_RETCODE_CANCEL,  # 10007
-            mock_mt5_import.TRADE_RETCODE_ERROR,  # 10011
-            mock_mt5_import.TRADE_RETCODE_TIMEOUT,  # 10012
-            mock_mt5_import.TRADE_RETCODE_INVALID,  # 10013
-            mock_mt5_import.TRADE_RETCODE_INVALID_VOLUME,  # 10014
-            mock_mt5_import.TRADE_RETCODE_INVALID_PRICE,  # 10015
-            mock_mt5_import.TRADE_RETCODE_INVALID_STOPS,  # 10016
-            mock_mt5_import.TRADE_RETCODE_TRADE_DISABLED,  # 10017
-            mock_mt5_import.TRADE_RETCODE_MARKET_CLOSED,  # 10018
-            mock_mt5_import.TRADE_RETCODE_NO_MONEY,  # 10019
-            mock_mt5_import.TRADE_RETCODE_PRICE_CHANGED,  # 10020
-            mock_mt5_import.TRADE_RETCODE_PRICE_OFF,  # 10021
-            mock_mt5_import.TRADE_RETCODE_INVALID_EXPIRATION,  # 10022
-            mock_mt5_import.TRADE_RETCODE_ORDER_CHANGED,  # 10023
-            mock_mt5_import.TRADE_RETCODE_TOO_MANY_REQUESTS,  # 10024
-            mock_mt5_import.TRADE_RETCODE_NO_CHANGES,  # 10025
-            mock_mt5_import.TRADE_RETCODE_SERVER_DISABLES_AT,  # 10026
-            mock_mt5_import.TRADE_RETCODE_CLIENT_DISABLES_AT,  # 10027
-            mock_mt5_import.TRADE_RETCODE_LOCKED,  # 10028
-            mock_mt5_import.TRADE_RETCODE_FROZEN,  # 10029
-            mock_mt5_import.TRADE_RETCODE_INVALID_FILL,  # 10030
-            mock_mt5_import.TRADE_RETCODE_CONNECTION,  # 10031
-            mock_mt5_import.TRADE_RETCODE_ONLY_REAL,  # 10032
-            mock_mt5_import.TRADE_RETCODE_LIMIT_ORDERS,  # 10033
-            mock_mt5_import.TRADE_RETCODE_LIMIT_VOLUME,  # 10034
-            mock_mt5_import.TRADE_RETCODE_INVALID_ORDER,  # 10035
-            mock_mt5_import.TRADE_RETCODE_POSITION_CLOSED,  # 10036
-            mock_mt5_import.TRADE_RETCODE_INVALID_CLOSE_VOLUME,  # 10038
-            mock_mt5_import.TRADE_RETCODE_CLOSE_ORDER_EXIST,  # 10039
-            mock_mt5_import.TRADE_RETCODE_LIMIT_POSITIONS,  # 10040
-            mock_mt5_import.TRADE_RETCODE_REJECT_CANCEL,  # 10041
-            mock_mt5_import.TRADE_RETCODE_LONG_ONLY,  # 10042
-            mock_mt5_import.TRADE_RETCODE_SHORT_ONLY,  # 10043
-            mock_mt5_import.TRADE_RETCODE_CLOSE_ONLY,  # 10044
-            mock_mt5_import.TRADE_RETCODE_FIFO_CLOSE,  # 10045
-            mock_mt5_import.TRADE_RETCODE_HEDGE_PROHIBITED,  # 10046
+            mock_mt5_import.TRADE_RETCODE_REQUOTE,
+            mock_mt5_import.TRADE_RETCODE_REJECT,
+            mock_mt5_import.TRADE_RETCODE_CANCEL,
+            mock_mt5_import.TRADE_RETCODE_ERROR,
+            mock_mt5_import.TRADE_RETCODE_TIMEOUT,
+            mock_mt5_import.TRADE_RETCODE_INVALID,
+            mock_mt5_import.TRADE_RETCODE_INVALID_VOLUME,
+            mock_mt5_import.TRADE_RETCODE_INVALID_PRICE,
+            mock_mt5_import.TRADE_RETCODE_INVALID_STOPS,
+            mock_mt5_import.TRADE_RETCODE_TRADE_DISABLED,
+            mock_mt5_import.TRADE_RETCODE_MARKET_CLOSED,
+            mock_mt5_import.TRADE_RETCODE_NO_MONEY,
+            mock_mt5_import.TRADE_RETCODE_PRICE_CHANGED,
+            mock_mt5_import.TRADE_RETCODE_PRICE_OFF,
+            mock_mt5_import.TRADE_RETCODE_INVALID_EXPIRATION,
+            mock_mt5_import.TRADE_RETCODE_ORDER_CHANGED,
+            mock_mt5_import.TRADE_RETCODE_TOO_MANY_REQUESTS,
+            mock_mt5_import.TRADE_RETCODE_NO_CHANGES,
+            mock_mt5_import.TRADE_RETCODE_SERVER_DISABLES_AT,
+            mock_mt5_import.TRADE_RETCODE_CLIENT_DISABLES_AT,
+            mock_mt5_import.TRADE_RETCODE_LOCKED,
+            mock_mt5_import.TRADE_RETCODE_FROZEN,
+            mock_mt5_import.TRADE_RETCODE_INVALID_FILL,
+            mock_mt5_import.TRADE_RETCODE_CONNECTION,
+            mock_mt5_import.TRADE_RETCODE_ONLY_REAL,
+            mock_mt5_import.TRADE_RETCODE_LIMIT_ORDERS,
+            mock_mt5_import.TRADE_RETCODE_LIMIT_VOLUME,
+            mock_mt5_import.TRADE_RETCODE_INVALID_ORDER,
+            mock_mt5_import.TRADE_RETCODE_POSITION_CLOSED,
+            mock_mt5_import.TRADE_RETCODE_INVALID_CLOSE_VOLUME,
+            mock_mt5_import.TRADE_RETCODE_CLOSE_ORDER_EXIST,
+            mock_mt5_import.TRADE_RETCODE_LIMIT_POSITIONS,
+            mock_mt5_import.TRADE_RETCODE_REJECT_CANCEL,
+            mock_mt5_import.TRADE_RETCODE_LONG_ONLY,
+            mock_mt5_import.TRADE_RETCODE_SHORT_ONLY,
+            mock_mt5_import.TRADE_RETCODE_CLOSE_ONLY,
+            mock_mt5_import.TRADE_RETCODE_FIFO_CLOSE,
+            mock_mt5_import.TRADE_RETCODE_HEDGE_PROHIBITED,
         }
-
-        # Verify all expected codes are present
         assert retcodes == expected_codes
