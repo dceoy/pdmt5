@@ -23,17 +23,18 @@ integer values.
 
 ### [Mt5TradingClient](trading.md)
 
-Advanced trading operations including position management, order analysis, and trading performance metrics with dry run support.
+Direct order primitives around `order_check` / `order_send` and convenience
+wrappers for common single-call patterns.
 
 ## Architecture Overview
 
-The package follows a layered architecture:
+### Internal package layers
 
-1. **Base Layer** (`mt5.py`): Provides the base `Mt5Client` class with low-level MT5 API access and `Mt5RuntimeError` exception
-2. **Data Layer** (`dataframe.py`): Extends `Mt5Client` with configuration (`Mt5Config`) and pandas-friendly `Mt5DataClient` class
-3. **Trading Layer** (`trading.py`): Extends `Mt5DataClient` with advanced trading operations and `Mt5TradingError` exception
-4. **Constants** (`constants.py`): Shared MT5 constant parsing and schema helper values
-5. **Utilities** (`utils.py`): Helper functions for time conversion and DataFrame manipulation
+1. **Base Layer** (`mt5.py`): `Mt5Client` — low-level MT5 API access and `Mt5RuntimeError`
+2. **Data Layer** (`dataframe.py`): `Mt5DataClient` / `Mt5Config` — pandas-friendly interface and configuration
+3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and convenience wrappers
+4. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
+5. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
 
 ## Usage Guidelines
 
@@ -78,10 +79,10 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
         "EURUSD", parse_timeframe("H1"), datetime.now(), 100
     )
 
-# Advanced trading operations with Mt5TradingClient
+# Direct order primitives with Mt5TradingClient
 with Mt5TradingClient(mt5=mt5, config=config) as client:
-    # Close all positions for a symbol
-    results = client.close_open_positions("EURUSD", dry_run=True)
+    # Place a market order (dry-run validates without executing)
+    result = client.place_market_order("EURUSD", 0.1, "BUY", dry_run=True)
 
 # Schema-friendly MT5 constant metadata
 timeframe_names = list_timeframe_names()

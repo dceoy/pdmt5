@@ -21,8 +21,8 @@ Pandas-based data handler for MetaTrader 5
 - 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
 - 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
-- 💰 **Advanced Trading Operations**: Position management, margin calculations, and risk analysis tools
-- 🧪 **Dry Run Mode**: Test trading strategies without executing real trades
+- 💰 **Direct Order Primitives**: `order_check` / `order_send` wrappers with retcode validation
+- 🧪 **Dry Run Mode**: Test order requests without executing real trades
 
 ## Requirements
 
@@ -221,27 +221,25 @@ order_type_schema = {
 
 ### Mt5TradingClient
 
-Advanced trading operations client that extends Mt5DataClient:
+Trading client that extends `Mt5DataClient` with direct order primitives and
+convenience wrappers. Methods are classified as follows:
 
-- **Position Management**:
-  - `close_open_positions()` - Close all positions for specified symbol(s)
-  - `place_market_order()` - Place market orders with configurable side, volume, and execution modes
-  - `update_sltp_for_open_positions()` - Modify stop loss and take profit levels for open positions
-- **Margin Calculations**:
-  - `calculate_minimum_order_margin()` - Calculate minimum required margin for a specific order side
-  - `calculate_volume_by_margin()` - Calculate maximum volume for given margin amount
-  - `calculate_spread_ratio()` - Calculate normalized bid-ask spread ratio
-  - `calculate_new_position_margin_ratio()` - Calculate margin ratio for potential new positions
-- **Simplified Data Access**:
-  - `fetch_latest_rates_as_df()` - Get recent OHLC data with timeframe strings (e.g., "M1", "H1", "D1")
-  - `fetch_latest_ticks_as_df()` - Get tick data for specified seconds around last tick
-  - `collect_entry_deals_as_df()` - Filter and collect entry deals (BUY/SELL) from history
-  - `fetch_positions_with_metrics_as_df()` - Get open positions with calculated metrics (elapsed time, margin, profit ratios)
-- **Features**:
-  - Smart order routing with configurable filling modes
-  - Comprehensive error handling with `Mt5TradingError`
-  - Support for batch operations on multiple symbols
-  - Automatic position closing with proper order type reversal
+- **Core MT5 primitives** — thin wrappers or constant mappings directly over the
+  MetaTrader5 API:
+  - `mt5_successful_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating success
+  - `mt5_failed_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating failure
+
+- **Convenience wrappers** — slightly higher-level helpers closely coupled to a
+  single MT5 call:
+  - `place_market_order()` — builds a `TRADE_ACTION_DEAL` request and sends/checks it
+  - `calculate_minimum_order_margin()` — combines `symbol_info` + `order_calc_margin`
+    to return the margin for the minimum allowable volume
+  - `fetch_latest_rates_as_df()` — calls `copy_rates_from_pos_as_df` from position 0
+    after resolving a `granularity` string (e.g. `"M1"`, `"H1"`) via `parse_timeframe`
+  - `fetch_latest_ticks_as_df()` — calls `copy_ticks_range_as_df` centred on the last tick
+
+- **Error handling**: `Mt5TradingError` (extends `Mt5RuntimeError`) is raised when
+  an order operation returns a failed retcode and `raise_on_error=True`.
 
 ### Configuration
 
@@ -319,7 +317,6 @@ with Mt5DataClient(config=config) as client:
 ```python
 from pdmt5 import Mt5TradingClient
 
-# Create trading client
 with Mt5TradingClient(config=config) as trader:
     # Place a market buy order
     order_result = trader.place_market_order(
@@ -331,85 +328,30 @@ with Mt5TradingClient(config=config) as trader:
     )
     print(f"Order placed: {order_result['retcode']}")
 
-    # Update stop loss and take profit for open positions
-    update_results = trader.update_sltp_for_open_positions(
+    # Dry run: validate without executing
+    check_result = trader.place_market_order(
         symbol="EURUSD",
-        stop_loss=1.0950,   # New stop loss
-        take_profit=1.1050  # New take profit
+        volume=0.1,
+        order_side="SELL",
+        dry_run=True,
     )
-    for result in update_results:
-        print(f"Position updated: {result['retcode']}")
+    print(f"Check result: {check_result['retcode']}")
 
-    # Calculate margin ratio for a new position
-    margin_ratio = trader.calculate_new_position_margin_ratio(
-        symbol="EURUSD",
-        new_position_side="SELL",
-        new_position_volume=0.2
-    )
-    print(f"New position margin ratio: {margin_ratio:.2%}")
+    # Calculate minimum margin for a position
+    min_margin = trader.calculate_minimum_order_margin("EURUSD", "BUY")
+    print(f"Min volume: {min_margin['volume']}, min margin: {min_margin['margin']}")
 
-    # Close all EURUSD positions with specific order filling mode
-    results = trader.close_open_positions(
-        symbols="EURUSD",
-        order_filling_mode="FOK"  # Fill or Kill
-    )
-
-    if results:
-        for symbol, close_results in results.items():
-            for result in close_results:
-                print(f"Closed position {result.get('position')} with result: {result['retcode']}")
-```
-
-### Market Analysis with Mt5TradingClient
-
-```python
-with Mt5TradingClient(config=config) as trader:
-    # Calculate spread ratio for EURUSD
-    spread_ratio = trader.calculate_spread_ratio("EURUSD")
-    print(f"EURUSD spread ratio: {spread_ratio:.5f}")
-
-    # Get minimum order margin for BUY and SELL
-    buy_margin = trader.calculate_minimum_order_margin("EURUSD", "BUY")
-    sell_margin = trader.calculate_minimum_order_margin("EURUSD", "SELL")
-    print(f"Minimum BUY margin: {buy_margin['margin']} (volume: {buy_margin['volume']})")
-    print(f"Minimum SELL margin: {sell_margin['margin']} (volume: {sell_margin['volume']})")
-
-    # Calculate volume by margin
-    available_margin = 1000.0
-    max_buy_volume = trader.calculate_volume_by_margin("EURUSD", available_margin, "BUY")
-    max_sell_volume = trader.calculate_volume_by_margin("EURUSD", available_margin, "SELL")
-    print(f"Max BUY volume for ${available_margin}: {max_buy_volume}")
-    print(f"Max SELL volume for ${available_margin}: {max_sell_volume}")
-
-    # Get recent OHLC data with custom timeframe
+    # Fetch recent OHLC bars
     rates_df = trader.fetch_latest_rates_as_df(
         symbol="EURUSD",
-        granularity="M15",  # 15-minute bars
-        count=100
+        granularity="M15",
+        count=100,
     )
     print(rates_df.tail())
 
-    # Get tick data for the last 60 seconds
-    ticks_df = trader.fetch_latest_ticks_as_df(
-        symbol="EURUSD",
-        seconds=60
-    )
+    # Fetch recent tick data
+    ticks_df = trader.fetch_latest_ticks_as_df(symbol="EURUSD", seconds=60)
     print(f"Received {len(ticks_df)} ticks")
-
-    # Collect entry deals for the last hour
-    deals_df = trader.collect_entry_deals_as_df(
-        symbol="EURUSD",
-        history_seconds=3600
-    )
-    if not deals_df.empty:
-        print(f"Found {len(deals_df)} entry deals")
-        print(deals_df[['time', 'type', 'volume', 'price']].head())
-
-    # Get positions with calculated metrics
-    positions_df = trader.fetch_positions_with_metrics_as_df("EURUSD")
-    if not positions_df.empty:
-        print(f"Open positions with metrics:")
-        print(positions_df[['ticket', 'volume', 'profit', 'elapsed_seconds', 'underlier_profit_ratio']].head())
 ```
 
 ## Development
