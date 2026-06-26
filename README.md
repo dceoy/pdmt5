@@ -1,6 +1,6 @@
 # pdmt5
 
-Pandas-based data handler for MetaTrader 5
+Low-level MetaTrader 5 wrapper and pandas/dict conversion package
 
 [![CI/CD](https://github.com/dceoy/pdmt5/actions/workflows/ci.yml/badge.svg)](https://github.com/dceoy/pdmt5/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
@@ -9,20 +9,21 @@ Pandas-based data handler for MetaTrader 5
 
 ## Overview
 
-**pdmt5** is a Python package that provides a pandas-based interface for MetaTrader 5 (MT5), making it easier to work with financial market data in Python. It provides helpers to convert MT5's native data structures into pandas DataFrames and dictionaries, enabling seamless integration with data science workflows.
+**pdmt5** is a Python package that provides a low-level wrapper around the MetaTrader 5 (MT5) API with pandas DataFrame and dictionary conversion helpers. It exposes raw MT5 API calls, converts results into pandas DataFrames and dicts, and provides canonical constant parsing for timeframes, tick copy flags, and order types.
+
+High-level trading orchestration (market-order construction, margin-budget sizing, position lifecycle management, strategy or batch workflows) is out of scope. Those concerns belong in downstream applications or tools such as mt5cli.
 
 ### Key Features
 
-- 📊 **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
-- 🔧 **Type Safety**: Full type hints with strict pyright checking and pydantic validation
-- 🏦 **Comprehensive MT5 Coverage**: Account info, market data, tick data, orders, positions, and more
-- 🧭 **Canonical MT5 Constants**: Shared parsing for timeframes, COPY_TICKS flags,
+- **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
+- **Type Safety**: Full type hints with strict pyright checking and pydantic validation
+- **Comprehensive MT5 Coverage**: Account info, market data, tick data, orders, positions, and more
+- **Canonical MT5 Constants**: Shared parsing for timeframes, COPY_TICKS flags,
   and ORDER_TYPE values with official names, short aliases, or valid integers
-- 🚀 **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
-- 📈 **Time Series Ready**: OHLCV data with proper datetime indexing
-- 🛡️ **Robust Error Handling**: Custom exceptions with detailed MT5 error information
-- 💰 **Direct Order Primitives**: `order_check` / `order_send` wrappers with retcode validation
-- 🧪 **Dry Run Mode**: Test order requests without executing real trades
+- **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
+- **Time Series Ready**: OHLCV data with proper datetime indexing
+- **Robust Error Handling**: Custom exceptions with detailed MT5 error information
+- **Direct Order Primitives**: `order_check` / `order_send` wrappers with DataFrame/dict conversions
 
 ## Requirements
 
@@ -219,28 +220,6 @@ order_type_schema = {
 }
 ```
 
-### Mt5TradingClient
-
-Trading client that extends `Mt5DataClient` with direct order primitives and
-convenience wrappers. Methods are classified as follows:
-
-- **Core MT5 primitives** — thin wrappers or constant mappings directly over the
-  MetaTrader5 API:
-  - `mt5_successful_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating success
-  - `mt5_failed_trade_retcodes` — set of `TRADE_RETCODE_*` values indicating failure
-
-- **Convenience wrappers** — slightly higher-level helpers closely coupled to a
-  single MT5 call:
-  - `place_market_order()` — builds a `TRADE_ACTION_DEAL` request and sends/checks it
-  - `calculate_minimum_order_margin()` — combines `symbol_info` + `order_calc_margin`
-    to return the margin for the minimum allowable volume
-  - `fetch_latest_rates_as_df()` — calls `copy_rates_from_pos_as_df` from position 0
-    after resolving a `granularity` string (e.g. `"M1"`, `"H1"`) via `parse_timeframe`
-  - `fetch_latest_ticks_as_df()` — calls `copy_ticks_range_as_df` centred on the last tick
-
-- **Error handling**: `Mt5TradingError` (extends `Mt5RuntimeError`) is raised when
-  an order operation returns a failed retcode and `raise_on_error=True`.
-
 ### Configuration
 
 ```python
@@ -312,46 +291,25 @@ with Mt5DataClient(config=config) as client:
         print(summary)
 ```
 
-### Trading Operations
+### Order Check and Send
 
 ```python
-from pdmt5 import Mt5TradingClient
+with Mt5DataClient(config=config) as client:
+    # Validate an order request without sending
+    request = {
+        "action": 1,      # TRADE_ACTION_DEAL
+        "symbol": "EURUSD",
+        "volume": 0.1,
+        "type": 0,        # ORDER_TYPE_BUY
+        "type_filling": 1,
+        "type_time": 0,
+    }
+    check = client.order_check_as_dict(request=request)
+    print(f"Check retcode: {check['retcode']}")
 
-with Mt5TradingClient(config=config) as trader:
-    # Place a market buy order
-    order_result = trader.place_market_order(
-        symbol="EURUSD",
-        volume=0.1,
-        order_side="BUY",
-        order_filling_mode="IOC",  # Immediate or Cancel
-        order_time_mode="GTC"      # Good Till Cancelled
-    )
-    print(f"Order placed: {order_result['retcode']}")
-
-    # Dry run: validate without executing
-    check_result = trader.place_market_order(
-        symbol="EURUSD",
-        volume=0.1,
-        order_side="SELL",
-        dry_run=True,
-    )
-    print(f"Check result: {check_result['retcode']}")
-
-    # Calculate minimum margin for a position
-    min_margin = trader.calculate_minimum_order_margin("EURUSD", "BUY")
-    print(f"Min volume: {min_margin['volume']}, min margin: {min_margin['margin']}")
-
-    # Fetch recent OHLC bars
-    rates_df = trader.fetch_latest_rates_as_df(
-        symbol="EURUSD",
-        granularity="M15",
-        count=100,
-    )
-    print(rates_df.tail())
-
-    # Fetch recent tick data
-    ticks_df = trader.fetch_latest_ticks_as_df(symbol="EURUSD", seconds=60)
-    print(f"Received {len(ticks_df)} ticks")
+    # Send the order to the trade server
+    result = client.order_send_as_dict(request=request)
+    print(f"Send retcode: {result['retcode']}")
 ```
 
 ## Development

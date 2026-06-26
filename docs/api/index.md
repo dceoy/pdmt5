@@ -21,20 +21,14 @@ ORDER_TYPE values. Use these helpers when CLI, HTTP, or validation layers need
 to accept official names such as `TIMEFRAME_M1`, short aliases such as `M1`, or
 integer values.
 
-### [Mt5TradingClient](trading.md)
-
-Direct order primitives around `order_check` / `order_send` and convenience
-wrappers for common single-call patterns.
-
 ## Architecture Overview
 
 ### Internal package layers
 
 1. **Base Layer** (`mt5.py`): `Mt5Client` — low-level MT5 API access and `Mt5RuntimeError`
 2. **Data Layer** (`dataframe.py`): `Mt5DataClient` / `Mt5Config` — pandas-friendly interface and configuration
-3. **Trading Layer** (`trading.py`): `Mt5TradingClient` — direct order primitives and convenience wrappers
-4. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
-5. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
+3. **Constants** (`constants.py`): Canonical MT5 constant parsing and schema helpers
+4. **Utilities** (`utils.py`): Time conversion and DataFrame helpers
 
 ## Usage Guidelines
 
@@ -54,7 +48,6 @@ from pdmt5 import (
     Mt5Client,
     Mt5Config,
     Mt5DataClient,
-    Mt5TradingClient,
     list_timeframe_names,
     list_timeframe_values,
     parse_copy_ticks,
@@ -78,11 +71,6 @@ with Mt5DataClient(mt5=mt5, config=config) as client:
     rates_df = client.copy_rates_from_as_df(
         "EURUSD", parse_timeframe("H1"), datetime.now(), 100
     )
-
-# Direct order primitives with Mt5TradingClient
-with Mt5TradingClient(mt5=mt5, config=config) as client:
-    # Place a market order (dry-run validates without executing)
-    result = client.place_market_order("EURUSD", 0.1, "BUY", dry_run=True)
 
 # Schema-friendly MT5 constant metadata
 timeframe_names = list_timeframe_names()

@@ -1,7 +1,7 @@
 [project]
 name = "pdmt5"
 version = "1.0.0"
-description = "Pandas-based data handler for MetaTrader 5"
+description = "Low-level MetaTrader 5 wrapper and pandas/dict conversion package"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 license = "MIT"
