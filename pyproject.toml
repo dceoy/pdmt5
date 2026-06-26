@@ -1,7 +1,7 @@
 [project]
 name = "pdmt5"
 version = "1.0.0"
-description = "Pandas-based data handler for MetaTrader 5"
+description = "Low-level MetaTrader 5 wrapper and pandas/dict conversion package"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 license = "MIT"
@@ -88,7 +88,6 @@ select = [
   "FBT",    # flake8-boolean-trap (FBT)
   "A",      # flake8-builtins (A)
   "COM",    # flake8-commas (COM)
-  # "CPY",    # flake8-copyright (CPY)
   "DTZ",    # flake8-datetimez (DTZ)
   "T10",    # flake8-debugger (T10)
   "DJ",     # flake8-django (DJ)
@@ -106,7 +105,6 @@ select = [
   "PT",     # flake8-pytest-style (PT)
   "Q",      # flake8-quotes (Q)
   "RSE",    # flake8-raise (RSE)
-  # "RET",    # flake8-return (RET)
   "SLF",    # flake8-self (SLF)
   "SLOT",   # flake8-slots (SLOT)
   "TID",    # flake8-tidy-imports (TID)
