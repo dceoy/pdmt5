@@ -44,7 +44,7 @@ dev = [
   "types-pexpect >= 4.9.0.20250516",
   "mkdocs >= 1.6.1",
   "mkdocs-material >= 9.6.15",
-  "mkdocstrings[python] >= 0.29.1",
+  "mkdocstrings[python] >= 1.0.4",
 ]
 
 [tool.uv.build-backend]
