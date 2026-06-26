@@ -1,10 +1,10 @@
 # pdmt5 API Documentation
 
-Pandas-based data handler for MetaTrader 5 trading platform.
+Low-level MetaTrader 5 wrapper and pandas/dict conversion package.
 
 ## Overview
 
-pdmt5 is a Python library that provides a pandas-based interface for handling MetaTrader 5 trading data. It simplifies data manipulation and analysis tasks for financial trading applications.
+pdmt5 is a Python library that provides a low-level wrapper around the MetaTrader 5 (MT5) API with pandas DataFrame and dictionary conversion helpers. It simplifies data access and conversion for financial market data analysis.
 
 ## Features
 
@@ -13,7 +13,6 @@ pdmt5 is a Python library that provides a pandas-based interface for handling Me
 - **Canonical MT5 Constants**: Shared parsers for timeframes, COPY_TICKS flags,
   and ORDER_TYPE values using official names, short aliases, or valid integers
 - **Type Safety**: Built with pydantic for robust data validation
-- **Financial Focus**: Designed specifically for trading and financial data analysis
 
 ## Installation
 
@@ -28,7 +27,6 @@ from pdmt5 import (
     Mt5Client,
     Mt5Config,
     Mt5DataClient,
-    Mt5TradingClient,
     parse_copy_ticks,
     parse_timeframe,
 )
@@ -64,13 +62,6 @@ with Mt5DataClient(config=config) as client:
     # Get account info as DataFrame
     account_df = client.account_info_as_df()
 
-# Trading operations with dry run support
-with Mt5TradingClient(config=config) as client:
-    # Check open positions as DataFrame
-    positions_df = client.positions_get_as_df()
-    # Close positions for specific symbol (dry run)
-    results = client.close_open_positions("EURUSD", dry_run=True)
-
 # Parse MT5 constants without importing the MetaTrader5 module
 timeframe = parse_timeframe("TIMEFRAME_H1")  # 16385
 tick_flags = parse_copy_ticks("ALL")  # -1
@@ -89,7 +80,6 @@ Browse the API documentation to learn about available modules and functions:
 - [Mt5Client](api/mt5.md) - Base client for low-level MT5 API access with context manager support
 - [Constants](api/constants.md) - Canonical MT5 constant parsing and schema helper values
 - [Mt5DataClient & Mt5Config](api/dataframe.md) - Pandas-friendly data client with DataFrame conversions
-- [Mt5TradingClient](api/trading.md) - Advanced trading operations with position management
 - [Utility Functions](api/utils.md) - Helper decorators and functions for data processing
 
 ## Development

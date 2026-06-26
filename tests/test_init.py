@@ -20,8 +20,6 @@ class TestInit:
             "Mt5Config",
             "Mt5DataClient",
             "Mt5RuntimeError",
-            "Mt5TradingClient",
-            "Mt5TradingError",
         ],
     )
     def test_exports_available(self, export: str) -> None:

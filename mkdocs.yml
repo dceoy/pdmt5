@@ -58,7 +58,6 @@ nav:
     - MetaTrader5: api/mt5.md
     - Constants: api/constants.md
     - DataFrame: api/dataframe.md
-    - Trading: api/trading.md
     - Utilities: api/utils.md
 
 markdown_extensions:
