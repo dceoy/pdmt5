@@ -85,7 +85,7 @@ df = client.copy_rates_from_as_df(
     timeframe=mt5.TIMEFRAME_H1,
     date_from=datetime.now(),
     count=100,
-    index_keys="time"  # Sets 'time' column as index
+    index_keys="time",  # Sets 'time' column as index
 )
 ```
 

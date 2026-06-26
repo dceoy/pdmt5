@@ -660,7 +660,7 @@ class TestMt5DataClient:
         assert len(df_result) == 1
         assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
-        assert df_result.iloc[0]["volume_initial"] == 0.1
+        assert df_result.iloc[0]["volume_initial"] == pytest.approx(0.1)
         assert df_result.iloc[0]["time_setup"] == pd.to_datetime(1640995200, unit="s")
         assert df_result.iloc[0]["time_setup_msc"] == pd.to_datetime(
             1640995200000, unit="ms"
@@ -704,7 +704,7 @@ class TestMt5DataClient:
         assert len(df_result) == 1
         assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
-        assert df_result.iloc[0]["volume"] == 0.1
+        assert df_result.iloc[0]["volume"] == pytest.approx(0.1)
         # Time fields should be present (conversion behavior may vary)
         assert "time" in df_result.columns
         assert "time_msc" in df_result.columns
@@ -832,7 +832,7 @@ class TestMt5DataClient:
 
         if last_error is None:
             result = client.order_calc_margin(0, "EURUSD", volume, price)
-            assert result == 100.0
+            assert result == pytest.approx(100.0)
         else:
             with pytest.raises(
                 Mt5RuntimeError, match=r"MT5 order_calc_margin returned None"
@@ -848,7 +848,7 @@ class TestMt5DataClient:
         client = create_initialized_client(mock_mt5_import)
         result = client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 1.1400)
 
-        assert result == 10.0
+        assert result == pytest.approx(10.0)
 
     def test_order_calc_profit_invalid_volume(
         self, mock_mt5_import: ModuleType | None
@@ -1317,9 +1317,9 @@ class TestMt5DataClient:
         assert isinstance(result, tuple)
         assert len(result) == 2
         assert result[0].type == 0
-        assert result[0].price == 1.1300
+        assert result[0].price == pytest.approx(1.1300)
         assert result[1].type == 1
-        assert result[1].price == 1.1302
+        assert result[1].price == pytest.approx(1.1302)
 
     def test_market_book_get_error(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method with error."""
@@ -1625,7 +1625,7 @@ class TestMt5DataClientValidation:
 
             assert result["retcode"] == 10009
             assert result["request"] == {"action": 1, "symbol": "EURUSD"}
-            assert result["volume"] == 1.0
+            assert result["volume"] == pytest.approx(1.0)
 
     def test_order_send_as_dict(
         self,
@@ -1839,7 +1839,7 @@ class TestMt5DataClientRetryLogic:
 
         assert isinstance(dict_result, dict)
         assert dict_result["login"] == 123456
-        assert dict_result["balance"] == 10000.0
+        assert dict_result["balance"] == pytest.approx(10000.0)
         assert dict_result["currency"] == "USD"
         assert dict_result["server"] == "Demo-Server"
         assert dict_result["trade_allowed"] is True
@@ -1998,8 +1998,8 @@ class TestMt5DataClientRetryLogic:
         assert isinstance(dict_result, dict)
         assert dict_result["name"] == "EURUSD"
         assert dict_result["digits"] == 5
-        assert dict_result["bid"] == 1.13200
-        assert dict_result["ask"] == 1.13210
+        assert dict_result["bid"] == pytest.approx(1.13200)
+        assert dict_result["ask"] == pytest.approx(1.13210)
         assert dict_result["currency_base"] == "EUR"
         assert dict_result["currency_profit"] == "USD"
 
@@ -2025,9 +2025,9 @@ class TestMt5DataClientRetryLogic:
         dict_result = client.symbol_info_tick_as_dict("EURUSD")
 
         assert isinstance(dict_result, dict)
-        assert dict_result["bid"] == 1.13200
-        assert dict_result["ask"] == 1.13210
-        assert dict_result["last"] == 1.13205
+        assert dict_result["bid"] == pytest.approx(1.13200)
+        assert dict_result["ask"] == pytest.approx(1.13210)
+        assert dict_result["last"] == pytest.approx(1.13205)
         assert dict_result["volume"] == 100
         assert dict_result["time"] == pd.to_datetime(1640995200, unit="s")
         assert dict_result["flags"] == 134
@@ -2642,13 +2642,13 @@ class TestMt5DataClientCoverageMissing:
         # Test without convert_time
         result = client.market_book_get_as_dicts("EURUSD", skip_to_datetime=True)
         assert len(result) == 1
-        assert result[0]["price"] == 1.1300
+        assert result[0]["price"] == pytest.approx(1.1300)
         assert result[0]["type"] == 0
 
         # Test with convert_time (default True)
         result = client.market_book_get_as_dicts("EURUSD")
         assert len(result) == 1
-        assert result[0]["price"] == 1.1300
+        assert result[0]["price"] == pytest.approx(1.1300)
         assert result[0]["type"] == 0
 
     def test_copy_rates_from_as_dicts(self, mock_mt5_import: ModuleType) -> None:

@@ -60,9 +60,7 @@ with client:
 
     # Login to specific account
     success = client.login(
-        login=12345,
-        password="your_password",
-        server="broker_server"
+        login=12345, password="your_password", server="broker_server"
     )
 
     if success:
@@ -109,7 +107,7 @@ with client:
         symbol="EURUSD",
         timeframe=mt5.TIMEFRAME_H1,
         date_from=datetime(2024, 1, 1),
-        count=100
+        count=100,
     )
 
     # Get rates within date range
@@ -117,7 +115,7 @@ with client:
         symbol="EURUSD",
         timeframe=mt5.TIMEFRAME_D1,
         date_from=datetime(2024, 1, 1),
-        date_to=datetime(2024, 1, 31)
+        date_to=datetime(2024, 1, 31),
     )
 
     # Get tick data
@@ -125,7 +123,7 @@ with client:
         symbol="EURUSD",
         date_from=datetime(2024, 1, 1),
         count=1000,
-        flags=mt5.COPY_TICKS_ALL
+        flags=mt5.COPY_TICKS_ALL,
     )
 ```
 
@@ -146,10 +144,7 @@ with client:
 
     # Calculate margin requirement
     margin = client.order_calc_margin(
-        action=mt5.ORDER_TYPE_BUY,
-        symbol="EURUSD",
-        volume=1.0,
-        price=1.1000
+        action=mt5.ORDER_TYPE_BUY, symbol="EURUSD", volume=1.0, price=1.1000
     )
     print(f"Required margin: {margin}")
 
@@ -159,7 +154,7 @@ with client:
         symbol="EURUSD",
         volume=1.0,
         price_open=1.1000,
-        price_close=1.1050
+        price_close=1.1050,
     )
     print(f"Calculated profit: {profit}")
 ```
@@ -174,14 +169,12 @@ with client:
 
     # Get historical orders
     history_orders = client.history_orders_get(
-        date_from=datetime(2024, 1, 1),
-        date_to=datetime(2024, 1, 31)
+        date_from=datetime(2024, 1, 1), date_to=datetime(2024, 1, 31)
     )
 
     # Get historical deals
     history_deals = client.history_deals_get(
-        date_from=datetime(2024, 1, 1),
-        date_to=datetime(2024, 1, 31)
+        date_from=datetime(2024, 1, 1), date_to=datetime(2024, 1, 31)
     )
 
     # Get specific order by ticket

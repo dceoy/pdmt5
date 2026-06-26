@@ -410,7 +410,7 @@ class TestMt5Client:
 
         result = initialized_client.order_calc_margin(0, "EURUSD", 1.0, 1.1234)
 
-        assert result == 1000.0
+        assert result == pytest.approx(1000.0)
         mock_mt5.order_calc_margin.assert_called_once_with(0, "EURUSD", 1.0, 1.1234)
 
     def test_order_calc_profit(
@@ -421,7 +421,7 @@ class TestMt5Client:
 
         result = initialized_client.order_calc_profit(0, "EURUSD", 1.0, 1.1234, 1.1334)
 
-        assert result == 100.0
+        assert result == pytest.approx(100.0)
         mock_mt5.order_calc_profit.assert_called_once_with(
             0, "EURUSD", 1.0, 1.1234, 1.1334
         )
