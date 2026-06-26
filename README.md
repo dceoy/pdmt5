@@ -55,10 +55,7 @@ from pdmt5 import Mt5DataClient, Mt5Config, parse_timeframe
 
 # Configure connection
 config = Mt5Config(
-    login=12345678,
-    password="your_password",
-    server="YourBroker-Server",
-    timeout=60000
+    login=12345678, password="your_password", server="YourBroker-Server", timeout=60000
 )
 
 # Use as context manager
@@ -75,7 +72,7 @@ with Mt5DataClient(config=config) as client:
         symbol="EURUSD",
         timeframe=parse_timeframe("H1"),
         date_from=datetime(2024, 1, 1),
-        count=100
+        count=100,
     )
     print(rates.head())
 
@@ -226,10 +223,10 @@ order_type_schema = {
 from pdmt5 import Mt5Config
 
 config = Mt5Config(
-    login=12345678,          # MT5 account number
-    password="password",     # MT5 password
+    login=12345678,  # MT5 account number
+    password="password",  # MT5 password
     server="Broker-Server",  # MT5 server name
-    timeout=60000           # Connection timeout in ms
+    timeout=60000,  # Connection timeout in ms
 )
 ```
 
@@ -247,7 +244,7 @@ with Mt5DataClient(config=config) as client:
         symbol="EURUSD",
         timeframe=parse_timeframe("TIMEFRAME_H1"),
         date_from=datetime.now(),
-        count=1000
+        count=1000,
     )
 
     # Data includes: time, open, high, low, close, tick_volume, spread, real_volume
@@ -267,7 +264,7 @@ with Mt5DataClient(config=config) as client:
         symbol="EURUSD",
         date_from=datetime.now() - timedelta(hours=1),
         count=10000,
-        flags=parse_copy_ticks("COPY_TICKS_ALL")
+        flags=parse_copy_ticks("COPY_TICKS_ALL"),
     )
 
     # Tick data includes: time, bid, ask, last, volume, flags
@@ -283,10 +280,10 @@ with Mt5DataClient(config=config) as client:
 
     if not positions.empty:
         # Calculate summary statistics
-        summary = positions.groupby('symbol').agg({
-            'volume': 'sum',
-            'profit': 'sum',
-            'price_open': 'mean'
+        summary = positions.groupby("symbol").agg({
+            "volume": "sum",
+            "profit": "sum",
+            "price_open": "mean",
         })
         print(summary)
 ```
@@ -297,10 +294,10 @@ with Mt5DataClient(config=config) as client:
 with Mt5DataClient(config=config) as client:
     # Validate an order request without sending
     request = {
-        "action": 1,      # TRADE_ACTION_DEAL
+        "action": 1,  # TRADE_ACTION_DEAL
         "symbol": "EURUSD",
         "volume": 0.1,
-        "type": 0,        # ORDER_TYPE_BUY
+        "type": 0,  # ORDER_TYPE_BUY
         "type_filling": 1,
         "type_time": 0,
     }

@@ -109,12 +109,12 @@ class _ConstantFamily:
 
     @property
     def values(self) -> list[int]:
-        """Return unique constant values in official MT5 order."""
+        """Unique constant values in official MT5 order."""
         return list(dict.fromkeys(self.mapping.values()))
 
     @property
     def value_set(self) -> set[int]:
-        """Return unique constant values for membership checks."""
+        """Unique constant values for membership checks."""
         return set(self.values)
 
     def names(self, *, include_aliases: bool = True) -> list[str]:

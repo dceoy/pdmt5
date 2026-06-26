@@ -36,11 +36,7 @@ import MetaTrader5 as mt5
 from pdmt5.dataframe import Mt5DataClient, Mt5Config
 
 # Create configuration
-config = Mt5Config(
-    login=123456,
-    password="your_password",
-    server="broker_server"
-)
+config = Mt5Config(login=123456, password="your_password", server="broker_server")
 
 # Create client
 client = Mt5DataClient(mt5=mt5, config=config)
@@ -67,7 +63,7 @@ with client:
         symbol="EURUSD",
         timeframe=parse_timeframe("H1"),
         date_from=datetime(2024, 1, 1),
-        count=1000
+        count=1000,
     )
 
     # Get tick data
@@ -75,7 +71,7 @@ with client:
         symbol="EURUSD",
         date_from=datetime(2024, 1, 1),
         count=1000,
-        flags=parse_copy_ticks("ALL")
+        flags=parse_copy_ticks("ALL"),
     )
 ```
 
@@ -101,15 +97,12 @@ from datetime import datetime
 with client:
     # Get historical orders
     orders_df = client.history_orders_get_as_df(
-        date_from=datetime(2024, 1, 1),
-        date_to=datetime(2024, 1, 31),
-        symbol="EURUSD"
+        date_from=datetime(2024, 1, 1), date_to=datetime(2024, 1, 31), symbol="EURUSD"
     )
 
     # Get historical deals
     deals_df = client.history_deals_get_as_df(
-        date_from=datetime(2024, 1, 1),
-        date_to=datetime(2024, 1, 31)
+        date_from=datetime(2024, 1, 1), date_to=datetime(2024, 1, 31)
     )
 ```
 
@@ -142,7 +135,9 @@ All methods raise `Mt5RuntimeError` exceptions with detailed error information w
 from pdmt5.mt5 import Mt5RuntimeError
 
 try:
-    rates_df = client.copy_rates_from_as_df("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
+    rates_df = client.copy_rates_from_as_df(
+        "INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100
+    )
 except Mt5RuntimeError as e:
     print(f"MetaTrader 5 error: {e}")
 ```
