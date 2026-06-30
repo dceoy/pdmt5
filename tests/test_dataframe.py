@@ -1086,10 +1086,31 @@ class TestMt5DataClient:
             getattr(client, method)("EURUSD")
 
     @pytest.mark.parametrize(
-        ("position_id", "call_kwargs", "assert_index", "assert_col"),
+        (
+            "position_id",
+            "call_kwargs",
+            "assert_index",
+            "assert_col",
+            "expected_mt5_args",
+            "expected_mt5_kwargs",
+        ),
         [
-            (0, {"ticket": 123456, "index_keys": "ticket"}, 123456, None),
-            (345678, {"position": 345678}, None, ("position_id", 345678)),
+            (
+                0,
+                {"ticket": 123456, "index_keys": "ticket"},
+                123456,
+                None,
+                (),
+                {"ticket": 123456},
+            ),
+            (
+                345678,
+                {"position": 345678},
+                None,
+                ("position_id", 345678),
+                (),
+                {"position": 345678},
+            ),
             (
                 0,
                 {
@@ -1099,6 +1120,8 @@ class TestMt5DataClient:
                 },
                 None,
                 ("symbol", "EURUSD"),
+                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
+                {"group": "*EURUSD*"},
             ),
             (
                 0,
@@ -1109,6 +1132,8 @@ class TestMt5DataClient:
                 },
                 None,
                 ("symbol", "EURUSD"),
+                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
+                {"group": "*USD*"},
             ),
         ],
         ids=["ticket", "position", "symbol", "group"],
@@ -1120,6 +1145,8 @@ class TestMt5DataClient:
         call_kwargs: dict[str, Any],
         assert_index: int | None,
         assert_col: tuple[str, Any] | None,
+        expected_mt5_args: tuple[Any, ...],
+        expected_mt5_kwargs: dict[str, Any],
     ) -> None:
         """Test history_orders_get_as_df with various filter kwargs."""
         assert mock_mt5_import is not None
@@ -1165,6 +1192,9 @@ class TestMt5DataClient:
             assert assert_col is not None
             col, val = assert_col
             assert df_result.iloc[0][col] == val
+        mock_mt5_import.history_orders_get.assert_called_once_with(
+            *expected_mt5_args, **expected_mt5_kwargs
+        )
 
     def test_history_orders_get_no_dates(
         self, mock_mt5_import: ModuleType | None
@@ -2049,10 +2079,28 @@ class TestMt5DataClientRetryLogic:
             client._validate_history_input(**kwargs)  # type: ignore[reportPrivateUsage]
 
     @pytest.mark.parametrize(
-        ("call_kwargs", "assert_index", "assert_col"),
+        (
+            "call_kwargs",
+            "assert_index",
+            "assert_col",
+            "expected_mt5_args",
+            "expected_mt5_kwargs",
+        ),
         [
-            ({"ticket": 123456, "index_keys": "ticket"}, 123456, None),
-            ({"position": 345678}, None, ("position_id", 345678)),
+            (
+                {"ticket": 123456, "index_keys": "ticket"},
+                123456,
+                None,
+                (),
+                {"ticket": 123456},
+            ),
+            (
+                {"position": 345678},
+                None,
+                ("position_id", 345678),
+                (),
+                {"position": 345678},
+            ),
             (
                 {
                     "date_from": datetime(2022, 1, 1, tzinfo=UTC),
@@ -2061,6 +2109,8 @@ class TestMt5DataClientRetryLogic:
                 },
                 None,
                 ("symbol", "EURUSD"),
+                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
+                {"group": "*EURUSD*"},
             ),
             (
                 {
@@ -2070,6 +2120,8 @@ class TestMt5DataClientRetryLogic:
                 },
                 None,
                 ("symbol", "EURUSD"),
+                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
+                {"group": "*USD*"},
             ),
         ],
         ids=["ticket", "position", "symbol", "group"],
@@ -2080,6 +2132,8 @@ class TestMt5DataClientRetryLogic:
         call_kwargs: dict[str, Any],
         assert_index: int | None,
         assert_col: tuple[str, Any] | None,
+        expected_mt5_args: tuple[Any, ...],
+        expected_mt5_kwargs: dict[str, Any],
     ) -> None:
         """Test history_deals_get_as_df with ticket or position filter."""
         assert mock_mt5_import is not None
@@ -2119,6 +2173,9 @@ class TestMt5DataClientRetryLogic:
             assert assert_col is not None
             col, val = assert_col
             assert df_result.iloc[0][col] == val
+        mock_mt5_import.history_deals_get.assert_called_once_with(
+            *expected_mt5_args, **expected_mt5_kwargs
+        )
 
     def test_context_manager_with_exception(
         self, mock_mt5_import: ModuleType | None

@@ -243,11 +243,27 @@ class TestMt5Client:
         assert result is mock_result
         getattr(mock_mt5, method_name).assert_called_once_with("EURUSD")
 
-    def test_symbol_select(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test symbol_select method."""
+    @pytest.mark.parametrize(
+        "enable", [True, False], ids=["enable-true", "enable-false"]
+    )
+    def test_symbol_select(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, enable: bool
+    ) -> None:
+        """Test symbol_select with explicit enable flag."""
         mock_mt5.symbol_select.return_value = True
 
-        result = initialized_client.symbol_select("EURUSD", True)  # noqa: FBT003
+        result = initialized_client.symbol_select("EURUSD", enable)
+
+        assert result is True
+        mock_mt5.symbol_select.assert_called_once_with("EURUSD", enable)
+
+    def test_symbol_select_default(
+        self, initialized_client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test symbol_select defaults to enable=True."""
+        mock_mt5.symbol_select.return_value = True
+
+        result = initialized_client.symbol_select("EURUSD")
 
         assert result is True
         mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # noqa: FBT003
@@ -506,6 +522,7 @@ class TestMt5Client:
             ("symbols_total", [], 0),
             ("orders_total", [], 0),
             ("positions_total", [], 0),
+            ("symbols_get", [], None),
             ("symbol_info", ["EURUSD"], None),
             ("account_info", [], None),
             ("terminal_info", [], None),
@@ -514,6 +531,7 @@ class TestMt5Client:
             "symbols_total",
             "orders_total",
             "positions_total",
+            "symbols_get",
             "symbol_info",
             "account_info",
             "terminal_info",
