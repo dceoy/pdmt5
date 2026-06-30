@@ -155,24 +155,26 @@ class TestMt5Client:
 
         assert result is False
 
-    def test_version(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test version method."""
-        mock_mt5.version.return_value = (500, 3815, "01 Dec 2023")
-
-        result = initialized_client.version()
-
-        assert result == (500, 3815, "01 Dec 2023")
-        mock_mt5.version.assert_called_once()
-
-    def test_version_failure(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("return_value", "expected"),
+        [
+            ((500, 3815, "01 Dec 2023"), (500, 3815, "01 Dec 2023")),
+            (None, None),
+        ],
+        ids=["success", "failure"],
+    )
+    def test_version(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        return_value: tuple[int, int, str] | None,
+        expected: tuple[int, int, str] | None,
     ) -> None:
-        """Test version method failure."""
-        mock_mt5.version.return_value = None
-
+        """Test version method."""
+        mock_mt5.version.return_value = return_value
         result = initialized_client.version()
-
-        assert result is None
+        assert result == expected
+        mock_mt5.version.assert_called_once()
 
     @pytest.mark.parametrize(
         ("method_name", "return_value"),
