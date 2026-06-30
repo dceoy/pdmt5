@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -462,7 +461,15 @@ class TestMt5Client:
         ("method_name", "kwargs"),
         [
             ("history_orders_get", {"ticket": 12345}),
+            ("history_orders_get", {"position": 54321}),
+            ("history_deals_get", {"ticket": 12345}),
             ("history_deals_get", {"position": 54321}),
+        ],
+        ids=[
+            "orders-by-ticket",
+            "orders-by-position",
+            "deals-by-ticket",
+            "deals-by-position",
         ],
     )
     def test_history_get_by_id(
@@ -473,7 +480,7 @@ class TestMt5Client:
         method_name: str,
         kwargs: dict[str, int],
     ) -> None:
-        """Test history_orders_get by ticket and history_deals_get by position."""
+        """Test ID filters for history_orders_get and history_deals_get."""
         mock_item = mocker.MagicMock()
         getattr(mock_mt5, method_name).return_value = (mock_item,)
 
@@ -493,23 +500,43 @@ class TestMt5Client:
         assert result == ()
         mock_mt5.history_orders_get.assert_called_once_with(None, None)
 
-    def test_method_not_initialized(self, client: Mt5Client) -> None:
-        """Test calling methods when not initialized."""
-        methods: list[tuple[str, list[Any]]] = [
-            ("symbols_total", []),
-            ("symbols_get", []),
-            ("symbol_info", ["EURUSD"]),
-            ("account_info", []),
-            ("terminal_info", []),
-            ("orders_total", []),
-            ("positions_total", []),
-        ]
+    @pytest.mark.parametrize(
+        ("method_name", "args", "mt5_return_value"),
+        [
+            ("symbols_total", [], 0),
+            ("orders_total", [], 0),
+            ("positions_total", [], 0),
+            ("symbol_info", ["EURUSD"], None),
+            ("account_info", [], None),
+            ("terminal_info", [], None),
+        ],
+        ids=[
+            "symbols_total",
+            "orders_total",
+            "positions_total",
+            "symbol_info",
+            "account_info",
+            "terminal_info",
+        ],
+    )
+    def test_method_not_initialized(
+        self,
+        client: Mt5Client,
+        mock_mt5: Mock,
+        mocker: MockerFixture,
+        method_name: str,
+        args: list[Any],
+        mt5_return_value: int | None,
+    ) -> None:
+        """Test that methods auto-initialize before delegating to the MT5 module."""
+        mock_mt5.initialize.return_value = True
+        safe_val = mocker.MagicMock() if mt5_return_value is None else mt5_return_value
+        getattr(mock_mt5, method_name).return_value = safe_val
 
-        for method_name, args in methods:
-            method = getattr(client, method_name)
-            # Methods should automatically initialize if not already done
-            with contextlib.suppress(Mt5RuntimeError):
-                method(*args)
+        getattr(client, method_name)(*args)
+
+        mock_mt5.initialize.assert_called_once()
+        getattr(mock_mt5, method_name).assert_called_once_with(*args)
 
     def test_error_handling_with_context(
         self, initialized_client: Mt5Client, mock_mt5: Mock

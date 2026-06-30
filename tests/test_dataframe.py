@@ -951,30 +951,53 @@ class TestMt5DataClient:
         assert result == pytest.approx(10.0)
 
     @pytest.mark.parametrize(
-        "args",
+        ("args", "last_error", "context_substr"),
         [
-            (0, "EURUSD", 0.0, 1.1300, 1.1400),
-            (0, "EURUSD", 0.1, 0.0, 1.1400),
-            (0, "EURUSD", 0.1, 1.1300, 0.0),
-            (0, "EURUSD", 0.1, 1.1300, 1.1400),
+            pytest.param(
+                (0, "EURUSD", 0.0, 1.1300, 1.1400),
+                (1, "Invalid volume"),
+                "volume=0.0",
+                id="invalid-volume",
+            ),
+            pytest.param(
+                (0, "EURUSD", 0.1, 0.0, 1.1400),
+                (1, "Invalid price_open"),
+                "price_open=0.0",
+                id="invalid-price-open",
+            ),
+            pytest.param(
+                (0, "EURUSD", 0.1, 1.1300, 0.0),
+                (1, "Invalid price_close"),
+                "price_close=0.0",
+                id="invalid-price-close",
+            ),
+            pytest.param(
+                (0, "EURUSD", 0.1, 1.1300, 1.1400),
+                (1, "Order calc profit failed"),
+                "Order calc profit failed",
+                id="mt5-error",
+            ),
         ],
     )
     def test_order_calc_profit_returns_none(
         self,
         mock_mt5_import: ModuleType | None,
         args: tuple[int, str, float, float, float],
+        last_error: tuple[int, str],
+        context_substr: str,
     ) -> None:
-        """Test order_calc_profit raises when MT5 returns None."""
+        """Test order_calc_profit raises Mt5RuntimeError with per-case context."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.order_calc_profit.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "error")
+        mock_mt5_import.last_error.return_value = last_error
 
         client = create_initialized_client(mock_mt5_import)
         with pytest.raises(
             Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
-        ):
+        ) as exc_info:
             client.order_calc_profit(*args)
+        assert context_substr in str(exc_info.value)
 
     @pytest.mark.parametrize(
         "return_value",
@@ -2030,8 +2053,26 @@ class TestMt5DataClientRetryLogic:
         [
             ({"ticket": 123456, "index_keys": "ticket"}, 123456, None),
             ({"position": 345678}, None, ("position_id", 345678)),
+            (
+                {
+                    "date_from": datetime(2022, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2022, 1, 2, tzinfo=UTC),
+                    "symbol": "EURUSD",
+                },
+                None,
+                ("symbol", "EURUSD"),
+            ),
+            (
+                {
+                    "date_from": datetime(2022, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2022, 1, 2, tzinfo=UTC),
+                    "group": "*USD*",
+                },
+                None,
+                ("symbol", "EURUSD"),
+            ),
         ],
-        ids=["ticket", "position"],
+        ids=["ticket", "position", "symbol", "group"],
     )
     def test_history_deals_get_filter(
         self,
