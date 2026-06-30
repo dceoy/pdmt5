@@ -850,130 +850,76 @@ class TestMt5DataClient:
 
         assert result == pytest.approx(10.0)
 
-    def test_order_calc_profit_invalid_volume(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        "args",
+        [
+            (0, "EURUSD", 0.0, 1.1300, 1.1400),
+            (0, "EURUSD", 0.1, 0.0, 1.1400),
+            (0, "EURUSD", 0.1, 1.1300, 0.0),
+            (0, "EURUSD", 0.1, 1.1300, 1.1400),
+        ],
+    )
+    def test_order_calc_profit_returns_none(
+        self,
+        mock_mt5_import: ModuleType | None,
+        args: tuple[int, str, float, float, float],
     ) -> None:
-        """Test order_calc_profit method with invalid volume."""
+        """Test order_calc_profit raises when MT5 returns None."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.order_calc_profit.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid volume")
+        mock_mt5_import.last_error.return_value = (1, "error")
 
         client = create_initialized_client(mock_mt5_import)
         with pytest.raises(
             Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
         ):
-            client.order_calc_profit(0, "EURUSD", 0.0, 1.1300, 1.1400)
+            client.order_calc_profit(*args)
 
-    def test_order_calc_profit_invalid_price_open(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        "return_value",
+        [(2460, 2460, "15 Feb 2022"), None],
+    )
+    def test_version(
+        self,
+        mock_mt5_import: ModuleType | None,
+        return_value: tuple[int, int, str] | None,
     ) -> None:
-        """Test order_calc_profit method with invalid open price."""
+        """Test version with a value and None."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_profit.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid price_open")
-
-        client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(
-            Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
-        ):
-            client.order_calc_profit(0, "EURUSD", 0.1, 0.0, 1.1400)
-
-    def test_order_calc_profit_invalid_price_close(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test order_calc_profit method with invalid close price."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_profit.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Invalid price_close")
-
-        client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(
-            Mt5RuntimeError, match=r"MT5 order_calc_profit returned None"
-        ):
-            client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 0.0)
-
-    def test_order_calc_profit_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test order_calc_profit method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.order_calc_profit.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Order calc profit failed")
-
-        client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"MT5 order_calc_profit returned None",
-        ):
-            client.order_calc_profit(0, "EURUSD", 0.1, 1.1300, 1.1400)
-
-    def test_version(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test version method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.version.return_value = (2460, 2460, "15 Feb 2022")
+        mock_mt5_import.version.return_value = return_value
 
         client = create_initialized_client(mock_mt5_import)
         result = client.version()
 
-        assert result == (2460, 2460, "15 Feb 2022")
+        assert result == return_value
 
-    def test_version_none_result(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test version method with None result."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.version.return_value = None
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.version()
-
-        assert result is None
-
-    def test_symbols_total(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbols_total method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbols_total.return_value = 1000
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.symbols_total()
-
-        assert result == 1000
-
-    def test_symbols_total_none_result(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize("return_value", [1000, None])
+    def test_symbols_total(
+        self, mock_mt5_import: ModuleType | None, return_value: int | None
     ) -> None:
-        """Test symbols_total method with None result."""
+        """Test symbols_total with a value and None."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbols_total.return_value = None
+        mock_mt5_import.symbols_total.return_value = return_value
 
         client = create_initialized_client(mock_mt5_import)
         result = client.symbols_total()
 
-        assert result is None
+        assert result == return_value
 
-    def test_symbol_select(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_select method."""
+    @pytest.mark.parametrize("enable", [True, False])
+    def test_symbol_select(
+        self, mock_mt5_import: ModuleType | None, enable: bool
+    ) -> None:
+        """Test symbol_select with and without enable flag."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.symbol_select.return_value = True
 
         client = create_initialized_client(mock_mt5_import)
-        result = client.symbol_select("EURUSD")
-
-        assert result is True
-
-    def test_symbol_select_disable(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test symbol_select method with disable."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbol_select.return_value = True
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.symbol_select("EURUSD", enable=False)
+        result = client.symbol_select("EURUSD", enable=enable)
 
         assert result is True
 
@@ -988,54 +934,33 @@ class TestMt5DataClient:
         with pytest.raises(Mt5RuntimeError, match=r"MT5 symbol_select returned None"):
             client.symbol_select("EURUSD")
 
-    def test_market_book_add(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test market_book_add method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.market_book_add.return_value = True
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.market_book_add("EURUSD")
-
-        assert result is True
-
-    def test_market_book_add_error(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test market_book_add method with error."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.market_book_add.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Market book add failed")
-
-        client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 market_book_add returned None"):
-            client.market_book_add("EURUSD")
-
-    def test_market_book_release(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test market_book_release method."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.market_book_release.return_value = True
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.market_book_release("EURUSD")
-
-        assert result is True
-
-    def test_market_book_release_error(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize("method", ["market_book_add", "market_book_release"])
+    def test_market_book_actions_success(
+        self, mock_mt5_import: ModuleType | None, method: str
     ) -> None:
-        """Test market_book_release method with error."""
+        """Test market_book_add/release success."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.market_book_release.return_value = None
-        mock_mt5_import.last_error.return_value = (1, "Market book release failed")
+        getattr(mock_mt5_import, method).return_value = True
 
         client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(
-            Mt5RuntimeError,
-            match=r"MT5 market_book_release returned None",
-        ):
-            client.market_book_release("EURUSD")
+        result = getattr(client, method)("EURUSD")
+
+        assert result is True
+
+    @pytest.mark.parametrize("method", ["market_book_add", "market_book_release"])
+    def test_market_book_actions_error(
+        self, mock_mt5_import: ModuleType | None, method: str
+    ) -> None:
+        """Test market_book_add/release error."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, method).return_value = None
+        mock_mt5_import.last_error.return_value = (1, f"{method} failed")
+
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method} returned None"):
+            getattr(client, method)("EURUSD")
 
     def test_history_orders_get_ticket(
         self, mock_mt5_import: ModuleType | None
@@ -1483,30 +1408,25 @@ class TestMt5DataClient:
 class TestMt5DataClientValidation:
     """Test Mt5DataClient validation methods."""
 
-    def test_validate_positive_count_valid(self) -> None:
-        """Test _validate_positive_count with valid count."""
-        # Should not raise for positive count
+    @pytest.mark.parametrize("count", [1, 100])
+    def test_validate_positive_count_valid(self, count: int) -> None:
+        """Test _validate_positive_count with valid counts."""
         Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
-            count=1
-        )
-        Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
-            count=100
+            count=count
         )
 
-    def test_validate_positive_count_invalid(self) -> None:
-        """Test _validate_positive_count with invalid count."""
-        with pytest.raises(
-            ValueError, match=r"Invalid count: 0\. Count must be positive\."
-        ):
+    @pytest.mark.parametrize(
+        ("count", "match"),
+        [
+            (0, r"Invalid count: 0\. Count must be positive\."),
+            (-1, r"Invalid count: -1\. Count must be positive\."),
+        ],
+    )
+    def test_validate_positive_count_invalid(self, count: int, match: str) -> None:
+        """Test _validate_positive_count with invalid counts."""
+        with pytest.raises(ValueError, match=match):
             Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
-                count=0
-            )
-
-        with pytest.raises(
-            ValueError, match=r"Invalid count: -1\. Count must be positive\."
-        ):
-            Mt5DataClient._validate_positive_count(  # type: ignore[reportPrivateUsage]
-                count=-1
+                count=count
             )
 
     def test_validate_date_range_valid(self) -> None:
@@ -1529,62 +1449,44 @@ class TestMt5DataClientValidation:
                 date_from=date_from, date_to=date_to
             )
 
-    def test_validate_positive_value_valid(self) -> None:
+    @pytest.mark.parametrize(
+        ("value", "name"),
+        [
+            (1.0, "volume"),
+            (0.1, "volume"),
+        ],
+    )
+    def test_validate_positive_value_valid(self, value: float, name: str) -> None:
         """Test _validate_positive_value with valid values."""
-        # Should not raise for positive values
         Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-            value=1.0,
-            name="volume",
-        )
-        Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-            value=0.1,
-            name="volume",
+            value=value,
+            name=name,
         )
 
-    def test_validate_positive_value_invalid(self) -> None:
-        """Test _validate_positive_value with invalid volume."""
-        with pytest.raises(
-            ValueError, match=r"Invalid volume: 0\. Volume must be positive\."
-        ):
+    @pytest.mark.parametrize(
+        ("value", "name", "match"),
+        [
+            (0, "volume", r"Invalid volume: 0\. Volume must be positive\."),
+            (-1, "volume", r"Invalid volume: -1\. Volume must be positive\."),
+            (0, "price_open", r"Invalid price_open: 0\. Price must be positive\."),
+            (-1, "price_close", r"Invalid price_close: -1\. Price must be positive\."),
+        ],
+    )
+    def test_validate_positive_value_invalid(
+        self, value: int, name: str, match: str
+    ) -> None:
+        """Test _validate_positive_value with invalid values."""
+        with pytest.raises(ValueError, match=match):
             Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-                value=0,
-                name="volume",
+                value=value,
+                name=name,
             )
 
-        with pytest.raises(
-            ValueError, match=r"Invalid volume: -1\. Volume must be positive\."
-        ):
-            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-                value=-1,
-                name="volume",
-            )
-
-    def test_validate_positive_value_price_invalid(self) -> None:
-        """Test _validate_positive_value with invalid price."""
-        with pytest.raises(
-            ValueError, match=r"Invalid price_open: 0\. Price must be positive\."
-        ):
-            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-                value=0,
-                name="price_open",
-            )
-
-        with pytest.raises(
-            ValueError, match=r"Invalid price_close: -1\. Price must be positive\."
-        ):
-            Mt5DataClient._validate_positive_value(  # type: ignore[reportPrivateUsage]
-                value=-1,
-                name="price_close",
-            )
-
-    def test_validate_non_negative_position_valid(self) -> None:
-        """Test _validate_non_negative_position with valid position."""
-        # Should not raise for non-negative position
+    @pytest.mark.parametrize("position", [0, 10])
+    def test_validate_non_negative_position_valid(self, position: int) -> None:
+        """Test _validate_non_negative_position with valid positions."""
         Mt5DataClient._validate_non_negative_position(  # type: ignore[reportPrivateUsage]
-            position=0
-        )
-        Mt5DataClient._validate_non_negative_position(  # type: ignore[reportPrivateUsage]
-            position=10
+            position=position
         )
 
     def test_validate_non_negative_position_invalid(self) -> None:
@@ -2084,51 +1986,43 @@ class TestMt5DataClientRetryLogic:
         # last_error is called multiple times (in decorators and explicitly)
         assert mock_mt5_import.last_error.call_count >= 1
 
-    def test_validate_history_input_with_ticket(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"ticket": 123456},
+            {"position": 789012},
+            {
+                "date_from": datetime(2022, 1, 1, tzinfo=UTC),
+                "date_to": datetime(2022, 1, 2, tzinfo=UTC),
+            },
+        ],
+    )
+    def test_validate_history_input_valid(
+        self,
+        mock_mt5_import: ModuleType | None,
+        kwargs: dict[str, Any],
     ) -> None:
-        """Test _validate_history_input with ticket parameter."""
+        """Test _validate_history_input with valid inputs."""
         assert mock_mt5_import is not None
         client = create_initialized_client(mock_mt5_import)
+        client._validate_history_input(**kwargs)  # type: ignore[reportPrivateUsage]
 
-        # Should not raise when ticket is provided
-        client._validate_history_input(  # type: ignore[reportPrivateUsage]
-            ticket=123456
-        )
-
-    def test_validate_history_input_with_position(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"date_from": datetime(2022, 1, 1, tzinfo=UTC)},
+            {"date_to": datetime(2022, 1, 2, tzinfo=UTC)},
+            {},
+        ],
+    )
+    def test_validate_history_input_invalid(
+        self,
+        mock_mt5_import: ModuleType | None,
+        kwargs: dict[str, Any],
     ) -> None:
-        """Test _validate_history_input with position parameter."""
+        """Test _validate_history_input rejects incomplete date inputs."""
         assert mock_mt5_import is not None
         client = create_initialized_client(mock_mt5_import)
-
-        # Should not raise when position is provided
-        client._validate_history_input(  # type: ignore[reportPrivateUsage]
-            position=789012
-        )
-
-    def test_validate_history_input_with_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test _validate_history_input with date parameters."""
-        assert mock_mt5_import is not None
-        client = create_initialized_client(mock_mt5_import)
-
-        # Should not raise when both dates are provided
-        client._validate_history_input(  # type: ignore[reportPrivateUsage]
-            date_from=datetime(2022, 1, 1, tzinfo=UTC),
-            date_to=datetime(2022, 1, 2, tzinfo=UTC),
-        )
-
-    def test_validate_history_input_missing_date_to(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test _validate_history_input with missing date_to."""
-        assert mock_mt5_import is not None
-        client = create_initialized_client(mock_mt5_import)
-
-        # Should raise when only date_from is provided
         with pytest.raises(
             ValueError,
             match=(
@@ -2136,45 +2030,7 @@ class TestMt5DataClientRetryLogic:
                 r" if not using ticket or position"
             ),
         ):
-            client._validate_history_input(  # type: ignore[reportPrivateUsage]
-                date_from=datetime(2022, 1, 1, tzinfo=UTC)
-            )
-
-    def test_validate_history_input_missing_date_from(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test _validate_history_input with missing date_from."""
-        assert mock_mt5_import is not None
-        client = create_initialized_client(mock_mt5_import)
-
-        # Should raise when only date_to is provided
-        with pytest.raises(
-            ValueError,
-            match=(
-                r"Both date_from and date_to must be provided"
-                r" if not using ticket or position"
-            ),
-        ):
-            client._validate_history_input(  # type: ignore[reportPrivateUsage]
-                date_to=datetime(2022, 1, 2, tzinfo=UTC)
-            )
-
-    def test_validate_history_input_no_params(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test _validate_history_input with no parameters."""
-        assert mock_mt5_import is not None
-        client = create_initialized_client(mock_mt5_import)
-
-        # Should raise when no parameters are provided
-        with pytest.raises(
-            ValueError,
-            match=(
-                r"Both date_from and date_to must be provided"
-                r" if not using ticket or position"
-            ),
-        ):
-            client._validate_history_input()  # type: ignore[reportPrivateUsage]
+            client._validate_history_input(**kwargs)  # type: ignore[reportPrivateUsage]
 
     def test_history_deals_get_ticket_only(
         self, mock_mt5_import: ModuleType | None
@@ -2651,8 +2507,39 @@ class TestMt5DataClientCoverageMissing:
         assert result[0]["price"] == pytest.approx(1.1300)
         assert result[0]["type"] == 0
 
-    def test_copy_rates_from_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_from_as_dicts method."""
+    @pytest.mark.parametrize(
+        ("mt5_method", "client_method", "args"),
+        [
+            (
+                "copy_rates_from",
+                "copy_rates_from_as_dicts",
+                ("EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10),
+            ),
+            (
+                "copy_rates_from_pos",
+                "copy_rates_from_pos_as_dicts",
+                ("EURUSD", 16385, 0, 10),
+            ),
+            (
+                "copy_rates_range",
+                "copy_rates_range_as_dicts",
+                (
+                    "EURUSD",
+                    16385,
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 2, tzinfo=UTC),
+                ),
+            ),
+        ],
+    )
+    def test_copy_rates_as_dicts(
+        self,
+        mock_mt5_import: ModuleType,
+        mt5_method: str,
+        client_method: str,
+        args: tuple[object, ...],
+    ) -> None:
+        """Test copy_rates_*_as_dicts with and without datetime conversion."""
         rate_dtype = np.dtype([
             ("time", "int64"),
             ("open", "float64"),
@@ -2664,86 +2551,46 @@ class TestMt5DataClientCoverageMissing:
             [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
             dtype=rate_dtype,
         )
-        mock_mt5_import.copy_rates_from.return_value = mock_rates
+        getattr(mock_mt5_import, mt5_method).return_value = mock_rates
         client = create_initialized_client(mock_mt5_import)
 
-        # Test without convert_time
-        result = client.copy_rates_from_as_dicts(
-            "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, skip_to_datetime=True
-        )
+        result = getattr(client, client_method)(*args, skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
         assert isinstance(result[0]["time"], int)
 
-        # Test with convert_time (default True)
-        result = client.copy_rates_from_as_dicts(
-            "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10
-        )
+        result = getattr(client, client_method)(*args)
         assert len(result) == 1
         assert "time" in result[0]
 
-    def test_copy_rates_from_pos_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_from_pos_as_dicts method."""
-        rate_dtype = np.dtype([
-            ("time", "int64"),
-            ("open", "float64"),
-            ("high", "float64"),
-            ("low", "float64"),
-            ("close", "float64"),
-        ])
-        mock_rates = np.array(
-            [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
-            dtype=rate_dtype,
-        )
-        mock_mt5_import.copy_rates_from_pos.return_value = mock_rates
-        client = create_initialized_client(mock_mt5_import)
-
-        # Test without convert_time
-        result = client.copy_rates_from_pos_as_dicts(
-            "EURUSD", 16385, 0, 10, skip_to_datetime=True
-        )
-        assert len(result) == 1
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        # Test with convert_time (default True)
-        result = client.copy_rates_from_pos_as_dicts("EURUSD", 16385, 0, 10)
-        assert len(result) == 1
-        assert "time" in result[0]
-
-    def test_copy_rates_range_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_rates_range_as_dicts method."""
-        rate_dtype = np.dtype([
-            ("time", "int64"),
-            ("open", "float64"),
-            ("high", "float64"),
-            ("low", "float64"),
-            ("close", "float64"),
-        ])
-        mock_rates = np.array(
-            [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
-            dtype=rate_dtype,
-        )
-        mock_mt5_import.copy_rates_range.return_value = mock_rates
-        client = create_initialized_client(mock_mt5_import)
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 2, tzinfo=UTC)
-
-        # Test without convert_time
-        result = client.copy_rates_range_as_dicts(
-            "EURUSD", 16385, date_from, date_to, skip_to_datetime=True
-        )
-        assert len(result) == 1
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        # Test with convert_time (default True)
-        result = client.copy_rates_range_as_dicts("EURUSD", 16385, date_from, date_to)
-        assert len(result) == 1
-        assert "time" in result[0]
-
-    def test_copy_ticks_from_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_ticks_from_as_dicts method."""
+    @pytest.mark.parametrize(
+        ("mt5_method", "client_method", "args"),
+        [
+            (
+                "copy_ticks_from",
+                "copy_ticks_from_as_dicts",
+                ("EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0),
+            ),
+            (
+                "copy_ticks_range",
+                "copy_ticks_range_as_dicts",
+                (
+                    "EURUSD",
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 2, tzinfo=UTC),
+                    0,
+                ),
+            ),
+        ],
+    )
+    def test_copy_ticks_as_dicts(
+        self,
+        mock_mt5_import: ModuleType,
+        mt5_method: str,
+        client_method: str,
+        args: tuple[object, ...],
+    ) -> None:
+        """Test copy_ticks_*_as_dicts with and without datetime conversion."""
         tick_dtype = np.dtype([
             ("time", "int64"),
             ("bid", "float64"),
@@ -2758,56 +2605,15 @@ class TestMt5DataClientCoverageMissing:
             [(1640995200, 1.1300, 1.1301, 0, 0, 1640995200000, 0, 0)],
             dtype=tick_dtype,
         )
-        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
+        getattr(mock_mt5_import, mt5_method).return_value = mock_ticks
         client = create_initialized_client(mock_mt5_import)
 
-        # Test without convert_time
-        result = client.copy_ticks_from_as_dicts(
-            "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, skip_to_datetime=True
-        )
+        result = getattr(client, client_method)(*args, skip_to_datetime=True)
         assert len(result) == 1
         assert result[0]["time"] == 1640995200
         assert isinstance(result[0]["time"], int)
 
-        # Test with convert_time (default True)
-        result = client.copy_ticks_from_as_dicts(
-            "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0
-        )
-        assert len(result) == 1
-        assert "time" in result[0]
-        assert "time_msc" in result[0]
-
-    def test_copy_ticks_range_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test copy_ticks_range_as_dicts method."""
-        tick_dtype = np.dtype([
-            ("time", "int64"),
-            ("bid", "float64"),
-            ("ask", "float64"),
-            ("last", "float64"),
-            ("volume", "uint64"),
-            ("time_msc", "int64"),
-            ("flags", "uint32"),
-            ("volume_real", "float64"),
-        ])
-        mock_ticks = np.array(
-            [(1640995200, 1.1300, 1.1301, 0, 0, 1640995200000, 0, 0)],
-            dtype=tick_dtype,
-        )
-        mock_mt5_import.copy_ticks_range.return_value = mock_ticks
-        client = create_initialized_client(mock_mt5_import)
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 2, tzinfo=UTC)
-
-        # Test without convert_time
-        result = client.copy_ticks_range_as_dicts(
-            "EURUSD", date_from, date_to, 0, skip_to_datetime=True
-        )
-        assert len(result) == 1
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        # Test with convert_time (default True)
-        result = client.copy_ticks_range_as_dicts("EURUSD", date_from, date_to, 0)
+        result = getattr(client, client_method)(*args)
         assert len(result) == 1
         assert "time" in result[0]
         assert "time_msc" in result[0]
@@ -3282,6 +3088,7 @@ class TestMt5DataClientCoverageMissing:
         assert len(result) == 1
         assert isinstance(result[0], dict)
         assert "time" in result[0]
+        assert isinstance(result[0]["time"], pd.Timestamp)
 
     def test_detect_and_convert_time_decorator_non_dict_object(
         self,
