@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -155,24 +154,26 @@ class TestMt5Client:
 
         assert result is False
 
-    def test_version(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test version method."""
-        mock_mt5.version.return_value = (500, 3815, "01 Dec 2023")
-
-        result = initialized_client.version()
-
-        assert result == (500, 3815, "01 Dec 2023")
-        mock_mt5.version.assert_called_once()
-
-    def test_version_failure(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("return_value", "expected"),
+        [
+            ((500, 3815, "01 Dec 2023"), (500, 3815, "01 Dec 2023")),
+            (None, None),
+        ],
+        ids=["success", "failure"],
+    )
+    def test_version(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        return_value: tuple[int, int, str] | None,
+        expected: tuple[int, int, str] | None,
     ) -> None:
-        """Test version method failure."""
-        mock_mt5.version.return_value = None
-
+        """Test version method."""
+        mock_mt5.version.return_value = return_value
         result = initialized_client.version()
-
-        assert result is None
+        assert result == expected
+        mock_mt5.version.assert_called_once()
 
     @pytest.mark.parametrize(
         ("method_name", "return_value"),
@@ -225,41 +226,44 @@ class TestMt5Client:
 
         assert "MT5 symbols_get returned None" in str(exc_info.value)
 
-    def test_symbol_info(
+    @pytest.mark.parametrize("method_name", ["symbol_info", "symbol_info_tick"])
+    def test_symbol_info_methods(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test symbol_info method."""
-        mock_info = mocker.MagicMock()
-        mock_mt5.symbol_info.return_value = mock_info
+        """Test symbol_info and symbol_info_tick methods."""
+        mock_result = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = mock_result
 
-        result = initialized_client.symbol_info("EURUSD")
+        result = getattr(initialized_client, method_name)("EURUSD")
 
-        assert result is mock_info
-        mock_mt5.symbol_info.assert_called_once_with("EURUSD")
+        assert result is mock_result
+        getattr(mock_mt5, method_name).assert_called_once_with("EURUSD")
 
-    def test_symbol_info_tick(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
+    @pytest.mark.parametrize(
+        "enable", [True, False], ids=["enable-true", "enable-false"]
+    )
+    def test_symbol_select(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, enable: bool
     ) -> None:
-        """Test symbol_info_tick method."""
-        mock_tick = mocker.MagicMock()
-        mock_mt5.symbol_info_tick.return_value = mock_tick
-
-        result = initialized_client.symbol_info_tick("EURUSD")
-
-        assert result is mock_tick
-        mock_mt5.symbol_info_tick.assert_called_once_with("EURUSD")
-
-    def test_symbol_select(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test symbol_select method."""
+        """Test symbol_select with explicit enable flag."""
         mock_mt5.symbol_select.return_value = True
 
-        result = initialized_client.symbol_select("EURUSD", True)  # noqa: FBT003
+        result = initialized_client.symbol_select("EURUSD", enable)
+
+        assert result is True
+        mock_mt5.symbol_select.assert_called_once_with("EURUSD", enable)
+
+    def test_symbol_select_default(
+        self, initialized_client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test symbol_select defaults to enable=True."""
+        mock_mt5.symbol_select.return_value = True
+
+        result = initialized_client.symbol_select("EURUSD")
 
         assert result is True
         mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # noqa: FBT003
@@ -292,99 +296,48 @@ class TestMt5Client:
         assert len(result) == 1
         mock_mt5.market_book_get.assert_called_once_with("EURUSD")
 
-    def test_copy_rates_from(
+    @pytest.mark.parametrize(
+        ("method_name", "args"),
+        [
+            ("copy_rates_from", ("EURUSD", 1, datetime(2023, 1, 1, tzinfo=UTC), 100)),
+            ("copy_rates_from_pos", ("EURUSD", 1, 0, 100)),
+            (
+                "copy_rates_range",
+                (
+                    "EURUSD",
+                    1,
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+            ("copy_ticks_from", ("EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 1000, 0)),
+            (
+                "copy_ticks_range",
+                (
+                    "EURUSD",
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                    0,
+                ),
+            ),
+        ],
+    )
+    def test_copy_methods(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
+        args: tuple[Any, ...],
     ) -> None:
-        """Test copy_rates_from method."""
-        now = datetime.now(UTC)
-        mock_rates = mocker.MagicMock()
-        mock_mt5.copy_rates_from.return_value = mock_rates
+        """Test copy_rates and copy_ticks methods."""
+        mock_result = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = mock_result
 
-        result = initialized_client.copy_rates_from("EURUSD", 1, now, 100)
+        result = getattr(initialized_client, method_name)(*args)
 
-        assert result is mock_rates
-        mock_mt5.copy_rates_from.assert_called_once_with("EURUSD", 1, now, 100)
-
-    def test_copy_rates_from_pos(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test copy_rates_from_pos method."""
-        mock_rates = mocker.MagicMock()
-        mock_mt5.copy_rates_from_pos.return_value = mock_rates
-
-        result = initialized_client.copy_rates_from_pos("EURUSD", 1, 0, 100)
-
-        assert result is mock_rates
-        mock_mt5.copy_rates_from_pos.assert_called_once_with("EURUSD", 1, 0, 100)
-
-    def test_copy_rates_range(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test copy_rates_range method."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_rates = mocker.MagicMock()
-        mock_mt5.copy_rates_range.return_value = mock_rates
-
-        result = initialized_client.copy_rates_range("EURUSD", 1, date_from, date_to)
-
-        assert result is mock_rates
-        mock_mt5.copy_rates_range.assert_called_once_with(
-            "EURUSD", 1, date_from, date_to
-        )
-
-    def test_copy_ticks_from(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test copy_ticks_from method."""
-        now = datetime.now(UTC)
-        mock_ticks = mocker.MagicMock()
-        mock_mt5.copy_ticks_from.return_value = mock_ticks
-
-        result = initialized_client.copy_ticks_from("EURUSD", now, 1000, 0)
-
-        assert result is mock_ticks
-        mock_mt5.copy_ticks_from.assert_called_once_with("EURUSD", now, 1000, 0)
-
-    def test_copy_ticks_range(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test copy_ticks_range method."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_ticks = mocker.MagicMock()
-        mock_mt5.copy_ticks_range.return_value = mock_ticks
-
-        result = initialized_client.copy_ticks_range("EURUSD", date_from, date_to, 0)
-
-        assert result is mock_ticks
-        mock_mt5.copy_ticks_range.assert_called_once_with(
-            "EURUSD", date_from, date_to, 0
-        )
-
-    def test_orders_total(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test orders_total method."""
-        mock_mt5.orders_total.return_value = 5
-
-        result = initialized_client.orders_total()
-
-        assert result == 5
-        mock_mt5.orders_total.assert_called_once()
+        assert result is mock_result
+        getattr(mock_mt5, method_name).assert_called_once_with(*args)
 
     def test_orders_get(
         self,
@@ -402,72 +355,46 @@ class TestMt5Client:
         assert len(result) == 1
         mock_mt5.orders_get.assert_called_once_with(symbol="EURUSD")
 
-    def test_order_calc_margin(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("method_name", "args", "expected"),
+        [
+            ("order_calc_margin", (0, "EURUSD", 1.0, 1.1234), 1000.0),
+            ("order_calc_profit", (0, "EURUSD", 1.0, 1.1234, 1.1334), 100.0),
+        ],
+    )
+    def test_calc_methods(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        args: tuple[Any, ...],
+        expected: float,
     ) -> None:
-        """Test order_calc_margin method."""
-        mock_mt5.order_calc_margin.return_value = 1000.0
+        """Test order_calc_margin and order_calc_profit methods."""
+        getattr(mock_mt5, method_name).return_value = expected
 
-        result = initialized_client.order_calc_margin(0, "EURUSD", 1.0, 1.1234)
+        result = getattr(initialized_client, method_name)(*args)
 
-        assert result == pytest.approx(1000.0)
-        mock_mt5.order_calc_margin.assert_called_once_with(0, "EURUSD", 1.0, 1.1234)
+        assert result == pytest.approx(expected)
+        getattr(mock_mt5, method_name).assert_called_once_with(*args)
 
-    def test_order_calc_profit(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test order_calc_profit method."""
-        mock_mt5.order_calc_profit.return_value = 100.0
-
-        result = initialized_client.order_calc_profit(0, "EURUSD", 1.0, 1.1234, 1.1334)
-
-        assert result == pytest.approx(100.0)
-        mock_mt5.order_calc_profit.assert_called_once_with(
-            0, "EURUSD", 1.0, 1.1234, 1.1334
-        )
-
-    def test_order_check(
+    @pytest.mark.parametrize("method_name", ["order_check", "order_send"])
+    def test_order_request_methods(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test order_check method."""
+        """Test order_check and order_send methods."""
         request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
         mock_result = mocker.MagicMock()
-        mock_mt5.order_check.return_value = mock_result
+        getattr(mock_mt5, method_name).return_value = mock_result
 
-        result = initialized_client.order_check(request)
-
-        assert result is mock_result
-        mock_mt5.order_check.assert_called_once_with(request)
-
-    def test_order_send(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test order_send method."""
-        request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
-        mock_result = mocker.MagicMock()
-        mock_mt5.order_send.return_value = mock_result
-
-        result = initialized_client.order_send(request)
+        result = getattr(initialized_client, method_name)(request)
 
         assert result is mock_result
-        mock_mt5.order_send.assert_called_once_with(request)
-
-    def test_positions_total(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test positions_total method."""
-        mock_mt5.positions_total.return_value = 3
-
-        result = initialized_client.positions_total()
-
-        assert result == 3
-        mock_mt5.positions_total.assert_called_once()
+        getattr(mock_mt5, method_name).assert_called_once_with(request)
 
     def test_positions_get(
         self,
@@ -485,82 +412,99 @@ class TestMt5Client:
         assert len(result) == 1
         mock_mt5.positions_get.assert_called_once_with(symbol="EURUSD")
 
-    def test_account_info(
+    @pytest.mark.parametrize("method_name", ["account_info", "terminal_info"])
+    def test_info_methods(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test account_info method."""
-        mock_info = mocker.MagicMock()
-        mock_mt5.account_info.return_value = mock_info
+        """Test account_info and terminal_info methods."""
+        mock_result = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = mock_result
 
-        result = initialized_client.account_info()
+        result = getattr(initialized_client, method_name)()
 
-        assert result is mock_info
-        mock_mt5.account_info.assert_called_once()
+        assert result is mock_result
+        getattr(mock_mt5, method_name).assert_called_once()
 
-    def test_terminal_info(
+    @pytest.mark.parametrize(
+        ("method_name", "expected"),
+        [
+            ("history_orders_total", 10),
+            ("history_deals_total", 20),
+        ],
+    )
+    def test_history_totals(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
-        mocker: MockerFixture,
+        method_name: str,
+        expected: int,
     ) -> None:
-        """Test terminal_info method."""
-        mock_info = mocker.MagicMock()
-        mock_mt5.terminal_info.return_value = mock_info
-
-        result = initialized_client.terminal_info()
-
-        assert result is mock_info
-        mock_mt5.terminal_info.assert_called_once()
-
-    def test_history_orders_total(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test history_orders_total method."""
+        """Test history_orders_total and history_deals_total methods."""
         date_from = datetime(2023, 1, 1, tzinfo=UTC)
         date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_mt5.history_orders_total.return_value = 10
+        getattr(mock_mt5, method_name).return_value = expected
 
-        result = initialized_client.history_orders_total(date_from, date_to)
+        result = getattr(initialized_client, method_name)(date_from, date_to)
 
-        assert result == 10
-        mock_mt5.history_orders_total.assert_called_once_with(date_from, date_to)
+        assert result == expected
+        getattr(mock_mt5, method_name).assert_called_once_with(date_from, date_to)
 
-    def test_history_orders_get_by_date(
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    def test_history_get_by_date(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test history_orders_get with date range."""
+        """Test history_orders_get and history_deals_get with date range."""
         date_from = datetime(2023, 1, 1, tzinfo=UTC)
         date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_order = mocker.MagicMock()
-        mock_mt5.history_orders_get.return_value = (mock_order,)
+        mock_item = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = initialized_client.history_orders_get(date_from, date_to)
+        result = getattr(initialized_client, method_name)(date_from, date_to)
 
         assert result is not None
         assert len(result) == 1
-        mock_mt5.history_orders_get.assert_called_once_with(date_from, date_to)
+        getattr(mock_mt5, method_name).assert_called_once_with(date_from, date_to)
 
-    def test_history_orders_get_by_ticket(
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs"),
+        [
+            ("history_orders_get", {"ticket": 12345}),
+            ("history_orders_get", {"position": 54321}),
+            ("history_deals_get", {"ticket": 12345}),
+            ("history_deals_get", {"position": 54321}),
+        ],
+        ids=[
+            "orders-by-ticket",
+            "orders-by-position",
+            "deals-by-ticket",
+            "deals-by-position",
+        ],
+    )
+    def test_history_get_by_id(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
+        kwargs: dict[str, int],
     ) -> None:
-        """Test history_orders_get by ticket."""
-        mock_order = mocker.MagicMock()
-        mock_mt5.history_orders_get.return_value = (mock_order,)
+        """Test ID filters for history_orders_get and history_deals_get."""
+        mock_item = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = initialized_client.history_orders_get(ticket=12345)
+        result = getattr(initialized_client, method_name)(**kwargs)
 
         assert result is not None
         assert len(result) == 1
-        mock_mt5.history_orders_get.assert_called_once_with(ticket=12345)
+        getattr(mock_mt5, method_name).assert_called_once_with(**kwargs)
 
     def test_history_orders_get_missing_dates(
         self, initialized_client: Mt5Client, mock_mt5: Mock
@@ -572,70 +516,45 @@ class TestMt5Client:
         assert result == ()
         mock_mt5.history_orders_get.assert_called_once_with(None, None)
 
-    def test_history_deals_total(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test history_deals_total method."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_mt5.history_deals_total.return_value = 20
-
-        result = initialized_client.history_deals_total(date_from, date_to)
-
-        assert result == 20
-        mock_mt5.history_deals_total.assert_called_once_with(date_from, date_to)
-
-    def test_history_deals_get_by_date(
+    @pytest.mark.parametrize(
+        ("method_name", "args", "mt5_return_value"),
+        [
+            ("symbols_total", [], 0),
+            ("orders_total", [], 0),
+            ("positions_total", [], 0),
+            ("symbols_get", [], None),
+            ("symbol_info", ["EURUSD"], None),
+            ("account_info", [], None),
+            ("terminal_info", [], None),
+        ],
+        ids=[
+            "symbols_total",
+            "orders_total",
+            "positions_total",
+            "symbols_get",
+            "symbol_info",
+            "account_info",
+            "terminal_info",
+        ],
+    )
+    def test_method_not_initialized(
         self,
-        initialized_client: Mt5Client,
+        client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
+        args: list[Any],
+        mt5_return_value: int | None,
     ) -> None:
-        """Test history_deals_get with date range."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        mock_deal = mocker.MagicMock()
-        mock_mt5.history_deals_get.return_value = (mock_deal,)
+        """Test that methods auto-initialize before delegating to the MT5 module."""
+        mock_mt5.initialize.return_value = True
+        safe_val = mocker.MagicMock() if mt5_return_value is None else mt5_return_value
+        getattr(mock_mt5, method_name).return_value = safe_val
 
-        result = initialized_client.history_deals_get(date_from, date_to)
+        getattr(client, method_name)(*args)
 
-        assert result is not None
-        assert len(result) == 1
-        mock_mt5.history_deals_get.assert_called_once_with(date_from, date_to)
-
-    def test_history_deals_get_by_position(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test history_deals_get by position."""
-        mock_deal = mocker.MagicMock()
-        mock_mt5.history_deals_get.return_value = (mock_deal,)
-
-        result = initialized_client.history_deals_get(position=54321)
-
-        assert result is not None
-        assert len(result) == 1
-        mock_mt5.history_deals_get.assert_called_once_with(position=54321)
-
-    def test_method_not_initialized(self, client: Mt5Client) -> None:
-        """Test calling methods when not initialized."""
-        methods: list[tuple[str, list[Any]]] = [
-            ("symbols_total", []),
-            ("symbols_get", []),
-            ("symbol_info", ["EURUSD"]),
-            ("account_info", []),
-            ("terminal_info", []),
-            ("orders_total", []),
-            ("positions_total", []),
-        ]
-
-        for method_name, args in methods:
-            method = getattr(client, method_name)
-            # Methods should automatically initialize if not already done
-            with contextlib.suppress(Mt5RuntimeError):
-                method(*args)
+        mock_mt5.initialize.assert_called_once()
+        getattr(mock_mt5, method_name).assert_called_once_with(*args)
 
     def test_error_handling_with_context(
         self, initialized_client: Mt5Client, mock_mt5: Mock
@@ -677,182 +596,139 @@ class TestMt5Client:
 
         mock_mt5.shutdown.assert_called_once()
 
-    def test_error_handling_methods(
+    @pytest.mark.parametrize("method_name", ["account_info", "terminal_info"])
+    def test_info_methods_raise_on_none(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    ) -> None:
+        """Test that info methods raise Mt5RuntimeError when MT5 returns None."""
+        getattr(mock_mt5, method_name).return_value = None
+        with pytest.raises(Mt5RuntimeError):
+            getattr(initialized_client, method_name)()
+
+    @pytest.mark.parametrize(
+        "method_name", ["symbols_total", "orders_total", "positions_total"]
+    )
+    def test_total_methods_pass_through_none(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    ) -> None:
+        """Test that total methods pass through None without raising."""
+        getattr(mock_mt5, method_name).return_value = None
+        assert getattr(initialized_client, method_name)() is None
+
+    @pytest.mark.parametrize(
+        "method_name", ["history_orders_total", "history_deals_total"]
+    )
+    def test_history_total_methods_pass_through_none(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    ) -> None:
+        """Test that history total methods pass through None without raising."""
+        date_from = datetime(2023, 1, 1, tzinfo=UTC)
+        date_to = datetime(2023, 1, 31, tzinfo=UTC)
+        getattr(mock_mt5, method_name).return_value = None
+        assert getattr(initialized_client, method_name)(date_from, date_to) is None
+
+    @pytest.mark.parametrize("method_name", ["market_book_add", "market_book_release"])
+    def test_market_book_add_release_pass_through_false(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    ) -> None:
+        """Test that market_book_add/release return False without raising."""
+        getattr(mock_mt5, method_name).return_value = False
+        assert getattr(initialized_client, method_name)("EURUSD") is False
+
+    def test_market_book_get_raises_on_none(
         self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:
-        """Test error handling for methods that return None."""
-        # Test methods that handle None return values with validation
-        mock_mt5.account_info.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.account_info()
-
-        mock_mt5.terminal_info.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.terminal_info()
-
-        # These methods now return None directly without raising errors
-        mock_mt5.symbols_total.return_value = None
-        result = initialized_client.symbols_total()
-        assert result is None
-
-        mock_mt5.orders_total.return_value = None
-        result = initialized_client.orders_total()
-        assert result is None
-
-        mock_mt5.positions_total.return_value = None
-        result = initialized_client.positions_total()
-        assert result is None
-
-        mock_mt5.history_orders_total.return_value = None
-        result = initialized_client.history_orders_total(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
-        assert result is None
-
-        mock_mt5.history_deals_total.return_value = None
-        result = initialized_client.history_deals_total(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
-        assert result is None
-
-    def test_market_book_failures(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test market book method failures."""
-        mock_mt5.market_book_add.return_value = False
-        result = initialized_client.market_book_add("EURUSD")
-        assert result is False
-
-        mock_mt5.market_book_release.return_value = False
-        result = initialized_client.market_book_release("EURUSD")
-        assert result is False
-
+        """Test that market_book_get raises Mt5RuntimeError on None."""
         mock_mt5.market_book_get.return_value = None
         with pytest.raises(Mt5RuntimeError):
             initialized_client.market_book_get("EURUSD")
 
-    def test_calculation_methods_failures(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("method_name", "args"),
+        [
+            ("order_calc_margin", (0, "EURUSD", 1.0, 1.1234)),
+            ("order_calc_profit", (0, "EURUSD", 1.0, 1.1234, 1.1334)),
+            ("order_check", ({"action": 1, "symbol": "EURUSD", "volume": 0.1},)),
+            ("order_send", ({"action": 1, "symbol": "EURUSD", "volume": 0.1},)),
+        ],
+    )
+    def test_calc_and_trading_methods_raise_on_none(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        args: tuple[Any, ...],
     ) -> None:
-        """Test calculation method failures."""
-        mock_mt5.order_calc_margin.return_value = None
+        """Test that calc and trading methods raise Mt5RuntimeError on None."""
+        getattr(mock_mt5, method_name).return_value = None
         with pytest.raises(Mt5RuntimeError):
-            initialized_client.order_calc_margin(0, "EURUSD", 1.0, 1.1234)
+            getattr(initialized_client, method_name)(*args)
 
-        mock_mt5.order_calc_profit.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.order_calc_profit(0, "EURUSD", 1.0, 1.1234, 1.1334)
-
-    def test_trading_methods_failures(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("method_name", "args"),
+        [
+            ("copy_rates_from", ("EURUSD", 1, datetime(2023, 1, 1, tzinfo=UTC), 100)),
+            ("copy_rates_from_pos", ("EURUSD", 1, 0, 100)),
+            (
+                "copy_rates_range",
+                (
+                    "EURUSD",
+                    1,
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+            ("copy_ticks_from", ("EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 1000, 0)),
+            (
+                "copy_ticks_range",
+                (
+                    "EURUSD",
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                    0,
+                ),
+            ),
+        ],
+    )
+    def test_copy_methods_raise_on_none(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        args: tuple[Any, ...],
     ) -> None:
-        """Test trading method failures."""
-        mock_mt5.order_check.return_value = None
+        """Test that copy data methods raise Mt5RuntimeError on None."""
+        getattr(mock_mt5, method_name).return_value = None
         with pytest.raises(Mt5RuntimeError):
-            initialized_client.order_check({
-                "action": 1,
-                "symbol": "EURUSD",
-                "volume": 0.1,
-            })
+            getattr(initialized_client, method_name)(*args)
 
-        mock_mt5.order_send.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.order_send({
-                "action": 1,
-                "symbol": "EURUSD",
-                "volume": 0.1,
-            })
-
-    def test_data_methods_failures(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    def test_get_methods_empty_results(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
     ) -> None:
-        """Test data method failures."""
-        mock_mt5.copy_rates_from.return_value = None
+        """Test get methods raise on None and return empty tuple on empty result."""
+        getattr(mock_mt5, method_name).return_value = None
         with pytest.raises(Mt5RuntimeError):
-            initialized_client.copy_rates_from("EURUSD", 1, datetime.now(UTC), 100)
+            getattr(initialized_client, method_name)()
 
-        mock_mt5.copy_rates_from_pos.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.copy_rates_from_pos("EURUSD", 1, 0, 100)
-
-        mock_mt5.copy_rates_range.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.copy_rates_range(
-                "EURUSD",
-                1,
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-            )
-
-        mock_mt5.copy_ticks_from.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.copy_ticks_from("EURUSD", datetime.now(UTC), 1000, 0)
-
-        mock_mt5.copy_ticks_range.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.copy_ticks_range(
-                "EURUSD",
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-                0,
-            )
-
-    def test_orders_get_empty_results(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test orders_get with empty results."""
-        mock_mt5.orders_get.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.orders_get()
-
-        mock_mt5.orders_get.return_value = ()
-        result = initialized_client.orders_get()
+        getattr(mock_mt5, method_name).return_value = ()
+        result = getattr(initialized_client, method_name)()
         assert result == ()
 
-    def test_positions_get_empty_results(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    def test_history_get_methods_empty_results(
+        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
     ) -> None:
-        """Test positions_get with empty results."""
-        mock_mt5.positions_get.return_value = None
+        """Test history get methods raise on None and return empty tuple otherwise."""
+        date_from = datetime(2023, 1, 1, tzinfo=UTC)
+        date_to = datetime(2023, 1, 31, tzinfo=UTC)
+
+        getattr(mock_mt5, method_name).return_value = None
         with pytest.raises(Mt5RuntimeError):
-            initialized_client.positions_get()
+            getattr(initialized_client, method_name)(date_from, date_to)
 
-        mock_mt5.positions_get.return_value = ()
-        result = initialized_client.positions_get()
-        assert result == ()
-
-    def test_history_methods_empty_results(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test history methods with empty results."""
-        mock_mt5.history_orders_get.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.history_orders_get(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-            )
-
-        mock_mt5.history_orders_get.return_value = ()
-        result = initialized_client.history_orders_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
-        assert result == ()
-
-        mock_mt5.history_deals_get.return_value = None
-        with pytest.raises(Mt5RuntimeError):
-            initialized_client.history_deals_get(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-            )
-
-        mock_mt5.history_deals_get.return_value = ()
-        result = initialized_client.history_deals_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-        )
+        getattr(mock_mt5, method_name).return_value = ()
+        result = getattr(initialized_client, method_name)(date_from, date_to)
         assert result == ()
 
     def test_symbol_select_failure(
@@ -863,93 +739,49 @@ class TestMt5Client:
         with pytest.raises(Mt5RuntimeError):
             initialized_client.symbol_select("EURUSD")
 
-    def test_history_orders_get_with_group(
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    def test_history_get_with_group(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test history_orders_get with group parameter."""
-        mock_order = mocker.MagicMock()
-        mock_mt5.history_orders_get.return_value = (mock_order,)
+        """Test history_orders_get and history_deals_get with group parameter."""
+        date_from = datetime(2023, 1, 1, tzinfo=UTC)
+        date_to = datetime(2023, 1, 31, tzinfo=UTC)
+        mock_item = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = initialized_client.history_orders_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-            group="*USD*",
+        result = getattr(initialized_client, method_name)(
+            date_from, date_to, group="*USD*"
         )
 
         assert result is not None
         assert len(result) == 1
-        mock_mt5.history_orders_get.assert_called_once_with(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-            group="*USD*",
+        getattr(mock_mt5, method_name).assert_called_once_with(
+            date_from, date_to, group="*USD*"
         )
 
-    def test_history_deals_get_with_group(
+    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    def test_get_methods_with_parameters(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test history_deals_get with group parameter."""
-        mock_deal = mocker.MagicMock()
-        mock_mt5.history_deals_get.return_value = (mock_deal,)
+        """Test orders_get and positions_get with different parameter combinations."""
+        mock_item = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = initialized_client.history_deals_get(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-            group="*USD*",
-        )
-
+        result = getattr(initialized_client, method_name)(group="*USD*")
         assert result is not None
-        assert len(result) == 1
-        mock_mt5.history_deals_get.assert_called_once_with(
-            datetime(2023, 1, 1, tzinfo=UTC),
-            datetime(2023, 1, 31, tzinfo=UTC),
-            group="*USD*",
-        )
+        getattr(mock_mt5, method_name).assert_called_with(group="*USD*")
 
-    def test_orders_get_with_parameters(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test orders_get with different parameter combinations."""
-        mock_order = mocker.MagicMock()
-        mock_mt5.orders_get.return_value = (mock_order,)
-
-        # Test with group parameter
-        result = initialized_client.orders_get(group="*USD*")
+        result = getattr(initialized_client, method_name)(ticket=12345)
         assert result is not None
-        mock_mt5.orders_get.assert_called_with(group="*USD*")
-
-        # Test with ticket parameter
-        result = initialized_client.orders_get(ticket=12345)
-        assert result is not None
-        mock_mt5.orders_get.assert_called_with(ticket=12345)
-
-    def test_positions_get_with_parameters(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test positions_get with different parameter combinations."""
-        mock_position = mocker.MagicMock()
-        mock_mt5.positions_get.return_value = (mock_position,)
-
-        # Test with group parameter
-        result = initialized_client.positions_get(group="*USD*")
-        assert result is not None
-        mock_mt5.positions_get.assert_called_with(group="*USD*")
-
-        # Test with ticket parameter
-        result = initialized_client.positions_get(ticket=12345)
-        assert result is not None
-        mock_mt5.positions_get.assert_called_with(ticket=12345)
+        getattr(mock_mt5, method_name).assert_called_with(ticket=12345)
 
     def test_login_without_timeout(
         self, initialized_client: Mt5Client, mock_mt5: Mock
