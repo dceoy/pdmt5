@@ -253,6 +253,7 @@ class MockSymbolInfo(NamedTuple):
     path: str
 
 
+# Shared minimal symbol info fixture reused across symbol-related tests.
 _MOCK_SYMBOL_INFO = MockSymbolInfo(
     custom=False,
     chart_mode=0,
@@ -2066,7 +2067,7 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import: ModuleType | None,
         kwargs: dict[str, Any],
     ) -> None:
-        """Test _validate_history_input rejects incomplete date inputs."""
+        """Test _validate_history_input rejects missing or incomplete date inputs."""
         assert mock_mt5_import is not None
         client = create_initialized_client(mock_mt5_import)
         with pytest.raises(
@@ -2135,7 +2136,7 @@ class TestMt5DataClientRetryLogic:
         expected_mt5_args: tuple[Any, ...],
         expected_mt5_kwargs: dict[str, Any],
     ) -> None:
-        """Test history_deals_get_as_df with ticket or position filter."""
+        """Test history_deals_get_as_df with ticket, position, symbol, or group."""
         assert mock_mt5_import is not None
         mock_deals = [
             MockDeal(
@@ -2393,8 +2394,8 @@ class TestMt5DataClientCoverageMissing:
             ),
             (
                 {"level1": {"level2": {"level3": "value"}}, "simple": "value2"},
-                {"sep": "_"},
-                {"level1_level2": {"level3": "value"}, "simple": "value2"},
+                {"sep": "-"},
+                {"level1-level2": {"level3": "value"}, "simple": "value2"},
             ),
         ],
         ids=["simple", "nested", "custom_separator"],
