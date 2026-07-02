@@ -1642,68 +1642,72 @@ class TestMt5DataClientValidation:
                 assert result[extra_key] == extra_value
 
     @pytest.mark.parametrize(
-        "count",
+        ("client_method", "mt5_method", "call_kwargs"),
         [
-            pytest.param(1, id="count-one"),
-            pytest.param(10, id="count-ten"),
+            pytest.param(
+                "copy_rates_from_as_df",
+                "copy_rates_from",
+                {
+                    "symbol": "EURUSD",
+                    "timeframe": 16385,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "count": 1,
+                    "index_keys": "time",
+                },
+                id="copy_rates_from-count-one",
+            ),
+            pytest.param(
+                "copy_rates_from_as_df",
+                "copy_rates_from",
+                {
+                    "symbol": "EURUSD",
+                    "timeframe": 16385,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "count": 10,
+                    "index_keys": "time",
+                },
+                id="copy_rates_from-count-ten",
+            ),
+            pytest.param(
+                "copy_rates_range_as_df",
+                "copy_rates_range",
+                {
+                    "symbol": "EURUSD",
+                    "timeframe": 16385,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 2, tzinfo=UTC),
+                    "index_keys": "time",
+                },
+                id="copy_rates_range-one-day",
+            ),
+            pytest.param(
+                "copy_rates_range_as_df",
+                "copy_rates_range",
+                {
+                    "symbol": "EURUSD",
+                    "timeframe": 16385,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 31, tzinfo=UTC),
+                    "index_keys": "time",
+                },
+                id="copy_rates_range-one-month",
+            ),
         ],
     )
-    def test_copy_rates_from_as_df(
+    def test_copy_rates_as_df(
         self,
         mock_mt5_import: ModuleType,
-        count: int,
+        client_method: str,
+        mt5_method: str,
+        call_kwargs: dict[str, Any],
     ) -> None:
-        """Test copy_rates_from_as_df covers positive count validation."""
+        """Test copy_rates_from_as_df and copy_rates_range_as_df."""
         config = Mt5Config()
 
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.copy_rates_from.return_value = _create_mock_rates()
+            getattr(mock_mt5_import, mt5_method).return_value = _create_mock_rates()
 
-            result = client.copy_rates_from_as_df(
-                symbol="EURUSD",
-                timeframe=16385,
-                date_from=datetime(2023, 1, 1, tzinfo=UTC),
-                count=count,
-                index_keys="time",
-            )
-
-            assert len(result) == 1
-            assert "time" in result.index.names
-
-    @pytest.mark.parametrize(
-        ("date_from", "date_to"),
-        [
-            pytest.param(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 2, tzinfo=UTC),
-                id="one-day",
-            ),
-            pytest.param(
-                datetime(2023, 1, 1, tzinfo=UTC),
-                datetime(2023, 1, 31, tzinfo=UTC),
-                id="one-month",
-            ),
-        ],
-    )
-    def test_copy_rates_range_as_df(
-        self,
-        mock_mt5_import: ModuleType,
-        date_from: datetime,
-        date_to: datetime,
-    ) -> None:
-        """Test copy_rates_range_as_df covers date range validation."""
-        config = Mt5Config()
-
-        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.copy_rates_range.return_value = _create_mock_rates()
-
-            result = client.copy_rates_range_as_df(
-                symbol="EURUSD",
-                timeframe=16385,
-                date_from=date_from,
-                date_to=date_to,
-                index_keys="time",
-            )
+            result = getattr(client, client_method)(**call_kwargs)
 
             assert len(result) == 1
             assert "time" in result.index.names
@@ -2353,63 +2357,53 @@ class TestMt5DataClientCoverageMissing:
         # Price is used as index in market book data
         assert result.index.name == "price"
 
-    def test_order_check_as_df(self, mock_mt5_import: ModuleType) -> None:
-        """Test order_check_as_df method."""
-
-        class MockRequest(NamedTuple):
-            action: int
-            symbol: str
-
-        class MockOrderCheck(NamedTuple):
-            retcode: int
-            margin: float
-            profit: float
-            request: MockRequest
-
-        mock_request = MockRequest(action=1, symbol="EURUSD")
-        mock_order_check = MockOrderCheck(
-            retcode=10009, margin=100.0, profit=50.0, request=mock_request
-        )
-        mock_mt5_import.order_check.return_value = mock_order_check
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "extra_columns"),
+        [
+            pytest.param(
+                "order_check_as_df",
+                "order_check",
+                ("margin", "profit"),
+                id="order_check",
+            ),
+            pytest.param(
+                "order_send_as_df",
+                "order_send",
+                ("deal", "order"),
+                id="order_send",
+            ),
+        ],
+    )
+    def test_order_action_as_df(
+        self,
+        mock_mt5_import: ModuleType,
+        mocker: MockerFixture,
+        client_method: str,
+        mt5_method: str,
+        extra_columns: tuple[str, ...],
+    ) -> None:
+        """Test order_check_as_df and order_send_as_df methods."""
         client = create_initialized_client(mock_mt5_import)
 
+        mock_request = mocker.MagicMock()
+        mock_request._asdict.return_value = {"action": 1, "symbol": "EURUSD"}
+
+        mock_result = mocker.MagicMock()
+        mock_result._asdict.return_value = {
+            "retcode": 10009,
+            "request": mock_request,
+            **dict.fromkeys(extra_columns, 0),
+        }
+        getattr(mock_mt5_import, mt5_method).return_value = mock_result
+
         request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
-        result = client.order_check_as_df(request)
+        result = getattr(client, client_method)(request)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert "retcode" in result.columns
-        assert "margin" in result.columns
-        assert "profit" in result.columns
-
-    def test_order_send_as_df(self, mock_mt5_import: ModuleType) -> None:
-        """Test order_send_as_df method."""
-
-        class MockRequest(NamedTuple):
-            action: int
-            symbol: str
-
-        class MockOrderSend(NamedTuple):
-            retcode: int
-            deal: int
-            order: int
-            request: MockRequest
-
-        mock_request = MockRequest(action=1, symbol="EURUSD")
-        mock_order_send = MockOrderSend(
-            retcode=10009, deal=12345, order=67890, request=mock_request
-        )
-        mock_mt5_import.order_send.return_value = mock_order_send
-        client = create_initialized_client(mock_mt5_import)
-
-        request = {"action": 1, "symbol": "EURUSD", "volume": 0.1}
-        result = client.order_send_as_df(request)
-
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 1
-        assert "retcode" in result.columns
-        assert "deal" in result.columns
-        assert "order" in result.columns
+        for col in extra_columns:
+            assert col in result.columns
 
     @pytest.mark.parametrize(
         ("input_dict", "kwargs", "expected"),

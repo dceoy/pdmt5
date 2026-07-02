@@ -763,25 +763,30 @@ class TestMt5Client:
             date_from, date_to, group="*USD*"
         )
 
-    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs"),
+        [
+            pytest.param("orders_get", {"group": "*USD*"}, id="orders-group"),
+            pytest.param("orders_get", {"ticket": 12345}, id="orders-ticket"),
+            pytest.param("positions_get", {"group": "*USD*"}, id="positions-group"),
+            pytest.param("positions_get", {"ticket": 12345}, id="positions-ticket"),
+        ],
+    )
     def test_get_methods_with_parameters(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
         method_name: str,
+        kwargs: dict[str, Any],
     ) -> None:
-        """Test orders_get and positions_get with different parameter combinations."""
+        """Test orders_get and positions_get with method_name x kwargs cases."""
         mock_item = mocker.MagicMock()
         getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = getattr(initialized_client, method_name)(group="*USD*")
+        result = getattr(initialized_client, method_name)(**kwargs)
         assert result is not None
-        getattr(mock_mt5, method_name).assert_called_with(group="*USD*")
-
-        result = getattr(initialized_client, method_name)(ticket=12345)
-        assert result is not None
-        getattr(mock_mt5, method_name).assert_called_with(ticket=12345)
+        getattr(mock_mt5, method_name).assert_called_with(**kwargs)
 
     def test_login_without_timeout(
         self, initialized_client: Mt5Client, mock_mt5: Mock
