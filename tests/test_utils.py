@@ -325,32 +325,50 @@ class TestDetectAndConvertTimeToDatetime:
 class TestSetIndexIfPossible:
     """Test set_index_if_possible decorator."""
 
-    def test_decorator_with_index_parameter(self) -> None:
-        """Test decorator with index parameter provided."""
+    @pytest.mark.parametrize(
+        ("decorator_kwargs", "call_kwargs", "expected_index"),
+        [
+            pytest.param(
+                {"index_parameters": "index_keys"},
+                {"index_keys": "symbol"},
+                "symbol",
+                id="with-index-parameter",
+            ),
+            pytest.param(
+                {"index_parameters": "index_keys"},
+                {},
+                pd.RangeIndex,
+                id="without-index-parameter",
+            ),
+            pytest.param(
+                {},
+                {},
+                pd.RangeIndex,
+                id="no-index-parameters-configured",
+            ),
+        ],
+    )
+    def test_decorator_with_normal_dataframe(
+        self,
+        decorator_kwargs: dict[str, Any],
+        call_kwargs: dict[str, Any],
+        expected_index: type[pd.RangeIndex] | str,
+    ) -> None:
+        """Test decorator with normal DataFrames and varied index configuration."""
 
-        @set_index_if_possible(index_parameters="index_keys")
+        @set_index_if_possible(**decorator_kwargs)
         def get_data(index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG001
             return pd.DataFrame({
                 "symbol": ["EURUSD", "GBPUSD"],
                 "price": [1.1, 1.3],
             })
 
-        result = get_data(index_keys="symbol")
-        assert result.index.name == "symbol"
-        assert list(result.index) == ["EURUSD", "GBPUSD"]
-
-    def test_decorator_without_index_parameter(self) -> None:
-        """Test decorator without index parameter."""
-
-        @set_index_if_possible(index_parameters="index_keys")
-        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG001
-            return pd.DataFrame({
-                "symbol": ["EURUSD", "GBPUSD"],
-                "price": [1.1, 1.3],
-            })
-
-        result = get_data()
-        assert isinstance(result.index, pd.RangeIndex)
+        result = get_data(**call_kwargs)
+        if isinstance(expected_index, str):
+            assert result.index.name == expected_index
+            assert list(result.index) == ["EURUSD", "GBPUSD"]
+        else:
+            assert isinstance(result.index, expected_index)
 
     def test_decorator_with_empty_dataframe(self) -> None:
         """Test decorator with empty DataFrame."""
@@ -377,19 +395,6 @@ class TestSetIndexIfPossible:
             ),
         ):
             get_data()
-
-    def test_decorator_with_no_index_parameters(self) -> None:
-        """Test decorator with no index_parameters specified."""
-
-        @set_index_if_possible()
-        def get_data() -> pd.DataFrame:
-            return pd.DataFrame({
-                "symbol": ["EURUSD", "GBPUSD"],
-                "price": [1.1, 1.3],
-            })
-
-        result = get_data()
-        assert isinstance(result.index, pd.RangeIndex)
 
     def test_decorator_preserves_function_metadata(self) -> None:
         """Test decorator preserves original function metadata."""

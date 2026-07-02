@@ -1,6 +1,6 @@
 """Tests for pdmt5.dataframe module."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any, NamedTuple, cast
@@ -491,6 +491,109 @@ class MockBookInfo(NamedTuple):
     price: float
     volume: float
     volume_real: float
+
+
+class _MockOrderNoTimeExpiration:
+    """Mock order row omitting the time_expiration column."""
+
+    def _asdict(self) -> dict[str, Any]:
+        return {
+            "ticket": 123456,
+            "time_setup": 1640995200,
+            "time_setup_msc": 1640995200000,
+            "time_done": 0,
+            "time_done_msc": 0,
+            "type": 0,
+            "type_time": 0,
+            "type_filling": 0,
+            "state": 1,
+            "magic": 0,
+            "position_id": 0,
+            "position_by_id": 0,
+            "reason": 0,
+            "volume_initial": 0.1,
+            "volume_current": 0.1,
+            "price_open": 1.1300,
+            "sl": 1.1200,
+            "tp": 1.1400,
+            "price_current": 1.1301,
+            "price_stoplimit": 0.0,
+            "symbol": "EURUSD",
+            "comment": "",
+            "external_id": "",
+        }
+
+
+class _MockPositionNoTimeUpdate:
+    """Mock position row omitting the time_update column."""
+
+    def _asdict(self) -> dict[str, Any]:
+        return {
+            "ticket": 123456,
+            "time": 1640995200,
+            "time_msc": 1640995200000,
+            "time_update_msc": 1640995200000,
+            "type": 0,
+            "magic": 0,
+            "identifier": 123456,
+            "reason": 0,
+            "volume": 0.1,
+            "price_open": 1.1300,
+            "sl": 1.1200,
+            "tp": 1.1400,
+            "price_current": 1.1301,
+            "swap": 0.0,
+            "profit": 10.0,
+            "symbol": "EURUSD",
+            "comment": "",
+            "external_id": "",
+        }
+
+
+class _MockOrderNoTimeDone:
+    """Mock history order row omitting the time_done column."""
+
+    def _asdict(self) -> dict[str, Any]:
+        return {
+            "ticket": 123456,
+            "time_setup": 1640995200,
+            "time_setup_msc": 1640995200000,
+            "time_done_msc": 0,
+            "time_expiration": 0,
+            "type": 0,
+            "type_time": 0,
+            "type_filling": 0,
+            "state": 1,
+            "magic": 0,
+            "position_id": 0,
+            "position_by_id": 0,
+            "reason": 0,
+            "volume_initial": 0.1,
+            "volume_current": 0.1,
+            "price_open": 1.1300,
+            "sl": 1.1200,
+            "tp": 1.1400,
+            "price_current": 1.1301,
+            "price_stoplimit": 0.0,
+            "symbol": "EURUSD",
+            "comment": "",
+            "external_id": "",
+        }
+
+
+def _mock_order_no_time_expiration() -> object:
+    """Factory for an order row without time_expiration."""
+    return _MockOrderNoTimeExpiration()
+
+
+def _mock_position_no_time_update() -> object:
+    """Factory for a position row without time_update."""
+    return _MockPositionNoTimeUpdate()
+
+
+def _mock_order_no_time_done() -> object:
+    """Factory for a history order row without time_done."""
+    return _MockOrderNoTimeDone()
 
 
 class TestMt5Config:
@@ -1197,13 +1300,31 @@ class TestMt5DataClient:
             *expected_mt5_args, **expected_mt5_kwargs
         )
 
-    def test_history_orders_get_no_dates(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method"),
+        [
+            pytest.param(
+                "history_orders_get_as_df",
+                "history_orders_get",
+                id="history_orders",
+            ),
+            pytest.param(
+                "history_deals_get_as_df",
+                "history_deals_get",
+                id="history_deals",
+            ),
+        ],
+    )
+    def test_history_get_no_dates(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
     ) -> None:
-        """Test history_orders_get method without dates when not using ticket."""
+        """Test history methods without dates when not using ticket or position."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_get.return_value = []
+        getattr(mock_mt5_import, mt5_method).return_value = []
         mock_mt5_import.last_error.return_value = (1, "Invalid arguments")
 
         client = create_initialized_client(mock_mt5_import)
@@ -1214,7 +1335,7 @@ class TestMt5DataClient:
                 r" if not using ticket or position"
             ),
         ):
-            client.history_orders_get_as_df()
+            getattr(client, client_method)()
 
     def test_history_orders_get_invalid_dates(
         self, mock_mt5_import: ModuleType | None
@@ -1241,25 +1362,6 @@ class TestMt5DataClient:
         )
         assert orders_df.empty
         assert isinstance(orders_df, pd.DataFrame)
-
-    def test_history_deals_get_no_dates(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_deals_get method without dates when not using ticket."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = []
-        mock_mt5_import.last_error.return_value = (1, "Invalid arguments")
-
-        client = create_initialized_client(mock_mt5_import)
-        with pytest.raises(
-            ValueError,
-            match=(
-                r"Both date_from and date_to must be provided"
-                r" if not using ticket or position"
-            ),
-        ):
-            client.history_deals_get_as_df()
 
     def test_market_book_get(self, mock_mt5_import: ModuleType | None) -> None:
         """Test market_book_get method."""
@@ -1316,140 +1418,62 @@ class TestMt5DataClient:
 
         mock_mt5_import.shutdown.assert_called_once()
 
-    def test_orders_get_missing_time_columns(
-        self, mock_mt5_import: ModuleType | None
+    @pytest.mark.parametrize(
+        (
+            "client_method",
+            "mt5_method",
+            "row_factory",
+            "missing_column",
+            "extra_args",
+        ),
+        [
+            pytest.param(
+                "orders_get_as_df",
+                "orders_get",
+                _mock_order_no_time_expiration,
+                "time_expiration",
+                (),
+                id="orders-missing-time_expiration",
+            ),
+            pytest.param(
+                "positions_get_as_df",
+                "positions_get",
+                _mock_position_no_time_update,
+                "time_update",
+                (),
+                id="positions-missing-time_update",
+            ),
+            pytest.param(
+                "history_orders_get_as_df",
+                "history_orders_get",
+                _mock_order_no_time_done,
+                "time_done",
+                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
+                id="history-orders-missing-time_done",
+            ),
+        ],
+    )
+    def test_get_missing_time_columns(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        row_factory: Callable[[], object],
+        missing_column: str,
+        extra_args: tuple[Any, ...],
     ) -> None:
-        """Test orders_get when some time columns are missing."""
+        """Test DataFrame methods when expected time columns are missing."""
         assert mock_mt5_import is not None
-        # Create mock orders data as dict without time_expiration
-
-        class MockOrderNoTimeExpiration:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "ticket": 123456,
-                    "time_setup": 1640995200,
-                    "time_setup_msc": 1640995200000,
-                    "time_done": 0,
-                    "time_done_msc": 0,
-                    "type": 0,
-                    "type_time": 0,
-                    "type_filling": 0,
-                    "state": 1,
-                    "magic": 0,
-                    "position_id": 0,
-                    "position_by_id": 0,
-                    "reason": 0,
-                    "volume_initial": 0.1,
-                    "volume_current": 0.1,
-                    "price_open": 1.1300,
-                    "sl": 1.1200,
-                    "tp": 1.1400,
-                    "price_current": 1.1301,
-                    "price_stoplimit": 0.0,
-                    "symbol": "EURUSD",
-                    "comment": "",
-                    "external_id": "",
-                }
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, mt5_method).return_value = [row_factory()]
 
         client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_get.return_value = [MockOrderNoTimeExpiration()]
-
         client.initialize()
-        df_result = client.orders_get_as_df()
+        df_result = getattr(client, client_method)(*extra_args)
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
-        assert "time_expiration" not in df_result.columns
-
-    def test_positions_get_missing_time_columns(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test positions_get when some time columns are missing."""
-        assert mock_mt5_import is not None
-        # Create mock positions data as dict without time_update
-
-        class MockPositionNoTimeUpdate:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "ticket": 123456,
-                    "time": 1640995200,
-                    "time_msc": 1640995200000,
-                    "time_update_msc": 1640995200000,
-                    "type": 0,
-                    "magic": 0,
-                    "identifier": 123456,
-                    "reason": 0,
-                    "volume": 0.1,
-                    "price_open": 1.1300,
-                    "sl": 1.1200,
-                    "tp": 1.1400,
-                    "price_current": 1.1301,
-                    "swap": 0.0,
-                    "profit": 10.0,
-                    "symbol": "EURUSD",
-                    "comment": "",
-                    "external_id": "",
-                }
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_get.return_value = [MockPositionNoTimeUpdate()]
-
-        client.initialize()
-        df_result = client.positions_get_as_df()
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert "time_update" not in df_result.columns
-
-    def test_history_orders_get_missing_time_columns(
-        self, mock_mt5_import: ModuleType | None
-    ) -> None:
-        """Test history_orders_get when some time columns are missing."""
-        assert mock_mt5_import is not None
-        # Create mock orders data as dict without time_done
-
-        class MockOrderNoTimeDone:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "ticket": 123456,
-                    "time_setup": 1640995200,
-                    "time_setup_msc": 1640995200000,
-                    "time_done_msc": 0,
-                    "time_expiration": 0,
-                    "type": 0,
-                    "type_time": 0,
-                    "type_filling": 0,
-                    "state": 1,
-                    "magic": 0,
-                    "position_id": 0,
-                    "position_by_id": 0,
-                    "reason": 0,
-                    "volume_initial": 0.1,
-                    "volume_current": 0.1,
-                    "price_open": 1.1300,
-                    "sl": 1.1200,
-                    "tp": 1.1400,
-                    "price_current": 1.1301,
-                    "price_stoplimit": 0.0,
-                    "symbol": "EURUSD",
-                    "comment": "",
-                    "external_id": "",
-                }
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_get.return_value = [MockOrderNoTimeDone()]
-
-        client.initialize()
-        df_result = client.history_orders_get_as_df(
-            datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)
-        )
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert "time_done" not in df_result.columns
+        assert missing_column not in df_result.columns
 
 
 class TestMt5DataClientValidation:
@@ -1546,15 +1570,38 @@ class TestMt5DataClientValidation:
                 position=-1
             )
 
-    def test_order_check_as_dict(
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "extra_key", "extra_value"),
+        [
+            pytest.param(
+                "order_check_as_dict",
+                "order_check",
+                "volume",
+                1.0,
+                id="order_check",
+            ),
+            pytest.param(
+                "order_send_as_dict",
+                "order_send",
+                "order",
+                12345,
+                id="order_send",
+            ),
+        ],
+    )
+    def test_order_action_as_dict(
         self,
         mock_mt5_import: ModuleType,
         mocker: MockerFixture,
+        client_method: str,
+        mt5_method: str,
+        extra_key: str,
+        extra_value: float,
     ) -> None:
-        """Test order_check_as_dict method."""
+        """Test order_check_as_dict and order_send_as_dict methods."""
         config = Mt5Config()
 
-        # Mock order check result with nested structure
+        # Mock order action result with nested request structure
         mock_request = mocker.MagicMock()
         mock_request._asdict.return_value = {"action": 1, "symbol": "EURUSD"}
 
@@ -1562,49 +1609,19 @@ class TestMt5DataClientValidation:
         mock_result._asdict.return_value = {
             "retcode": 10009,
             "request": mock_request,
-            "volume": 1.0,
+            extra_key: extra_value,
         }
 
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.order_check.return_value = mock_result
+            getattr(mock_mt5_import, mt5_method).return_value = mock_result
 
-            result = client.order_check_as_dict(
+            result = getattr(client, client_method)(
                 request={"action": 1, "symbol": "EURUSD"}
             )
 
             assert result["retcode"] == 10009
             assert result["request"] == {"action": 1, "symbol": "EURUSD"}
-            assert result["volume"] == pytest.approx(1.0)
-
-    def test_order_send_as_dict(
-        self,
-        mock_mt5_import: ModuleType,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test order_send_as_dict method."""
-        config = Mt5Config()
-
-        # Mock order send result with nested structure
-        mock_request = mocker.MagicMock()
-        mock_request._asdict.return_value = {"action": 1, "symbol": "EURUSD"}
-
-        mock_result = mocker.MagicMock()
-        mock_result._asdict.return_value = {
-            "retcode": 10009,
-            "request": mock_request,
-            "order": 12345,
-        }
-
-        with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.order_send.return_value = mock_result
-
-            result = client.order_send_as_dict(
-                request={"action": 1, "symbol": "EURUSD"}
-            )
-
-            assert result["retcode"] == 10009
-            assert result["request"] == {"action": 1, "symbol": "EURUSD"}
-            assert result["order"] == 12345
+            assert result[extra_key] == pytest.approx(extra_value)
 
     def test_copy_rates_from_as_df(
         self,
