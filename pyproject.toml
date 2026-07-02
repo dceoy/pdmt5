@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "1.0.2"
+version = "1.0.3"
 description = "Low-level MetaTrader 5 wrapper and pandas/dict conversion package"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
