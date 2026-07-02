@@ -1,7 +1,7 @@
 """Test cases for pdmt5.utils module."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import pytest
@@ -227,46 +227,66 @@ class TestConvertTimeColumnsInDf:
             assert value == expected_value
 
 
+def _assert_dict_time_converted(result: object) -> None:
+    assert isinstance(result, dict)
+    time = cast("object", result["time"])
+    assert isinstance(time, pd.Timestamp)
+    assert time == pd.Timestamp("2024-01-01 00:00:00")
+
+
+def _assert_list_time_converted(result: object) -> None:
+    assert isinstance(result, list)
+    result_list = cast("list[Any]", result)
+    assert len(result_list) == 2
+    assert all(isinstance(d["time"], pd.Timestamp) for d in result_list)
+
+
+def _assert_dataframe_time_converted(result: object) -> None:
+    assert isinstance(result, pd.DataFrame)
+    assert result["time"].dtype == "datetime64[ns]"
+
+
 class TestDetectAndConvertTimeToDatetime:
     """Test detect_and_convert_time_to_datetime decorator."""
 
-    def test_decorator_with_dict_result(self) -> None:
-        """Test decorator with function returning dict."""
+    @pytest.mark.parametrize(
+        ("return_factory", "assert_result"),
+        [
+            pytest.param(
+                lambda: {"time": 1704067200, "price": 100.5},
+                _assert_dict_time_converted,
+                id="dict",
+            ),
+            pytest.param(
+                lambda: [
+                    {"time": 1704067200, "price": 100.5},
+                    {"time": 1704067260, "price": 100.6},
+                ],
+                _assert_list_time_converted,
+                id="list-of-dicts",
+            ),
+            pytest.param(
+                lambda: pd.DataFrame({
+                    "time": [1704067200, 1704067260],
+                    "price": [100.5, 100.6],
+                }),
+                _assert_dataframe_time_converted,
+                id="dataframe",
+            ),
+        ],
+    )
+    def test_decorator_with_normal_results(
+        self,
+        return_factory: Callable[[], Any],
+        assert_result: Callable[[object], None],
+    ) -> None:
+        """Test decorator with dict, list of dicts, and DataFrame results."""
 
         @detect_and_convert_time_to_datetime()
-        def get_data() -> dict[str, Any]:
-            return {"time": 1704067200, "price": 100.5}
+        def get_data() -> Any:  # noqa: ANN401
+            return return_factory()
 
-        result = get_data()
-        assert isinstance(result["time"], pd.Timestamp)
-        assert result["time"] == pd.Timestamp("2024-01-01 00:00:00")
-
-    def test_decorator_with_list_result(self) -> None:
-        """Test decorator with function returning list of dicts."""
-
-        @detect_and_convert_time_to_datetime()
-        def get_data() -> list[dict[str, Any]]:
-            return [
-                {"time": 1704067200, "price": 100.5},
-                {"time": 1704067260, "price": 100.6},
-            ]
-
-        result = get_data()
-        assert len(result) == 2
-        assert all(isinstance(d["time"], pd.Timestamp) for d in result)
-
-    def test_decorator_with_dataframe_result(self) -> None:
-        """Test decorator with function returning DataFrame."""
-
-        @detect_and_convert_time_to_datetime()
-        def get_data() -> pd.DataFrame:
-            return pd.DataFrame({
-                "time": [1704067200, 1704067260],
-                "price": [100.5, 100.6],
-            })
-
-        result = get_data()
-        assert result["time"].dtype == "datetime64[ns]"
+        assert_result(get_data())
 
     def test_decorator_with_skip_toggle(self) -> None:
         """Test decorator with skip_toggle parameter."""

@@ -380,6 +380,21 @@ class MockRate(NamedTuple):
     real_volume: int
 
 
+def _create_mock_rates() -> np.ndarray[Any, np.dtype[Any]]:
+    """Return a minimal mock rates array for copy_rates_* tests."""
+    rate_dtype = np.dtype([
+        ("time", "int64"),
+        ("open", "float64"),
+        ("high", "float64"),
+        ("low", "float64"),
+        ("close", "float64"),
+    ])
+    return np.array(
+        [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
+        dtype=rate_dtype,
+    )
+
+
 class MockOrder(NamedTuple):
     """Mock order structure."""
 
@@ -1596,7 +1611,7 @@ class TestMt5DataClientValidation:
         client_method: str,
         mt5_method: str,
         extra_key: str,
-        extra_value: float,
+        extra_value: int | float,  # noqa: PYI041
     ) -> None:
         """Test order_check_as_dict and order_send_as_dict methods."""
         config = Mt5Config()
@@ -1621,76 +1636,72 @@ class TestMt5DataClientValidation:
 
             assert result["retcode"] == 10009
             assert result["request"] == {"action": 1, "symbol": "EURUSD"}
-            assert result[extra_key] == pytest.approx(extra_value)
+            if isinstance(extra_value, float):
+                assert result[extra_key] == pytest.approx(extra_value)
+            else:
+                assert result[extra_key] == extra_value
 
+    @pytest.mark.parametrize(
+        "count",
+        [
+            pytest.param(1, id="count-one"),
+            pytest.param(10, id="count-ten"),
+        ],
+    )
     def test_copy_rates_from_as_df(
         self,
         mock_mt5_import: ModuleType,
+        count: int,
     ) -> None:
-        """Test copy_rates_from_as_df method to cover validation line."""
+        """Test copy_rates_from_as_df covers positive count validation."""
         config = Mt5Config()
 
-        # Mock rates data
-        rate_dtype = np.dtype([
-            ("time", "int64"),
-            ("open", "float64"),
-            ("high", "float64"),
-            ("low", "float64"),
-            ("close", "float64"),
-        ])
-        mock_rates = np.array(
-            [
-                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320),
-            ],
-            dtype=rate_dtype,
-        )
-
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.copy_rates_from.return_value = mock_rates
+            mock_mt5_import.copy_rates_from.return_value = _create_mock_rates()
 
-            # This should trigger the _validate_positive_count call
             result = client.copy_rates_from_as_df(
                 symbol="EURUSD",
                 timeframe=16385,
                 date_from=datetime(2023, 1, 1, tzinfo=UTC),
-                count=10,
+                count=count,
                 index_keys="time",
             )
 
             assert len(result) == 1
             assert "time" in result.index.names
 
+    @pytest.mark.parametrize(
+        ("date_from", "date_to"),
+        [
+            pytest.param(
+                datetime(2023, 1, 1, tzinfo=UTC),
+                datetime(2023, 1, 2, tzinfo=UTC),
+                id="one-day",
+            ),
+            pytest.param(
+                datetime(2023, 1, 1, tzinfo=UTC),
+                datetime(2023, 1, 31, tzinfo=UTC),
+                id="one-month",
+            ),
+        ],
+    )
     def test_copy_rates_range_as_df(
         self,
         mock_mt5_import: ModuleType,
+        date_from: datetime,
+        date_to: datetime,
     ) -> None:
-        """Test copy_rates_range_as_df method to cover validation line."""
+        """Test copy_rates_range_as_df covers date range validation."""
         config = Mt5Config()
 
-        # Mock rates data
-        rate_dtype = np.dtype([
-            ("time", "int64"),
-            ("open", "float64"),
-            ("high", "float64"),
-            ("low", "float64"),
-            ("close", "float64"),
-        ])
-        mock_rates = np.array(
-            [
-                (1640995200, 1.1300, 1.1350, 1.1280, 1.1320),
-            ],
-            dtype=rate_dtype,
-        )
-
         with Mt5DataClient(mt5=mock_mt5_import, config=config) as client:
-            mock_mt5_import.copy_rates_range.return_value = mock_rates
+            mock_mt5_import.copy_rates_range.return_value = _create_mock_rates()
 
-            # This should trigger the _validate_date_range call
             result = client.copy_rates_range_as_df(
                 symbol="EURUSD",
                 timeframe=16385,
-                date_from=datetime(2023, 1, 1, tzinfo=UTC),
-                date_to=datetime(2023, 1, 2, tzinfo=UTC),
+                date_from=date_from,
+                date_to=date_to,
                 index_keys="time",
             )
 
