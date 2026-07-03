@@ -304,24 +304,19 @@ class TestDetectAndConvertTimeToDatetime:
         assert isinstance(result2["time"], int)
         assert result2["time"] == 1704067200
 
-    def test_decorator_with_other_result_type(self) -> None:
+    @pytest.mark.parametrize(
+        ("return_value"),
+        ["test string", 42, None],
+        ids=["string", "number", "none"],
+    )
+    def test_decorator_with_other_result_type(self, return_value: object) -> None:
         """Test decorator with function returning other types."""
 
         @detect_and_convert_time_to_datetime()
-        def get_string() -> str:
-            return "test string"
+        def get_data() -> object:
+            return return_value
 
-        @detect_and_convert_time_to_datetime()
-        def get_number() -> int:
-            return 42
-
-        @detect_and_convert_time_to_datetime()
-        def get_none() -> None:
-            return None
-
-        assert get_string() == "test string"
-        assert get_number() == 42
-        assert get_none() is None
+        assert get_data() == return_value
 
     def test_decorator_with_list_of_mixed_types(self) -> None:
         """Test decorator with list containing mixed types."""

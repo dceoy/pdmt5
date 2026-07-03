@@ -612,6 +612,20 @@ def _mock_order_no_time_done() -> object:
     return _MockOrderNoTimeDone()
 
 
+class _MockSymbolRow:
+    """Mock symbol row with a minimal set of fields, including time columns."""
+
+    def _asdict(self) -> dict[str, Any]:
+        return {
+            "name": "EURUSD",
+            "time": 1640995200,
+            "time_msc": 1640995200000,
+            "time_digits": 1640995200,
+            "bid": 1.1300,
+            "ask": 1.1301,
+        }
+
+
 class TestMt5Config:
     """Test Mt5Config class."""
 
@@ -1027,97 +1041,109 @@ class TestMt5DataClient:
         assert "name" in df_result.columns
         assert "version" in df_result.columns
 
-    def test_orders_get_with_data(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test orders_get method with data."""
-        assert mock_mt5_import is not None
-        mock_orders = [
-            MockOrder(
-                ticket=123456,
-                time_setup=1640995200,
-                time_setup_msc=1640995200000,
-                time_done=0,
-                time_done_msc=0,
-                time_expiration=0,
-                type=0,
-                type_time=0,
-                type_filling=0,
-                state=1,
-                magic=0,
-                position_id=0,
-                position_by_id=0,
-                reason=0,
-                volume_initial=0.1,
-                volume_current=0.1,
-                price_open=1.1300,
-                sl=1.1200,
-                tp=1.1400,
-                price_current=1.1301,
-                price_stoplimit=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
+    @pytest.mark.parametrize(
+        (
+            "client_method",
+            "mt5_method",
+            "row",
+            "volume_col",
+            "time_col",
+            "time_msc_col",
+        ),
+        [
+            pytest.param(
+                "orders_get_as_df",
+                "orders_get",
+                MockOrder(
+                    ticket=123456,
+                    time_setup=1640995200,
+                    time_setup_msc=1640995200000,
+                    time_done=0,
+                    time_done_msc=0,
+                    time_expiration=0,
+                    type=0,
+                    type_time=0,
+                    type_filling=0,
+                    state=1,
+                    magic=0,
+                    position_id=0,
+                    position_by_id=0,
+                    reason=0,
+                    volume_initial=0.1,
+                    volume_current=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    price_stoplimit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                "volume_initial",
+                "time_setup",
+                "time_setup_msc",
+                id="orders_get",
             ),
-        ]
-
+            pytest.param(
+                "positions_get_as_df",
+                "positions_get",
+                MockPosition(
+                    ticket=123456,
+                    time=1640995200,
+                    time_msc=1640995200000,
+                    time_update=1640995200,
+                    time_update_msc=1640995200000,
+                    type=0,
+                    magic=0,
+                    identifier=123456,
+                    reason=0,
+                    volume=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    swap=-0.5,
+                    profit=1.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                "volume",
+                "time",
+                "time_msc",
+                id="positions_get",
+            ),
+        ],
+    )
+    def test_orders_positions_get_with_data(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        row: object,
+        volume_col: str,
+        time_col: str,
+        time_msc_col: str,
+    ) -> None:
+        """Test orders_get_as_df/positions_get_as_df methods with data."""
+        assert mock_mt5_import is not None
         client = Mt5DataClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.orders_get.return_value = mock_orders
+        getattr(mock_mt5_import, mt5_method).return_value = [row]
 
         client.initialize()
-        df_result = client.orders_get_as_df(symbol="EURUSD", index_keys="ticket")
+        df_result = getattr(client, client_method)(symbol="EURUSD", index_keys="ticket")
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
         assert df_result.index[0] == 123456
         assert df_result.iloc[0]["symbol"] == "EURUSD"
-        assert df_result.iloc[0]["volume_initial"] == pytest.approx(0.1)
-        assert df_result.iloc[0]["time_setup"] == pd.to_datetime(1640995200, unit="s")
-        assert df_result.iloc[0]["time_setup_msc"] == pd.to_datetime(
+        assert df_result.iloc[0][volume_col] == pytest.approx(0.1)
+        assert df_result.iloc[0][time_col] == pd.to_datetime(1640995200, unit="s")
+        assert df_result.iloc[0][time_msc_col] == pd.to_datetime(
             1640995200000, unit="ms"
         )
-
-    def test_positions_get_with_data(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test positions_get method with data."""
-        assert mock_mt5_import is not None
-        mock_positions = [
-            MockPosition(
-                ticket=123456,
-                time=1640995200,
-                time_msc=1640995200000,
-                time_update=1640995200,
-                time_update_msc=1640995200000,
-                type=0,
-                magic=0,
-                identifier=123456,
-                reason=0,
-                volume=0.1,
-                price_open=1.1300,
-                sl=1.1200,
-                tp=1.1400,
-                price_current=1.1301,
-                swap=-0.5,
-                profit=1.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.positions_get.return_value = mock_positions
-
-        client.initialize()
-        df_result = client.positions_get_as_df(symbol="EURUSD", index_keys="ticket")
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        assert df_result.index[0] == 123456
-        assert df_result.iloc[0]["symbol"] == "EURUSD"
-        assert df_result.iloc[0]["volume"] == pytest.approx(0.1)
-        # Time fields should be present (conversion behavior may vary)
-        assert "time" in df_result.columns
-        assert "time_msc" in df_result.columns
 
     @pytest.mark.parametrize(
         ("timeout", "expected_kwargs"),
@@ -1330,20 +1356,6 @@ class TestMt5DataClient:
 
         with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
             client.version()
-
-    @pytest.mark.parametrize("return_value", [1000, None])
-    def test_symbols_total(
-        self, mock_mt5_import: ModuleType | None, return_value: int | None
-    ) -> None:
-        """Test symbols_total with a value and None."""
-        assert mock_mt5_import is not None
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.symbols_total.return_value = return_value
-
-        client = create_initialized_client(mock_mt5_import)
-        result = client.symbols_total()
-
-        assert result == return_value
 
     @pytest.mark.parametrize("enable", [True, False])
     def test_symbol_select(
@@ -2643,40 +2655,6 @@ class TestMt5DataClientCoverageMissing:
         )
         assert result == expected
 
-    def test_symbols_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test symbols_get_as_dicts method."""
-
-        # Create a minimal mock symbol with required fields
-        class MockSymbol:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "name": "EURUSD",
-                    "time": 1640995200,
-                    "time_msc": 1640995200000,
-                    "time_digits": 1640995200,
-                    "bid": 1.1300,
-                    "ask": 1.1301,
-                }
-
-        mock_symbol = MockSymbol()
-        mock_mt5_import.symbols_get.return_value = [mock_symbol]
-        client = create_initialized_client(mock_mt5_import)
-        # Test without convert_time
-        result = client.symbols_get_as_dicts(skip_to_datetime=True)
-        assert len(result) == 1
-        assert result[0]["name"] == "EURUSD"
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        # Test with convert_time (default True)
-        result = client.symbols_get_as_dicts()
-        assert len(result) == 1
-        assert result[0]["name"] == "EURUSD"
-        # Note: Time conversion behavior through decorators needs validation
-        # For now, just check the result is valid
-        assert "time" in result[0]
-        assert "time_msc" in result[0]
-
     def test_symbols_get_as_df_with_params(self, mock_mt5_import: ModuleType) -> None:
         """Test symbols_get_as_df with new parameters."""
 
@@ -2923,289 +2901,354 @@ class TestMt5DataClientCoverageMissing:
         assert "time" in result[0]
         assert "time_msc" in result[0]
 
-    def test_orders_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test orders_get_as_dicts method."""
-        mock_order = MockOrder(
-            ticket=12345,
-            time_setup=1640995200,
-            time_setup_msc=1640995200000,
-            time_done=0,
-            time_done_msc=0,
-            time_expiration=1640995200,
-            type=0,
-            type_time=0,
-            type_filling=0,
-            state=1,
-            magic=0,
-            position_id=0,
-            position_by_id=0,
-            reason=0,
-            volume_initial=0.1,
-            volume_current=0.1,
-            price_open=1.1300,
-            sl=1.1200,
-            tp=1.1400,
-            price_current=1.1301,
-            price_stoplimit=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.orders_get.return_value = [mock_order]
+    @pytest.mark.parametrize(
+        (
+            "client_method",
+            "mt5_method",
+            "row",
+            "call_kwargs",
+            "identity_key",
+            "identity_value",
+            "time_key",
+            "extra_time_key",
+        ),
+        [
+            pytest.param(
+                "symbols_get_as_dicts",
+                "symbols_get",
+                _MockSymbolRow(),
+                {},
+                "name",
+                "EURUSD",
+                "time",
+                "time_msc",
+                id="symbols",
+            ),
+            pytest.param(
+                "orders_get_as_dicts",
+                "orders_get",
+                MockOrder(
+                    ticket=12345,
+                    time_setup=1640995200,
+                    time_setup_msc=1640995200000,
+                    time_done=0,
+                    time_done_msc=0,
+                    time_expiration=1640995200,
+                    type=0,
+                    type_time=0,
+                    type_filling=0,
+                    state=1,
+                    magic=0,
+                    position_id=0,
+                    position_by_id=0,
+                    reason=0,
+                    volume_initial=0.1,
+                    volume_current=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    price_stoplimit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                {},
+                "ticket",
+                12345,
+                "time_setup",
+                "time_setup_msc",
+                id="orders",
+            ),
+            pytest.param(
+                "positions_get_as_dicts",
+                "positions_get",
+                MockPosition(
+                    ticket=12345,
+                    time=1640995200,
+                    time_msc=1640995200000,
+                    time_update=1640995200,
+                    time_update_msc=1640995200000,
+                    type=0,
+                    magic=0,
+                    identifier=0,
+                    reason=0,
+                    volume=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    swap=0.0,
+                    profit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                {},
+                "ticket",
+                12345,
+                "time",
+                "time_msc",
+                id="positions",
+            ),
+            pytest.param(
+                "history_orders_get_as_dicts",
+                "history_orders_get",
+                MockOrder(
+                    ticket=12345,
+                    time_setup=1640995200,
+                    time_setup_msc=1640995200000,
+                    time_done=1640995200,
+                    time_done_msc=1640995200000,
+                    time_expiration=0,
+                    type=0,
+                    type_time=0,
+                    type_filling=0,
+                    state=1,
+                    magic=0,
+                    position_id=0,
+                    position_by_id=0,
+                    reason=0,
+                    volume_initial=0.1,
+                    volume_current=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    price_stoplimit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                {
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 2, tzinfo=UTC),
+                },
+                "ticket",
+                12345,
+                "time_setup",
+                "time_done_msc",
+                id="history_orders",
+            ),
+            pytest.param(
+                "history_deals_get_as_dicts",
+                "history_deals_get",
+                MockDeal(
+                    ticket=12345,
+                    order=0,
+                    time=1640995200,
+                    time_msc=1640995200000,
+                    type=0,
+                    entry=0,
+                    magic=0,
+                    position_id=0,
+                    reason=0,
+                    volume=0.1,
+                    price=1.1300,
+                    commission=0.0,
+                    swap=0.0,
+                    profit=0.0,
+                    fee=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                {
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 2, tzinfo=UTC),
+                },
+                "ticket",
+                12345,
+                "time",
+                "time_msc",
+                id="history_deals",
+            ),
+        ],
+    )
+    def test_get_as_dicts_skip_to_datetime(
+        self,
+        mock_mt5_import: ModuleType,
+        client_method: str,
+        mt5_method: str,
+        row: object,
+        call_kwargs: dict[str, Any],
+        identity_key: str,
+        identity_value: object,
+        time_key: str,
+        extra_time_key: str,
+    ) -> None:
+        """Test *_as_dicts methods with skip_to_datetime=True and default conversion."""
+        getattr(mock_mt5_import, mt5_method).return_value = [row]
         client = create_initialized_client(mock_mt5_import)
 
         # Test without convert_time
-        result = client.orders_get_as_dicts(skip_to_datetime=True)
+        result = getattr(client, client_method)(**call_kwargs, skip_to_datetime=True)
         assert len(result) == 1
-        assert result[0]["ticket"] == 12345
-        assert isinstance(result[0]["time_setup"], int)
+        assert result[0][identity_key] == identity_value
+        assert isinstance(result[0][time_key], int)
 
         # Test with convert_time (default True)
-        result = client.orders_get_as_dicts()
+        result = getattr(client, client_method)(**call_kwargs)
         assert len(result) == 1
-        assert "time_setup" in result[0]
-        assert "time_setup_msc" in result[0]
+        assert time_key in result[0]
+        assert extra_time_key in result[0]
 
-    def test_positions_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test positions_get_as_dicts method."""
-        mock_position = MockPosition(
-            ticket=12345,
-            time=1640995200,
-            time_msc=1640995200000,
-            time_update=1640995200,
-            time_update_msc=1640995200000,
-            type=0,
-            magic=0,
-            identifier=0,
-            reason=0,
-            volume=0.1,
-            price_open=1.1300,
-            sl=1.1200,
-            tp=1.1400,
-            price_current=1.1301,
-            swap=0.0,
-            profit=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position]
+    @pytest.mark.parametrize(
+        (
+            "client_method",
+            "mt5_method",
+            "call_args",
+            "mock_data",
+            "index_keys",
+            "expected_index_value",
+        ),
+        [
+            pytest.param(
+                "copy_rates_from_as_df",
+                "copy_rates_from",
+                ("EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10),
+                np.array(
+                    [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
+                    dtype=np.dtype([
+                        ("time", "int64"),
+                        ("open", "float64"),
+                        ("high", "float64"),
+                        ("low", "float64"),
+                        ("close", "float64"),
+                    ]),
+                ),
+                "time",
+                pd.to_datetime(1640995200, unit="s"),
+                id="copy_rates_from",
+            ),
+            pytest.param(
+                "copy_ticks_from_as_df",
+                "copy_ticks_from",
+                ("EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0),
+                np.array(
+                    [(1640995200, 1.1300, 1.1301, 0, 0, 1640995200000, 0, 0)],
+                    dtype=np.dtype([
+                        ("time", "int64"),
+                        ("bid", "float64"),
+                        ("ask", "float64"),
+                        ("last", "float64"),
+                        ("volume", "uint64"),
+                        ("time_msc", "int64"),
+                        ("flags", "uint32"),
+                        ("volume_real", "float64"),
+                    ]),
+                ),
+                "time_msc",
+                pd.to_datetime(1640995200000, unit="ms"),
+                id="copy_ticks_from",
+            ),
+        ],
+    )
+    def test_copy_methods_with_index_keys(
+        self,
+        mock_mt5_import: ModuleType,
+        client_method: str,
+        mt5_method: str,
+        call_args: tuple[Any, ...],
+        mock_data: np.ndarray[Any, np.dtype[Any]],
+        index_keys: str,
+        expected_index_value: pd.Timestamp,
+    ) -> None:
+        """Test copy_rates_from_as_df/copy_ticks_from_as_df with index_keys."""
         client = create_initialized_client(mock_mt5_import)
+        getattr(mock_mt5_import, mt5_method).return_value = mock_data
 
-        # Test without convert_time
-        result = client.positions_get_as_dicts(skip_to_datetime=True)
-        assert len(result) == 1
-        assert result[0]["ticket"] == 12345
-        assert isinstance(result[0]["time"], int)
+        result = getattr(client, client_method)(*call_args, index_keys=index_keys)
+        assert result.index.name == index_keys
+        assert expected_index_value in result.index
 
-        # Test with convert_time (default True)
-        result = client.positions_get_as_dicts()
-        assert len(result) == 1
-        assert "time" in result[0]
-        assert "time_msc" in result[0]
-
-    def test_history_orders_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test history_orders_get_as_dicts method."""
-        mock_order = MockOrder(
-            ticket=12345,
-            time_setup=1640995200,
-            time_setup_msc=1640995200000,
-            time_done=1640995200,
-            time_done_msc=1640995200000,
-            time_expiration=0,
-            type=0,
-            type_time=0,
-            type_filling=0,
-            state=1,
-            magic=0,
-            position_id=0,
-            position_by_id=0,
-            reason=0,
-            volume_initial=0.1,
-            volume_current=0.1,
-            price_open=1.1300,
-            sl=1.1200,
-            tp=1.1400,
-            price_current=1.1301,
-            price_stoplimit=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.history_orders_get.return_value = [mock_order]
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "row", "expected_index_value"),
+        [
+            pytest.param(
+                "orders_get_as_df",
+                "orders_get",
+                MockOrder(
+                    ticket=12345,
+                    time_setup=1640995200,
+                    time_setup_msc=1640995200000,
+                    time_done=0,
+                    time_done_msc=0,
+                    time_expiration=0,
+                    type=0,
+                    type_time=0,
+                    type_filling=0,
+                    state=1,
+                    magic=0,
+                    position_id=0,
+                    position_by_id=0,
+                    reason=0,
+                    volume_initial=0.1,
+                    volume_current=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    price_stoplimit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                12345,
+                id="orders_get",
+            ),
+            pytest.param(
+                "positions_get_as_df",
+                "positions_get",
+                MockPosition(
+                    ticket=54321,
+                    time=1640995200,
+                    time_msc=1640995200000,
+                    time_update=1640995200,
+                    time_update_msc=1640995200000,
+                    type=0,
+                    magic=0,
+                    identifier=0,
+                    reason=0,
+                    volume=0.1,
+                    price_open=1.1300,
+                    sl=1.1200,
+                    tp=1.1400,
+                    price_current=1.1301,
+                    swap=0.0,
+                    profit=0.0,
+                    symbol="EURUSD",
+                    comment="",
+                    external_id="",
+                ),
+                54321,
+                id="positions_get",
+            ),
+        ],
+    )
+    def test_orders_positions_get_as_df_with_index_keys(
+        self,
+        mock_mt5_import: ModuleType,
+        client_method: str,
+        mt5_method: str,
+        row: object,
+        expected_index_value: int,
+    ) -> None:
+        """Test orders_get_as_df/positions_get_as_df with index_keys='ticket'."""
         client = create_initialized_client(mock_mt5_import)
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 2, tzinfo=UTC)
+        getattr(mock_mt5_import, mt5_method).return_value = [row]
 
-        # Test without convert_time
-        result = client.history_orders_get_as_dicts(
-            date_from=date_from, date_to=date_to, skip_to_datetime=True
-        )
-        assert len(result) == 1
-        assert result[0]["ticket"] == 12345
-        assert isinstance(result[0]["time_setup"], int)
+        result = getattr(client, client_method)(index_keys="ticket")
+        assert result.index.name == "ticket"
+        assert expected_index_value in result.index
 
-        # Test with convert_time (default True)
-        result = client.history_orders_get_as_dicts(
-            date_from=date_from, date_to=date_to
-        )
-        assert len(result) == 1
-        assert "time_setup" in result[0]
-        assert "time_done_msc" in result[0]
-
-    def test_history_deals_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test history_deals_get_as_dicts method."""
-        mock_deal = MockDeal(
-            ticket=12345,
-            order=0,
-            time=1640995200,
-            time_msc=1640995200000,
-            type=0,
-            entry=0,
-            magic=0,
-            position_id=0,
-            reason=0,
-            volume=0.1,
-            price=1.1300,
-            commission=0.0,
-            swap=0.0,
-            profit=0.0,
-            fee=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.history_deals_get.return_value = [mock_deal]
-        client = create_initialized_client(mock_mt5_import)
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 2, tzinfo=UTC)
-
-        # Test without convert_time
-        result = client.history_deals_get_as_dicts(
-            date_from=date_from, date_to=date_to, skip_to_datetime=True
-        )
-        assert len(result) == 1
-        assert result[0]["ticket"] == 12345
-        assert isinstance(result[0]["time"], int)
-
-        # Test with convert_time (default True)
-        result = client.history_deals_get_as_dicts(date_from=date_from, date_to=date_to)
-        assert len(result) == 1
-        assert "time" in result[0]
-        assert "time_msc" in result[0]
-
-    def test_dataframe_methods_with_index_keys(
+    def test_orders_get_as_df_empty_result_has_no_index(
         self, mock_mt5_import: ModuleType
     ) -> None:
-        """Test all DataFrame methods with index_keys parameter."""
+        """Test orders_get_as_df doesn't set an index on an empty DataFrame."""
         client = create_initialized_client(mock_mt5_import)
-
-        # Test copy_rates_from_as_df with index_keys
-        rate_dtype = np.dtype([
-            ("time", "int64"),
-            ("open", "float64"),
-            ("high", "float64"),
-            ("low", "float64"),
-            ("close", "float64"),
-        ])
-        mock_rates = np.array(
-            [(1640995200, 1.1300, 1.1350, 1.1280, 1.1320)],
-            dtype=rate_dtype,
-        )
-        mock_mt5_import.copy_rates_from.return_value = mock_rates
-
-        result = client.copy_rates_from_as_df(
-            "EURUSD", 16385, datetime(2023, 1, 1, tzinfo=UTC), 10, index_keys="time"
-        )
-        assert result.index.name == "time"
-        assert pd.to_datetime(1640995200, unit="s") in result.index
-
-        # Test copy_ticks_from_as_df with index_keys
-        tick_dtype = np.dtype([
-            ("time", "int64"),
-            ("bid", "float64"),
-            ("ask", "float64"),
-            ("last", "float64"),
-            ("volume", "uint64"),
-            ("time_msc", "int64"),
-            ("flags", "uint32"),
-            ("volume_real", "float64"),
-        ])
-        mock_ticks = np.array(
-            [(1640995200, 1.1300, 1.1301, 0, 0, 1640995200000, 0, 0)],
-            dtype=tick_dtype,
-        )
-        mock_mt5_import.copy_ticks_from.return_value = mock_ticks
-
-        result = client.copy_ticks_from_as_df(
-            "EURUSD", datetime(2023, 1, 1, tzinfo=UTC), 10, 0, index_keys="time_msc"
-        )
-        assert result.index.name == "time_msc"
-        assert pd.to_datetime(1640995200000, unit="ms") in result.index
-
-        # Test orders_get_as_df with index_keys
-        mock_order = MockOrder(
-            ticket=12345,
-            time_setup=1640995200,
-            time_setup_msc=1640995200000,
-            time_done=0,
-            time_done_msc=0,
-            time_expiration=0,
-            type=0,
-            type_time=0,
-            type_filling=0,
-            state=1,
-            magic=0,
-            position_id=0,
-            position_by_id=0,
-            reason=0,
-            volume_initial=0.1,
-            volume_current=0.1,
-            price_open=1.1300,
-            sl=1.1200,
-            tp=1.1400,
-            price_current=1.1301,
-            price_stoplimit=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.orders_get.return_value = [mock_order]
-
-        result = client.orders_get_as_df(index_keys="ticket")
-        assert result.index.name == "ticket"
-        assert 12345 in result.index
-
-        # Test positions_get_as_df with index_keys
-        mock_position = MockPosition(
-            ticket=54321,
-            time=1640995200,
-            time_msc=1640995200000,
-            time_update=1640995200,
-            time_update_msc=1640995200000,
-            type=0,
-            magic=0,
-            identifier=0,
-            reason=0,
-            volume=0.1,
-            price_open=1.1300,
-            sl=1.1200,
-            tp=1.1400,
-            price_current=1.1301,
-            swap=0.0,
-            profit=0.0,
-            symbol="EURUSD",
-            comment="",
-            external_id="",
-        )
-        mock_mt5_import.positions_get.return_value = [mock_position]
-
-        result = client.positions_get_as_df(index_keys="ticket")
-        assert result.index.name == "ticket"
-        assert 54321 in result.index
-
-        # Test empty DataFrame doesn't set index
         mock_mt5_import.orders_get.return_value = []
+
         result = client.orders_get_as_df(index_keys="ticket")
         assert result.empty
         assert result.index.name is None

@@ -410,21 +410,23 @@ class TestMt5Client:
         assert result is mock_result
         getattr(mock_mt5, method_name).assert_called_once_with(*args)
 
-    def test_orders_get(
+    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    def test_orders_positions_get(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
         mocker: MockerFixture,
+        method_name: str,
     ) -> None:
-        """Test orders_get method."""
-        mock_order = mocker.MagicMock()
-        mock_mt5.orders_get.return_value = (mock_order,)
+        """Test orders_get and positions_get methods."""
+        mock_item = mocker.MagicMock()
+        getattr(mock_mt5, method_name).return_value = (mock_item,)
 
-        result = initialized_client.orders_get(symbol="EURUSD")
+        result = getattr(initialized_client, method_name)(symbol="EURUSD")
 
         assert result is not None
         assert len(result) == 1
-        mock_mt5.orders_get.assert_called_once_with(symbol="EURUSD")
+        getattr(mock_mt5, method_name).assert_called_once_with(symbol="EURUSD")
 
     @pytest.mark.parametrize(
         ("method_name", "args", "expected"),
@@ -466,22 +468,6 @@ class TestMt5Client:
 
         assert result is mock_result
         getattr(mock_mt5, method_name).assert_called_once_with(request)
-
-    def test_positions_get(
-        self,
-        initialized_client: Mt5Client,
-        mock_mt5: Mock,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test positions_get method."""
-        mock_position = mocker.MagicMock()
-        mock_mt5.positions_get.return_value = (mock_position,)
-
-        result = initialized_client.positions_get(symbol="EURUSD")
-
-        assert result is not None
-        assert len(result) == 1
-        mock_mt5.positions_get.assert_called_once_with(symbol="EURUSD")
 
     @pytest.mark.parametrize("method_name", ["account_info", "terminal_info"])
     def test_info_methods(
