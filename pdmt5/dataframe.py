@@ -120,22 +120,26 @@ class Mt5DataClient(Mt5Client):
                     self.retry_count,
                 )
                 time.sleep(i)
-            if self.initialize(
+            if not self.initialize(
                 path=path,
                 login=login_value,
                 password=password_value,
                 server=server_value,
                 timeout=timeout_value,
-            ) and (
-                login_value is None
-                or self.login(
+            ):
+                continue
+            try:
+                if login_value is None or self.login(
                     login=login_value,
                     password=password_value,
                     server=server_value,
                     timeout=timeout_value,
-                )
-            ):
-                return
+                ):
+                    return
+            except Exception:
+                self.shutdown()
+                raise
+            self.shutdown()
         error_message = (
             f"MT5 initialize and login failed after {self.retry_count} retries:"
             f" {self.last_error()}"

@@ -781,6 +781,85 @@ class TestMt5DataClient:
         )
         mock_mt5_import.shutdown.assert_called_once()
 
+    def test_context_manager_shuts_down_after_login_failure(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test context manager cleans up initialized MT5 state after login failure."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.return_value = False
+        mock_mt5_import.last_error.return_value = (1, "Login failed")
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
+        with (
+            pytest.raises(
+                Mt5RuntimeError,
+                match=r"MT5 initialize and login failed after 0 retries:",
+            ),
+            Mt5DataClient(
+                mt5=mock_mt5_import,
+                config=config,
+                retry_count=0,
+            ),
+        ):
+            pass
+
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_retries_after_login_failure(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test login failure triggers cleanup before a successful retry."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.side_effect = [True, True]
+        mock_mt5_import.login.side_effect = [False, True]
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=1,
+        )
+
+        client.initialize_and_login_mt5()
+
+        assert mock_mt5_import.initialize.call_count == 2
+        assert mock_mt5_import.login.call_count == 2
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_shuts_down_after_login_exception(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test login exceptions trigger shutdown before the error is re-raised."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.side_effect = RuntimeError("Login crashed")
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=0,
+        )
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 login failed with error:"):
+            client.initialize_and_login_mt5()
+
+        mock_mt5_import.shutdown.assert_called_once()
+
     @pytest.mark.parametrize(
         ("client_method", "mt5_method"),
         [
