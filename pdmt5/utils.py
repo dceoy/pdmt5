@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from functools import wraps
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
@@ -32,10 +33,13 @@ def detect_and_convert_time_to_datetime(
     """
 
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        signature = inspect.signature(func)
+
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            bound_arguments = signature.bind_partial(*args, **kwargs).arguments
             result = func(*args, **kwargs)
-            if skip_toggle and kwargs.get(skip_toggle):
+            if skip_toggle and bound_arguments.get(skip_toggle):
                 return result
             elif isinstance(result, dict):
                 return cast(
@@ -118,8 +122,11 @@ def set_index_if_possible(
     def decorator(
         func: Callable[P, pd.DataFrame],
     ) -> Callable[P, pd.DataFrame]:
+        signature = inspect.signature(func)
+
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> pd.DataFrame:
+            bound_arguments = signature.bind_partial(*args, **kwargs).arguments
             result = func(*args, **kwargs)
             if not isinstance(result, pd.DataFrame):  # type: ignore[reportUnnecessaryIsInstance]
                 error_message = (
@@ -127,8 +134,12 @@ def set_index_if_possible(
                     f"{type(result).__name__}. Expected DataFrame."
                 )
                 raise TypeError(error_message)
-            elif index_parameters and kwargs.get(index_parameters) and not result.empty:
-                return result.set_index(kwargs[index_parameters])
+            elif (
+                index_parameters
+                and bound_arguments.get(index_parameters)
+                and not result.empty
+            ):
+                return result.set_index(bound_arguments[index_parameters])
             else:
                 return result
 

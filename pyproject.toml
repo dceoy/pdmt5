@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "1.0.3"
+version = "1.0.4"
 description = "Low-level MetaTrader 5 wrapper and pandas/dict conversion package"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
@@ -47,9 +47,8 @@ dev = [
   "mkdocstrings[python] >= 1.0.4",
 ]
 
-[tool.uv.build-backend]
-source-include = ["pdmt5/**", "LICENSE"]
-source-exclude = ["tests/**"]
+[tool.hatch.build.targets.sdist]
+only-include = ["pdmt5", "LICENSE", "README.md", "pyproject.toml"]
 
 [tool.ruff]
 line-length = 88

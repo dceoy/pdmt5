@@ -20,7 +20,7 @@ High-level trading orchestration (market-order construction, margin-budget sizin
 - **Comprehensive MT5 Coverage**: Account info, market data, tick data, orders, positions, and more
 - **Canonical MT5 Constants**: Shared parsing for timeframes, COPY_TICKS flags,
   and ORDER_TYPE values with official names, short aliases, or valid integers
-- **Context Manager Support**: Clean initialization and cleanup with `with` statements (initialize only)
+- **Context Manager Support**: Clean initialization and cleanup with `with` statements; `Mt5DataClient` applies `Mt5Config` automatically
 - **Time Series Ready**: OHLCV data with proper datetime indexing
 - **Robust Error Handling**: Custom exceptions with detailed MT5 error information
 - **Direct Order Primitives**: `order_check` / `order_send` wrappers with DataFrame/dict conversions
@@ -60,9 +60,6 @@ config = Mt5Config(
 
 # Use as context manager
 with Mt5DataClient(config=config) as client:
-    # Optional: login when credentials are provided
-    client.login(config.login, config.password, config.server)
-
     # Get account information as DataFrame
     account_info = client.account_info_as_df()
     print(account_info)

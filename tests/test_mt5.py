@@ -96,6 +96,27 @@ class TestMt5Client:
             timeout=60000,
         )
 
+    def test_initialize_with_credentials_without_path(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test initialization passes credentials even without a path."""
+        mock_mt5.initialize.return_value = True
+
+        result = client.initialize(
+            login=12345,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
+        assert result is True
+        mock_mt5.initialize.assert_called_once_with(
+            login=12345,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
     def test_initialize_failure(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test initialization failure."""
         mock_mt5.initialize.return_value = False
@@ -154,26 +175,27 @@ class TestMt5Client:
 
         assert result is False
 
-    @pytest.mark.parametrize(
-        ("return_value", "expected"),
-        [
-            ((500, 3815, "01 Dec 2023"), (500, 3815, "01 Dec 2023")),
-            (None, None),
-        ],
-        ids=["success", "failure"],
-    )
     def test_version(
         self,
         initialized_client: Mt5Client,
         mock_mt5: Mock,
-        return_value: tuple[int, int, str] | None,
-        expected: tuple[int, int, str] | None,
     ) -> None:
         """Test version method."""
-        mock_mt5.version.return_value = return_value
+        mock_mt5.version.return_value = (500, 3815, "01 Dec 2023")
         result = initialized_client.version()
-        assert result == expected
+        assert result == (500, 3815, "01 Dec 2023")
         mock_mt5.version.assert_called_once()
+
+    def test_version_none_response_raises(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+    ) -> None:
+        """Test version method raises Mt5RuntimeError on None response."""
+        mock_mt5.version.return_value = None
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+            initialized_client.version()
 
     @pytest.mark.parametrize(
         ("method_name", "return_value"),

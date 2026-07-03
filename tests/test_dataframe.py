@@ -743,6 +743,123 @@ class TestMt5DataClient:
 
         mock_mt5_import.shutdown.assert_called_once()
 
+    def test_context_manager_uses_config_and_retries(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test context manager uses config credentials and retry_count."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.side_effect = [False, True]
+        mock_mt5_import.login.return_value = True
+        config = Mt5Config(
+            path="/path/to/mt5.exe",
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
+        with Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=1,
+        ) as client:
+            assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
+
+        assert mock_mt5_import.initialize.call_count == 2
+        mock_mt5_import.initialize.assert_any_call(
+            "/path/to/mt5.exe",
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        mock_mt5_import.login.assert_called_once_with(
+            123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_context_manager_shuts_down_after_login_failure(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test context manager cleans up initialized MT5 state after login failure."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.return_value = False
+        mock_mt5_import.last_error.return_value = (1, "Login failed")
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
+        with (
+            pytest.raises(
+                Mt5RuntimeError,
+                match=r"MT5 initialize and login failed after 0 retries:",
+            ),
+            Mt5DataClient(
+                mt5=mock_mt5_import,
+                config=config,
+                retry_count=0,
+            ),
+        ):
+            pass
+
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_retries_after_login_failure(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test login failure triggers cleanup before a successful retry."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.side_effect = [True, True]
+        mock_mt5_import.login.side_effect = [False, True]
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=1,
+        )
+
+        client.initialize_and_login_mt5()
+
+        assert mock_mt5_import.initialize.call_count == 2
+        assert mock_mt5_import.login.call_count == 2
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_shuts_down_after_login_exception(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test login exceptions trigger shutdown before the error is re-raised."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.side_effect = RuntimeError("Login crashed")
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=0,
+        )
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 login failed with error:"):
+            client.initialize_and_login_mt5()
+
+        mock_mt5_import.shutdown.assert_called_once()
+
     @pytest.mark.parametrize(
         ("client_method", "mt5_method"),
         [
@@ -1118,24 +1235,27 @@ class TestMt5DataClient:
             client.order_calc_profit(*args)
         assert context_substr in str(exc_info.value)
 
-    @pytest.mark.parametrize(
-        "return_value",
-        [(2460, 2460, "15 Feb 2022"), None],
-    )
-    def test_version(
-        self,
-        mock_mt5_import: ModuleType | None,
-        return_value: tuple[int, int, str] | None,
-    ) -> None:
-        """Test version with a value and None."""
+    def test_version(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test version with a value."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.version.return_value = return_value
+        mock_mt5_import.version.return_value = (2460, 2460, "15 Feb 2022")
 
         client = create_initialized_client(mock_mt5_import)
         result = client.version()
 
-        assert result == return_value
+        assert result == (2460, 2460, "15 Feb 2022")
+
+    def test_version_raises_on_none(self, mock_mt5_import: ModuleType | None) -> None:
+        """Test version raises Mt5RuntimeError on None."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.version.return_value = None
+
+        client = create_initialized_client(mock_mt5_import)
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+            client.version()
 
     @pytest.mark.parametrize("return_value", [1000, None])
     def test_symbols_total(
@@ -2268,6 +2388,19 @@ class TestMt5DataClientCoverageMissing:
         assert "mt5_terminal_version" in result.columns
         assert "build" in result.columns
 
+    def test_version_methods_raise_mt5_runtime_error_on_none_response(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test version dictionary/dataframe helpers raise Mt5RuntimeError on None."""
+        mock_mt5_import.version.return_value = None
+        client = create_initialized_client(mock_mt5_import)
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+            client.version_as_dict()
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+            client.version_as_df()
+
     def test_last_error_as_dict(self, mock_mt5_import: ModuleType) -> None:
         """Test last_error_as_dict method."""
         mock_mt5_import.last_error.return_value = (123, "Test error")
@@ -2499,6 +2632,30 @@ class TestMt5DataClientCoverageMissing:
         assert "time" in result.columns
         assert result.index.name == "name"
         assert "EURUSD" in result.index
+
+    def test_symbols_get_methods_honor_positional_skip_and_index_args(
+        self, mock_mt5_import: ModuleType
+    ) -> None:
+        """Test positional skip_to_datetime and index_keys arguments are honored."""
+
+        class MockSymbol:
+            def _asdict(self) -> dict[str, Any]:
+                return {
+                    "name": "EURUSD",
+                    "time": 1640995200,
+                    "bid": 1.1300,
+                    "ask": 1.1301,
+                }
+
+        mock_mt5_import.symbols_get.return_value = [MockSymbol()]
+        client = create_initialized_client(mock_mt5_import)
+
+        dict_result = client.symbols_get_as_dicts(None, True)  # noqa: FBT003
+        assert isinstance(dict_result[0]["time"], int)
+
+        df_result = client.symbols_get_as_df(None, False, "name")  # noqa: FBT003
+        assert df_result.index.name == "name"
+        assert isinstance(df_result["time"].iloc[0], pd.Timestamp)
 
     def test_symbol_info_as_dict_with_skip_to_datetime(
         self, mock_mt5_import: ModuleType

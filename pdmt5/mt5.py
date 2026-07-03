@@ -126,6 +126,16 @@ class Mt5Client(BaseModel):
         Returns:
             True if successful, False otherwise.
         """
+        initialize_kwargs = {
+            k: v
+            for k, v in {
+                "login": login,
+                "password": password,
+                "server": server,
+                "timeout": timeout,
+            }.items()
+            if v is not None
+        }
         if path is not None:
             logger.info(
                 "Initializing MT5 connection with path: %s",
@@ -133,17 +143,11 @@ class Mt5Client(BaseModel):
             )
             self._is_initialized = self.mt5.initialize(
                 path,
-                **{
-                    k: v
-                    for k, v in {
-                        "login": login,
-                        "password": password,
-                        "server": server,
-                        "timeout": timeout,
-                    }.items()
-                    if v is not None
-                },
+                **initialize_kwargs,
             )
+        elif initialize_kwargs:
+            logger.info("Initializing MT5 connection with parameters.")
+            self._is_initialized = self.mt5.initialize(**initialize_kwargs)
         else:
             logger.info("Initializing MT5 connection.")
             self._is_initialized = self.mt5.initialize()
@@ -200,7 +204,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving MT5 version information.")
-        return self.mt5.version()
+        response = self.mt5.version()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="version",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def last_error(self) -> tuple[int, str]:
