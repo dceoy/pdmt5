@@ -99,13 +99,6 @@ class Mt5DataClient(Mt5Client):
         """Return a one-row DataFrame from a dictionary."""
         return pd.DataFrame([data])
 
-    @staticmethod
-    def _unwrap_password(password: str | SecretStr | None) -> str | None:
-        """Return a plain password string only at the MT5 call boundary."""
-        if isinstance(password, SecretStr):
-            return password.get_secret_value()
-        return password
-
     def initialize_and_login_mt5(
         self,
         path: str | None = None,

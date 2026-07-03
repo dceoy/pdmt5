@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from pydantic import SecretStr
 
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
@@ -117,6 +118,27 @@ class TestMt5Client:
             timeout=60000,
         )
 
+    def test_initialize_unwraps_secret_password(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test initialization unwraps SecretStr passwords before MT5 calls."""
+        mock_mt5.initialize.return_value = True
+
+        result = client.initialize(
+            login=12345,
+            password=SecretStr("secret"),
+            server="Demo",
+            timeout=60000,
+        )
+
+        assert result is True
+        mock_mt5.initialize.assert_called_once_with(
+            login=12345,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+
     def test_initialize_failure(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test initialization failure."""
         mock_mt5.initialize.return_value = False
@@ -174,6 +196,27 @@ class TestMt5Client:
         result = initialized_client.login(12345, "secret", "Demo")
 
         assert result is False
+
+    def test_login_unwraps_secret_password(
+        self, initialized_client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test login unwraps SecretStr passwords before MT5 calls."""
+        mock_mt5.login.return_value = True
+
+        result = initialized_client.login(
+            login=12345,
+            password=SecretStr("secret"),
+            server="Demo",
+            timeout=60000,
+        )
+
+        assert result is True
+        mock_mt5.login.assert_called_once_with(
+            12345,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
 
     def test_version(
         self,
