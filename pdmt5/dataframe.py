@@ -8,7 +8,7 @@ from datetime import datetime  # noqa: TC003
 from typing import Any, Self, cast
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from .mt5 import Mt5Client, Mt5RuntimeError
 from .utils import (
@@ -27,11 +27,25 @@ class Mt5Config(BaseModel):
         default=None, description="Path to MetaTrader5 terminal EXE file"
     )
     login: int | None = Field(default=None, description="Trading account login")
-    password: str | None = Field(default=None, description="Trading account password")
+    password: str | SecretStr | None = Field(
+        default=None, description="Trading account password"
+    )
     server: str | None = Field(default=None, description="Trading server name")
     timeout: int | None = Field(
         default=None, description="Connection timeout in milliseconds"
     )
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _coerce_password(cls, value: str | SecretStr | None) -> SecretStr | None:
+        """Normalize password inputs to SecretStr for masked serialization.
+
+        Returns:
+            Password value stored as SecretStr when provided.
+        """
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(value)
 
 
 class Mt5DataClient(Mt5Client):
@@ -85,17 +99,22 @@ class Mt5DataClient(Mt5Client):
         """Return a one-row DataFrame from a dictionary."""
         return pd.DataFrame([data])
 
+    @staticmethod
+    def _unwrap_password(password: str | SecretStr | None) -> str | None:
+        """Return a plain password string only at the MT5 call boundary."""
+        if isinstance(password, SecretStr):
+            return password.get_secret_value()
+        return password
+
     def initialize_and_login_mt5(
         self,
         path: str | None = None,
         login: int | None = None,
-        password: str | None = None,
+        password: str | SecretStr | None = None,
         server: str | None = None,
         timeout: int | None = None,
     ) -> None:
-        """Initialize MetaTrader5 connection with retry logic.
-
-        This method overrides the base class to add retry logic and use config values.
+        """Initialize an MT5 connection with config-aware retry and login support.
 
         Args:
             path: Path to terminal EXE file (overrides config).
@@ -109,7 +128,9 @@ class Mt5DataClient(Mt5Client):
         """
         path = path or self.config.path
         login_value = login if login is not None else self.config.login
-        password_value = password if password is not None else self.config.password
+        password_value = self._unwrap_password(
+            password if password is not None else self.config.password
+        )
         server_value = server if server is not None else self.config.server
         timeout_value = timeout if timeout is not None else self.config.timeout
         for i in range(1 + max(0, self.retry_count)):
