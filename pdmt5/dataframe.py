@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime  # noqa: TC003
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
@@ -52,6 +52,15 @@ class Mt5DataClient(Mt5Client):
         ge=0,
         description="Number of retry attempts for connection initialization",
     )
+
+    def __enter__(self) -> Self:
+        """Context manager entry using config-aware initialization.
+
+        Returns:
+            The initialized client instance.
+        """
+        self.initialize_and_login_mt5()
+        return self
 
     @staticmethod
     def _as_dicts(items: Any) -> list[dict[str, Any]]:  # noqa: ANN401

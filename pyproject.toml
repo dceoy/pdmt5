@@ -47,9 +47,8 @@ dev = [
   "mkdocstrings[python] >= 1.0.4",
 ]
 
-[tool.uv.build-backend]
-source-include = ["pdmt5/**", "LICENSE"]
-source-exclude = ["tests/**"]
+[tool.hatch.build.targets.sdist]
+only-include = ["pdmt5", "LICENSE", "README.md", "pyproject.toml"]
 
 [tool.ruff]
 line-length = 88
