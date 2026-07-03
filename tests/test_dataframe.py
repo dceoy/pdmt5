@@ -254,107 +254,6 @@ class MockSymbolInfo(NamedTuple):
     path: str
 
 
-# Shared minimal symbol info fixture reused across symbol-related tests.
-_MOCK_SYMBOL_INFO = MockSymbolInfo(
-    custom=False,
-    chart_mode=0,
-    select=True,
-    visible=True,
-    session_deals=0,
-    session_buy_orders=0,
-    session_sell_orders=0,
-    volume=0,
-    volumehigh=0,
-    volumelow=0,
-    time=1640995200,
-    digits=5,
-    spread=10,
-    spread_float=True,
-    ticks_bookdepth=10,
-    trade_calc_mode=0,
-    trade_mode=4,
-    start_time=0,
-    expiration_time=0,
-    trade_stops_level=0,
-    trade_freeze_level=0,
-    trade_exemode=1,
-    swap_mode=1,
-    swap_rollover3days=3,
-    margin_hedged_use_leg=False,
-    expiration_mode=7,
-    filling_mode=1,
-    order_mode=127,
-    order_gtc_mode=0,
-    option_mode=0,
-    option_right=0,
-    bid=1.13200,
-    bidhigh=1.13500,
-    bidlow=1.13000,
-    ask=1.13210,
-    askhigh=1.13510,
-    asklow=1.13010,
-    last=1.13205,
-    lasthigh=1.13505,
-    lastlow=1.13005,
-    volume_real=1000000.0,
-    volumehigh_real=2000000.0,
-    volumelow_real=500000.0,
-    option_strike=0.0,
-    point=0.00001,
-    trade_tick_value=1.0,
-    trade_tick_value_profit=1.0,
-    trade_tick_value_loss=1.0,
-    trade_tick_size=0.00001,
-    trade_contract_size=100000.0,
-    trade_accrued_interest=0.0,
-    trade_face_value=0.0,
-    trade_liquidity_rate=0.0,
-    volume_min=0.01,
-    volume_max=500.0,
-    volume_step=0.01,
-    volume_limit=0.0,
-    swap_long=-0.5,
-    swap_short=-0.3,
-    margin_initial=0.0,
-    margin_maintenance=0.0,
-    session_volume=0.0,
-    session_turnover=0.0,
-    session_interest=0.0,
-    session_buy_orders_volume=0.0,
-    session_sell_orders_volume=0.0,
-    session_open=1.13100,
-    session_close=1.13200,
-    session_aw=0.0,
-    session_price_settlement=0.0,
-    session_price_limit_min=0.0,
-    session_price_limit_max=0.0,
-    margin_hedged=50000.0,
-    price_change=0.0010,
-    price_volatility=0.0,
-    price_theoretical=0.0,
-    price_greeks_delta=0.0,
-    price_greeks_theta=0.0,
-    price_greeks_gamma=0.0,
-    price_greeks_vega=0.0,
-    price_greeks_rho=0.0,
-    price_greeks_omega=0.0,
-    price_sensitivity=0.0,
-    basis="",
-    category="",
-    currency_base="EUR",
-    currency_profit="USD",
-    currency_margin="USD",
-    bank="",
-    description="Euro vs US Dollar",
-    exchange="",
-    formula="",
-    isin="",
-    name="EURUSD",
-    page="",
-    path="Forex\\Majors\\EURUSD",
-)
-
-
 class MockTick(NamedTuple):
     """Mock tick structure."""
 
@@ -610,6 +509,60 @@ def _mock_position_no_time_update() -> object:
 def _mock_order_no_time_done() -> object:
     """Factory for a history order row without time_done."""
     return _MockOrderNoTimeDone()
+
+
+def _build_history_order_row(position_id: int) -> MockOrder:
+    """Build a history order row with the given position_id."""
+    return MockOrder(
+        ticket=123456,
+        time_setup=1640995200,
+        time_setup_msc=1640995200000,
+        time_done=0,
+        time_done_msc=0,
+        time_expiration=0,
+        type=0,
+        type_time=0,
+        type_filling=0,
+        state=1,
+        magic=0,
+        position_id=position_id,
+        position_by_id=0,
+        reason=0,
+        volume_initial=0.1,
+        volume_current=0.1,
+        price_open=1.1300,
+        sl=1.1200,
+        tp=1.1400,
+        price_current=1.1301,
+        price_stoplimit=0.0,
+        symbol="EURUSD",
+        comment="",
+        external_id="",
+    )
+
+
+def _build_history_deal_row(position_id: int) -> MockDeal:
+    """Build a history deal row with the given position_id."""
+    return MockDeal(
+        ticket=123456,
+        order=789012,
+        time=1640995200,
+        time_msc=1640995200000,
+        type=0,
+        entry=0,
+        magic=0,
+        position_id=position_id,
+        reason=0,
+        volume=0.1,
+        price=1.1300,
+        commission=-2.5,
+        swap=0.0,
+        profit=10.0,
+        fee=0.0,
+        symbol="EURUSD",
+        comment="",
+        external_id="",
+    )
 
 
 class _MockSymbolRow:
@@ -1414,110 +1367,98 @@ class TestMt5DataClient:
         (
             "position_id",
             "call_kwargs",
-            "assert_index",
-            "assert_col",
+            "expectation",
             "expected_mt5_args",
             "expected_mt5_kwargs",
         ),
         [
-            (
+            pytest.param(
                 0,
                 {"ticket": 123456, "index_keys": "ticket"},
-                123456,
-                None,
+                ("index", 123456),
                 (),
                 {"ticket": 123456},
+                id="ticket",
             ),
-            (
+            pytest.param(
                 345678,
                 {"position": 345678},
-                None,
                 ("position_id", 345678),
                 (),
                 {"position": 345678},
+                id="position",
             ),
-            (
+            pytest.param(
                 0,
                 {
                     "date_from": datetime(2022, 1, 1, tzinfo=UTC),
                     "date_to": datetime(2022, 1, 2, tzinfo=UTC),
                     "symbol": "EURUSD",
                 },
-                None,
                 ("symbol", "EURUSD"),
                 (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
                 {"group": "*EURUSD*"},
+                id="symbol",
             ),
-            (
+            pytest.param(
                 0,
                 {
                     "date_from": datetime(2022, 1, 1, tzinfo=UTC),
                     "date_to": datetime(2022, 1, 2, tzinfo=UTC),
                     "group": "*USD*",
                 },
-                None,
                 ("symbol", "EURUSD"),
                 (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
                 {"group": "*USD*"},
+                id="group",
             ),
         ],
-        ids=["ticket", "position", "symbol", "group"],
     )
-    def test_history_orders_get_filters(
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "row_factory"),
+        [
+            pytest.param(
+                "history_orders_get_as_df",
+                "history_orders_get",
+                _build_history_order_row,
+                id="orders",
+            ),
+            pytest.param(
+                "history_deals_get_as_df",
+                "history_deals_get",
+                _build_history_deal_row,
+                id="deals",
+            ),
+        ],
+    )
+    def test_history_get_filters(
         self,
         mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        row_factory: Callable[[int], object],
         position_id: int,
         call_kwargs: dict[str, Any],
-        assert_index: int | None,
-        assert_col: tuple[str, Any] | None,
+        expectation: tuple[str, Any],
         expected_mt5_args: tuple[Any, ...],
         expected_mt5_kwargs: dict[str, Any],
     ) -> None:
-        """Test history_orders_get_as_df with various filter kwargs."""
+        """Test history_orders_get_as_df/history_deals_get_as_df with filters."""
         assert mock_mt5_import is not None
-        mock_orders = [
-            MockOrder(
-                ticket=123456,
-                time_setup=1640995200,
-                time_setup_msc=1640995200000,
-                time_done=0,
-                time_done_msc=0,
-                time_expiration=0,
-                type=0,
-                type_time=0,
-                type_filling=0,
-                state=1,
-                magic=0,
-                position_id=position_id,
-                position_by_id=0,
-                reason=0,
-                volume_initial=0.1,
-                volume_current=0.1,
-                price_open=1.1300,
-                sl=1.1200,
-                tp=1.1400,
-                price_current=1.1301,
-                price_stoplimit=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
         client = Mt5DataClient(mt5=mock_mt5_import)
         mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_orders_get.return_value = mock_orders
+        getattr(mock_mt5_import, mt5_method).return_value = [row_factory(position_id)]
         client.initialize()
-        df_result = client.history_orders_get_as_df(**call_kwargs)
+        df_result = getattr(client, client_method)(**call_kwargs)
 
         assert isinstance(df_result, pd.DataFrame)
         assert len(df_result) == 1
-        if assert_index is not None:
-            assert df_result.index[0] == assert_index
+        key, val = expectation
+        if key == "index":
+            assert df_result.index[0] == val
         else:
-            assert assert_col is not None
-            col, val = assert_col
-            assert df_result.iloc[0][col] == val
-        mock_mt5_import.history_orders_get.assert_called_once_with(
+            assert df_result.iloc[0][key] == val
+        getattr(mock_mt5_import, mt5_method).assert_called_once_with(
             *expected_mt5_args, **expected_mt5_kwargs
         )
 
@@ -2317,105 +2258,6 @@ class TestMt5DataClientRetryLogic:
         ):
             client._validate_history_input(**kwargs)  # type: ignore[reportPrivateUsage]
 
-    @pytest.mark.parametrize(
-        (
-            "call_kwargs",
-            "assert_index",
-            "assert_col",
-            "expected_mt5_args",
-            "expected_mt5_kwargs",
-        ),
-        [
-            (
-                {"ticket": 123456, "index_keys": "ticket"},
-                123456,
-                None,
-                (),
-                {"ticket": 123456},
-            ),
-            (
-                {"position": 345678},
-                None,
-                ("position_id", 345678),
-                (),
-                {"position": 345678},
-            ),
-            (
-                {
-                    "date_from": datetime(2022, 1, 1, tzinfo=UTC),
-                    "date_to": datetime(2022, 1, 2, tzinfo=UTC),
-                    "symbol": "EURUSD",
-                },
-                None,
-                ("symbol", "EURUSD"),
-                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
-                {"group": "*EURUSD*"},
-            ),
-            (
-                {
-                    "date_from": datetime(2022, 1, 1, tzinfo=UTC),
-                    "date_to": datetime(2022, 1, 2, tzinfo=UTC),
-                    "group": "*USD*",
-                },
-                None,
-                ("symbol", "EURUSD"),
-                (datetime(2022, 1, 1, tzinfo=UTC), datetime(2022, 1, 2, tzinfo=UTC)),
-                {"group": "*USD*"},
-            ),
-        ],
-        ids=["ticket", "position", "symbol", "group"],
-    )
-    def test_history_deals_get_filter(
-        self,
-        mock_mt5_import: ModuleType | None,
-        call_kwargs: dict[str, Any],
-        assert_index: int | None,
-        assert_col: tuple[str, Any] | None,
-        expected_mt5_args: tuple[Any, ...],
-        expected_mt5_kwargs: dict[str, Any],
-    ) -> None:
-        """Test history_deals_get_as_df with ticket, position, symbol, or group."""
-        assert mock_mt5_import is not None
-        mock_deals = [
-            MockDeal(
-                ticket=123456,
-                order=789012,
-                time=1640995200,
-                time_msc=1640995200000,
-                type=0,
-                entry=0,
-                magic=0,
-                position_id=345678,
-                reason=0,
-                volume=0.1,
-                price=1.1300,
-                commission=-2.5,
-                swap=0.0,
-                profit=10.0,
-                fee=0.0,
-                symbol="EURUSD",
-                comment="",
-                external_id="",
-            ),
-        ]
-        client = Mt5DataClient(mt5=mock_mt5_import)
-        mock_mt5_import.initialize.return_value = True
-        mock_mt5_import.history_deals_get.return_value = mock_deals
-        client.initialize()
-        df_result = client.history_deals_get_as_df(**call_kwargs)
-
-        assert isinstance(df_result, pd.DataFrame)
-        assert len(df_result) == 1
-        if assert_index is not None:
-            assert df_result.index[0] == assert_index
-        else:
-            assert assert_col is not None
-            col, val = assert_col
-            assert df_result.iloc[0][col] == val
-        mock_mt5_import.history_deals_get.assert_called_once_with(
-            *expected_mt5_args, **expected_mt5_kwargs
-        )
-
     def test_context_manager_with_exception(
         self, mock_mt5_import: ModuleType | None
     ) -> None:
@@ -2782,8 +2624,11 @@ class TestMt5DataClientCoverageMissing:
             assert result["time"] == 1640995200
         assert "time_msc" in result
 
-    def test_market_book_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
-        """Test market_book_get_as_dicts method."""
+    @pytest.mark.parametrize("skip_to_datetime", [True, False], ids=["skip", "convert"])
+    def test_market_book_get_as_dicts(
+        self, mock_mt5_import: ModuleType, skip_to_datetime: bool
+    ) -> None:
+        """Test market_book_get_as_dicts with skip_to_datetime True and default."""
         mock_book_entry = MockBookInfo(
             type=0,
             price=1.1300,
@@ -2793,14 +2638,9 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import.market_book_get.return_value = [mock_book_entry]
         client = create_initialized_client(mock_mt5_import)
 
-        # Test without convert_time
-        result = client.market_book_get_as_dicts("EURUSD", skip_to_datetime=True)
-        assert len(result) == 1
-        assert result[0]["price"] == pytest.approx(1.1300)
-        assert result[0]["type"] == 0
-
-        # Test with convert_time (default True)
-        result = client.market_book_get_as_dicts("EURUSD")
+        result = client.market_book_get_as_dicts(
+            "EURUSD", skip_to_datetime=skip_to_datetime
+        )
         assert len(result) == 1
         assert result[0]["price"] == pytest.approx(1.1300)
         assert result[0]["type"] == 0
@@ -3278,7 +3118,11 @@ class TestMt5DataClientCoverageMissing:
         assert result.index.name is None
 
     def test_set_index_if_possible_decorator(self, mock_mt5_import: ModuleType) -> None:
-        """Test set_index_if_possible decorator behavior."""
+        """Test set_index_if_possible decorator does not set index when unrequested.
+
+        The empty-DataFrame-with-index_keys branch is covered by
+        test_orders_get_as_df_empty_result_has_no_index.
+        """
         client = Mt5DataClient(mt5=mock_mt5_import)
 
         # Mock symbol data
@@ -3291,20 +3135,13 @@ class TestMt5DataClientCoverageMissing:
                     "ask": 1.1301,
                 }
 
-        mock_symbol = MockSymbol()
-        mock_mt5_import.symbols_get.return_value = [mock_symbol]
+        mock_mt5_import.symbols_get.return_value = [MockSymbol()]
         mock_mt5_import.initialize.return_value = True
 
         client.initialize()
 
         # Test with index_keys=None (should not set index)
         result = client.symbols_get_as_df(index_keys=None)
-        assert result.index.name is None
-
-        # Test with empty DataFrame (should not set index even with index_keys)
-        mock_mt5_import.symbols_get.return_value = []
-        result = client.symbols_get_as_df(index_keys="name")
-        assert result.empty
         assert result.index.name is None
 
     def test_detect_and_convert_time_decorator(
@@ -3329,7 +3166,7 @@ class TestMt5DataClientCoverageMissing:
 
         # With convert_time=True (default)
         result = client.symbol_info_as_dict("EURUSD")
-        assert "time" in result
+        assert isinstance(result["time"], pd.Timestamp)
 
         # With skip_to_datetime=True
         result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=True)
@@ -3339,25 +3176,12 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import.symbols_get.return_value = [mock_symbol]
 
         result = client.symbols_get_as_dicts()
-        assert "time" in result[0]
+        assert isinstance(result, list)
+        assert isinstance(result[0], dict)
+        assert isinstance(result[0]["time"], pd.Timestamp)
 
         result = client.symbols_get_as_dicts(skip_to_datetime=True)
         assert isinstance(result[0]["time"], int)
-
-    def test_detect_and_convert_time_decorator_list_return(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test detect_and_convert_time decorator with list return value."""
-        mock_mt5_import.symbols_get.return_value = [_MOCK_SYMBOL_INFO]
-        client = create_initialized_client(mock_mt5_import)
-
-        result = client.symbols_get_as_dicts()
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert isinstance(result[0], dict)
-        assert "time" in result[0]
-        assert isinstance(result[0]["time"], pd.Timestamp)
 
     def test_detect_and_convert_time_decorator_non_dict_object(
         self,
@@ -3371,34 +3195,6 @@ class TestMt5DataClientCoverageMissing:
         # This should trigger the else path
         result = client.symbols_total()
         assert result == 42  # Should return unchanged
-
-    def test_convert_time_decorator_dict_return_with_convert_time_true(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test detect_and_convert_time decorator with dict return."""
-        mock_mt5_import.symbol_info.return_value = _MOCK_SYMBOL_INFO
-        client = create_initialized_client(mock_mt5_import)
-
-        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=False)
-        assert isinstance(result, dict)
-        assert "time" in result
-        assert isinstance(result["time"], pd.Timestamp)
-
-    def test_convert_time_decorator_list_with_dicts_convert_time_true(
-        self,
-        mock_mt5_import: ModuleType,
-    ) -> None:
-        """Test detect_and_convert_time decorator with list of dicts."""
-        mock_mt5_import.symbols_get.return_value = [_MOCK_SYMBOL_INFO]
-        client = create_initialized_client(mock_mt5_import)
-
-        result = client.symbols_get_as_dicts(skip_to_datetime=False)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert isinstance(result[0], dict)
-        assert "time" in result[0]
-        assert isinstance(result[0]["time"], pd.Timestamp)
 
     def test_convert_time_decorator_non_standard_return_type(
         self,
