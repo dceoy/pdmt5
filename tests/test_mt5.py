@@ -74,70 +74,63 @@ class TestMt5Client:
         assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
         mock_mt5.initialize.assert_called_once_with()
 
-    def test_initialize_with_parameters(
-        self, client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize(
+        ("path", "password_input"),
+        [
+            ("/path/to/mt5.exe", "secret"),
+            ("/path/to/mt5.exe", SecretStr("secret")),
+            (None, "secret"),
+            (None, SecretStr("secret")),
+        ],
+        ids=[
+            "with-path-str-password",
+            "with-path-secretstr-password",
+            "without-path-str-password",
+            "without-path-secretstr-password",
+        ],
+    )
+    def test_initialize_with_password_types(
+        self,
+        client: Mt5Client,
+        mock_mt5: Mock,
+        path: str | None,
+        password_input: str | SecretStr,
     ) -> None:
-        """Test initialization with parameters."""
+        """Test initialization unwraps passwords of different types before MT5 calls."""
         mock_mt5.initialize.return_value = True
 
-        result = client.initialize(
-            path="/path/to/mt5.exe",
-            login=12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
+        if path:
+            result = client.initialize(
+                path=path,
+                login=12345,
+                password=password_input,
+                server="Demo",
+                timeout=60000,
+            )
+        else:
+            result = client.initialize(
+                login=12345,
+                password=password_input,
+                server="Demo",
+                timeout=60000,
+            )
 
         assert result is True
-        mock_mt5.initialize.assert_called_once_with(
-            "/path/to/mt5.exe",
-            login=12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
-
-    def test_initialize_with_credentials_without_path(
-        self, client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test initialization passes credentials even without a path."""
-        mock_mt5.initialize.return_value = True
-
-        result = client.initialize(
-            login=12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
-
-        assert result is True
-        mock_mt5.initialize.assert_called_once_with(
-            login=12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
-
-    def test_initialize_unwraps_secret_password(
-        self, client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test initialization unwraps SecretStr passwords before MT5 calls."""
-        mock_mt5.initialize.return_value = True
-
-        result = client.initialize(
-            login=12345,
-            password=SecretStr("secret"),
-            server="Demo",
-            timeout=60000,
-        )
-
-        assert result is True
-        mock_mt5.initialize.assert_called_once_with(
-            login=12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
+        if path:
+            mock_mt5.initialize.assert_called_once_with(
+                path,
+                login=12345,
+                password="secret",
+                server="Demo",
+                timeout=60000,
+            )
+        else:
+            mock_mt5.initialize.assert_called_once_with(
+                login=12345,
+                password="secret",
+                server="Demo",
+                timeout=60000,
+            )
 
     def test_initialize_failure(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test initialization failure."""
@@ -176,18 +169,52 @@ class TestMt5Client:
         mock_mt5.initialize.assert_called_once()
         assert client._is_initialized is True  # type: ignore[reportPrivateUsage]
 
-    def test_login_success(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
-        """Test successful login."""
+    @pytest.mark.parametrize(
+        ("password_input", "timeout"),
+        [
+            ("secret", 60000),
+            (SecretStr("secret"), 60000),
+            ("secret", None),
+            (SecretStr("secret"), None),
+        ],
+        ids=[
+            "str-password-with-timeout",
+            "secretstr-password-with-timeout",
+            "str-password-without-timeout",
+            "secretstr-password-without-timeout",
+        ],
+    )
+    def test_login_with_password_types(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        password_input: str | SecretStr,
+        timeout: int | None,
+    ) -> None:
+        """Test login unwraps passwords of different types before MT5 calls."""
         mock_mt5.login.return_value = True
 
-        result = initialized_client.login(
-            login=12345, password="secret", server="Demo", timeout=60000
-        )
+        if timeout:
+            result = initialized_client.login(
+                login=12345,
+                password=password_input,
+                server="Demo",
+                timeout=timeout,
+            )
+        else:
+            result = initialized_client.login(
+                login=12345, password=password_input, server="Demo"
+            )
 
         assert result is True
-        mock_mt5.login.assert_called_once_with(
-            12345, password="secret", server="Demo", timeout=60000
-        )
+        if timeout:
+            mock_mt5.login.assert_called_once_with(
+                12345, password="secret", server="Demo", timeout=timeout
+            )
+        else:
+            mock_mt5.login.assert_called_once_with(
+                12345, password="secret", server="Demo"
+            )
 
     def test_login_failure(self, initialized_client: Mt5Client, mock_mt5: Mock) -> None:
         """Test login failure."""
@@ -196,27 +223,6 @@ class TestMt5Client:
         result = initialized_client.login(12345, "secret", "Demo")
 
         assert result is False
-
-    def test_login_unwraps_secret_password(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test login unwraps SecretStr passwords before MT5 calls."""
-        mock_mt5.login.return_value = True
-
-        result = initialized_client.login(
-            login=12345,
-            password=SecretStr("secret"),
-            server="Demo",
-            timeout=60000,
-        )
-
-        assert result is True
-        mock_mt5.login.assert_called_once_with(
-            12345,
-            password="secret",
-            server="Demo",
-            timeout=60000,
-        )
 
     def test_version(
         self,
@@ -852,16 +858,6 @@ class TestMt5Client:
         result = getattr(initialized_client, method_name)(**kwargs)
         assert result is not None
         getattr(mock_mt5, method_name).assert_called_with(**kwargs)
-
-    def test_login_without_timeout(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
-    ) -> None:
-        """Test login method without timeout parameter."""
-        mock_mt5.login.return_value = True
-
-        result = initialized_client.login(12345, "secret", "Demo")
-        assert result is True
-        mock_mt5.login.assert_called_with(12345, password="secret", server="Demo")
 
     def test_empty_market_book_get(
         self, initialized_client: Mt5Client, mock_mt5: Mock

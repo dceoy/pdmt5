@@ -624,11 +624,19 @@ class TestMt5Config:
         assert config.server is None
         assert config.timeout is None
 
-    def test_custom_config(self) -> None:
-        """Test custom configuration."""
+    @pytest.mark.parametrize(
+        "password_input",
+        [
+            "secret",
+            SecretStr("secret"),
+        ],
+        ids=["str-password", "secretstr-password"],
+    )
+    def test_config_password_coercion(self, password_input: str | SecretStr) -> None:
+        """Test Mt5Config coerces password inputs to SecretStr."""
         config = Mt5Config(
             login=123456,
-            password="secret",
+            password=password_input,
             server="Demo-Server",
             timeout=30000,
         )
@@ -655,13 +663,6 @@ class TestMt5Config:
         assert isinstance(dumped_password, SecretStr)
         assert str(dumped_password) == _MASKED_SECRET
         assert config.model_dump(mode="json")["password"] == _MASKED_SECRET
-
-    def test_config_accepts_secretstr_input(self) -> None:
-        """Test SecretStr inputs are preserved without exposing the secret."""
-        config = Mt5Config(password=SecretStr("secret"))
-
-        assert isinstance(config.password, SecretStr)
-        assert config.password.get_secret_value() == "secret"
 
 
 class TestMt5DataClient:
