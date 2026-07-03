@@ -10,7 +10,7 @@ from functools import wraps
 from types import ModuleType  # noqa: TC003
 from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -105,12 +105,19 @@ class Mt5Client(BaseModel):
         """Context manager exit."""
         self.shutdown()
 
+    @staticmethod
+    def _unwrap_password(password: str | SecretStr | None) -> str | None:
+        """Return a plain password string only at the MT5 call boundary."""
+        if isinstance(password, SecretStr):
+            return password.get_secret_value()
+        return password
+
     @_log_mt5_last_status_code
     def initialize(
         self,
         path: str | None = None,
         login: int | None = None,
-        password: str | None = None,
+        password: str | SecretStr | None = None,
         server: str | None = None,
         timeout: int | None = None,
     ) -> bool:
@@ -130,7 +137,7 @@ class Mt5Client(BaseModel):
             k: v
             for k, v in {
                 "login": login,
-                "password": password,
+                "password": self._unwrap_password(password),
                 "server": server,
                 "timeout": timeout,
             }.items()
@@ -157,7 +164,7 @@ class Mt5Client(BaseModel):
     def login(
         self,
         login: int,
-        password: str | None = None,
+        password: str | SecretStr | None = None,
         server: str | None = None,
         timeout: int | None = None,
     ) -> bool:
@@ -179,7 +186,7 @@ class Mt5Client(BaseModel):
             **{
                 k: v
                 for k, v in {
-                    "password": password,
+                    "password": self._unwrap_password(password),
                     "server": server,
                     "timeout": timeout,
                 }.items()

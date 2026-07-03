@@ -22,7 +22,7 @@ High-level trading orchestration (market-order construction, margin-budget sizin
   and ORDER_TYPE values with official names, short aliases, or valid integers
 - **Context Manager Support**: Clean initialization and cleanup with `with` statements; `Mt5DataClient` applies `Mt5Config` automatically
 - **Time Series Ready**: OHLCV data with proper datetime indexing
-- **Robust Error Handling**: Custom exceptions with detailed MT5 error information
+- **Robust Error Handling**: Custom exceptions with detailed MT5 failure messages
 - **Direct Order Primitives**: `order_check` / `order_send` wrappers with DataFrame/dict conversions
 
 ## Requirements
@@ -335,7 +335,7 @@ This project maintains high code quality standards:
 
 - **Type Checking**: Strict mode with pyright
 - **Linting**: Comprehensive ruff configuration with 40+ rule categories
-- **Testing**: pytest with coverage tracking (minimum 90%)
+- **Testing**: pytest with 100% branch coverage enforcement
 - **Documentation**: Google-style docstrings
 
 ## Error Handling
@@ -352,8 +352,7 @@ try:
         )
 except Mt5RuntimeError as e:
     print(f"MT5 Error: {e}")
-    print(f"Error code: {e.error_code}")
-    print(f"Description: {e.description}")
+    print("Inspect the exception message for the MT5 status details.")
 ```
 
 ## Limitations

@@ -4,9 +4,9 @@
 
 This is a Python package for pandas-friendly MetaTrader 5 access. Core code
 lives in `pdmt5/`: `mt5.py` wraps MT5 calls, `dataframe.py` adds DataFrame/dict
-conversions, `trading.py` contains trading helpers, and `constants.py`/`utils.py`
-hold shared parsing and utilities. Tests live in `tests/`, documentation in
-`docs/`, and project settings in `pyproject.toml`. Keep `uv.lock` in sync.
+conversions, and `constants.py`/`utils.py` hold shared parsing and utilities.
+Tests live in `tests/`, documentation in `docs/`, and project settings in
+`pyproject.toml`. Keep `uv.lock` in sync.
 
 ## Build, Test, and Development Commands
 
@@ -56,7 +56,6 @@ Windows/MT5 assumptions reviewers need to verify.
 
 ## Security & Configuration Tips
 
-Do not commit MT5 account credentials, terminal paths containing secrets, or live
-trading configuration. Use `Mt5Config` inputs or environment-specific setup in
-local scripts. Preserve dry-run pathways and mock-based tests when modifying
-trading behavior.
+Do not commit MT5 account credentials or terminal paths containing secrets. Use
+`Mt5Config` inputs or environment-specific setup in local scripts. Preserve
+mock-based tests when modifying MT5 connection or data-access behavior.

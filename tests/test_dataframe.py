@@ -8,7 +8,7 @@ from typing import Any, NamedTuple, cast
 import numpy as np
 import pandas as pd
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from pytest_mock import MockerFixture
 
 from pdmt5.dataframe import Mt5Config, Mt5DataClient
@@ -55,6 +55,7 @@ _MT5_METHODS = (
     "market_book_release",
     "market_book_get",
 )
+_MASKED_SECRET = "*" * 10
 
 
 @pytest.fixture(autouse=True)
@@ -623,16 +624,25 @@ class TestMt5Config:
         assert config.server is None
         assert config.timeout is None
 
-    def test_custom_config(self) -> None:
-        """Test custom configuration."""
+    @pytest.mark.parametrize(
+        "password_input",
+        [
+            "secret",
+            SecretStr("secret"),
+        ],
+        ids=["str-password", "secretstr-password"],
+    )
+    def test_config_password_coercion(self, password_input: str | SecretStr) -> None:
+        """Test Mt5Config coerces password inputs to SecretStr."""
         config = Mt5Config(
             login=123456,
-            password="secret",
+            password=password_input,
             server="Demo-Server",
             timeout=30000,
         )
         assert config.login == 123456
-        assert config.password == "secret"  # noqa: S105
+        assert isinstance(config.password, SecretStr)
+        assert config.password.get_secret_value() == "secret"
         assert config.server == "Demo-Server"
         assert config.timeout == 30000
 
@@ -641,6 +651,18 @@ class TestMt5Config:
         config = Mt5Config()
         with pytest.raises(ValidationError):
             config.login = 123456
+
+    def test_config_masks_password_in_string_representations(self) -> None:
+        """Test SecretStr masks the password in printable config output."""
+        config = Mt5Config(password="secret")
+        dumped_password = config.model_dump()["password"]
+
+        assert "secret" not in repr(config)
+        assert "secret" not in str(config)
+        assert "secret" not in repr(config.model_dump())
+        assert isinstance(dumped_password, SecretStr)
+        assert str(dumped_password) == _MASKED_SECRET
+        assert config.model_dump(mode="json")["password"] == _MASKED_SECRET
 
 
 class TestMt5DataClient:
@@ -666,7 +688,30 @@ class TestMt5DataClient:
         client = Mt5DataClient(mt5=mock_mt5_import, config=config)
         assert client.config == config
         assert client.config.login == 123456
+        assert isinstance(client.config.password, SecretStr)
+        assert client.config.password.get_secret_value() == "test"
         assert client.config.timeout == 30000
+
+    def test_client_masks_nested_password_in_dumps(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test nested client config dumps do not expose a literal password."""
+        assert mock_mt5_import is not None
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=Mt5Config(password="secret"),
+        )
+        dumped_password = client.model_dump()["config"]["password"]
+
+        assert "secret" not in repr(client)
+        assert "secret" not in str(client)
+        assert "secret" not in repr(client.model_dump())
+        assert isinstance(dumped_password, SecretStr)
+        assert str(dumped_password) == _MASKED_SECRET
+        assert (
+            client.model_dump(mode="json", exclude={"mt5"})["config"]["password"]
+            == _MASKED_SECRET
+        )
 
     def test_mt5_module_default_factory(self, mocker: MockerFixture) -> None:
         """Test initialization with default mt5 module factory."""
@@ -859,6 +904,35 @@ class TestMt5DataClient:
             client.initialize_and_login_mt5()
 
         mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_unwraps_secret_password_override(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test SecretStr overrides are unwrapped before MT5 calls."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.return_value = True
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
+
+        client.initialize_and_login_mt5(
+            login=123456,
+            password=SecretStr("secret"),
+            server="Demo",
+            timeout=60000,
+        )
+
+        mock_mt5_import.initialize.assert_called_once_with(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        mock_mt5_import.login.assert_called_once_with(
+            123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
 
     @pytest.mark.parametrize(
         ("client_method", "mt5_method"),
