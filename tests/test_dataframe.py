@@ -2655,35 +2655,34 @@ class TestMt5DataClientCoverageMissing:
         )
         assert result == expected
 
-    def test_symbols_get_as_df_with_params(self, mock_mt5_import: ModuleType) -> None:
-        """Test symbols_get_as_df with new parameters."""
-
-        # Create a minimal mock symbol with required fields
-        class MockSymbol:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "name": "EURUSD",
-                    "time": 1640995200,
-                    "time_msc": 1640995200000,
-                    "time_digits": 1640995200,
-                    "bid": 1.1300,
-                    "ask": 1.1301,
-                }
-
-        mock_symbol = MockSymbol()
-        mock_mt5_import.symbols_get.return_value = [mock_symbol]
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "index_keys", "time_type", "expected_index_name"),
+        [
+            pytest.param(True, None, (int, np.integer), None, id="skip-to-datetime"),
+            pytest.param(
+                False, "name", pd.Timestamp, "name", id="convert-with-index-keys"
+            ),
+        ],
+    )
+    def test_symbols_get_as_df_with_params(
+        self,
+        mock_mt5_import: ModuleType,
+        skip_to_datetime: bool,
+        index_keys: str | None,
+        time_type: type | tuple[type, ...],
+        expected_index_name: str | None,
+    ) -> None:
+        """Test symbols_get_as_df with skip_to_datetime and index_keys parameters."""
+        mock_mt5_import.symbols_get.return_value = [_MockSymbolRow()]
         client = create_initialized_client(mock_mt5_import)
 
-        # Test with skip_to_datetime=True
-        result = client.symbols_get_as_df(skip_to_datetime=True)
-        assert isinstance(result["time"].iloc[0], (int, np.integer))
-        assert result.index.name is None
-
-        # Test with skip_to_datetime=False and index_keys
-        result = client.symbols_get_as_df(skip_to_datetime=False, index_keys="name")
-        assert "time" in result.columns
-        assert result.index.name == "name"
-        assert "EURUSD" in result.index
+        result = client.symbols_get_as_df(
+            skip_to_datetime=skip_to_datetime, index_keys=index_keys
+        )
+        assert isinstance(result["time"].iloc[0], time_type)
+        assert result.index.name == expected_index_name
+        if expected_index_name is not None:
+            assert "EURUSD" in result.index
 
     def test_symbols_get_methods_honor_positional_skip_and_index_args(
         self, mock_mt5_import: ModuleType
@@ -2709,61 +2708,50 @@ class TestMt5DataClientCoverageMissing:
         assert df_result.index.name == "name"
         assert isinstance(df_result["time"].iloc[0], pd.Timestamp)
 
-    def test_symbol_info_as_dict_with_skip_to_datetime(
-        self, mock_mt5_import: ModuleType
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "row"),
+        [
+            pytest.param(
+                "symbol_info_as_dict",
+                "symbol_info",
+                _MockSymbolRow(),
+                id="symbol_info",
+            ),
+            pytest.param(
+                "symbol_info_tick_as_dict",
+                "symbol_info_tick",
+                MockTick(
+                    time=1640995200,
+                    bid=1.1300,
+                    ask=1.1301,
+                    last=0,
+                    volume=0,
+                    time_msc=1640995200000,
+                    flags=0,
+                    volume_real=0,
+                ),
+                id="symbol_info_tick",
+            ),
+        ],
+    )
+    def test_symbol_info_dict_methods_with_skip_to_datetime(
+        self,
+        mock_mt5_import: ModuleType,
+        client_method: str,
+        mt5_method: str,
+        row: object,
     ) -> None:
-        """Test symbol_info_as_dict with skip_to_datetime parameter."""
-
-        # Create a minimal mock symbol with required fields
-        class MockSymbol:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "name": "EURUSD",
-                    "time": 1640995200,
-                    "time_msc": 1640995200000,
-                    "time_digits": 1640995200,
-                    "bid": 1.1300,
-                    "ask": 1.1301,
-                }
-
-        mock_symbol = MockSymbol()
-        mock_mt5_import.symbol_info.return_value = mock_symbol
+        """Test symbol_info_as_dict/symbol_info_tick_as_dict with skip_to_datetime."""
+        getattr(mock_mt5_import, mt5_method).return_value = row
         client = create_initialized_client(mock_mt5_import)
 
         # Test with skip_to_datetime=True
-        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=True)
+        result = getattr(client, client_method)("EURUSD", skip_to_datetime=True)
         assert result["time"] == 1640995200
         assert isinstance(result["time"], int)
 
         # Test with convert_time=True (default)
-        result = client.symbol_info_as_dict("EURUSD")
-        assert "time" in result
-        assert "time_msc" in result
-
-    def test_symbol_info_tick_as_dict_with_skip_to_datetime(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test symbol_info_tick_as_dict with skip_to_datetime parameter."""
-        mock_tick = MockTick(
-            time=1640995200,
-            bid=1.1300,
-            ask=1.1301,
-            last=0,
-            volume=0,
-            time_msc=1640995200000,
-            flags=0,
-            volume_real=0,
-        )
-        mock_mt5_import.symbol_info_tick.return_value = mock_tick
-        client = create_initialized_client(mock_mt5_import)
-
-        # Test with skip_to_datetime=True
-        result = client.symbol_info_tick_as_dict("EURUSD", skip_to_datetime=True)
-        assert result["time"] == 1640995200
-        assert isinstance(result["time"], int)
-
-        # Test with convert_time=True (default)
-        result = client.symbol_info_tick_as_dict("EURUSD")
+        result = getattr(client, client_method)("EURUSD")
         assert "time" in result
         assert "time_msc" in result
 
