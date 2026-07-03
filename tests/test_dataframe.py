@@ -2474,18 +2474,16 @@ class TestMt5DataClientCoverageMissing:
         assert "mt5_terminal_version" in result.columns
         assert "build" in result.columns
 
+    @pytest.mark.parametrize("client_method", ["version_as_dict", "version_as_df"])
     def test_version_methods_raise_mt5_runtime_error_on_none_response(
-        self, mock_mt5_import: ModuleType
+        self, mock_mt5_import: ModuleType, client_method: str
     ) -> None:
         """Test version dictionary/dataframe helpers raise Mt5RuntimeError on None."""
         mock_mt5_import.version.return_value = None
         client = create_initialized_client(mock_mt5_import)
 
         with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
-            client.version_as_dict()
-
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
-            client.version_as_df()
+            getattr(client, client_method)()
 
     def test_last_error_as_dict(self, mock_mt5_import: ModuleType) -> None:
         """Test last_error_as_dict method."""
@@ -2709,13 +2707,23 @@ class TestMt5DataClientCoverageMissing:
         assert isinstance(df_result["time"].iloc[0], pd.Timestamp)
 
     @pytest.mark.parametrize(
-        ("client_method", "mt5_method", "row"),
+        ("client_method", "mt5_method", "row", "skip_to_datetime", "time_type"),
         [
             pytest.param(
                 "symbol_info_as_dict",
                 "symbol_info",
                 _MockSymbolRow(),
-                id="symbol_info",
+                True,
+                int,
+                id="symbol_info-skip",
+            ),
+            pytest.param(
+                "symbol_info_as_dict",
+                "symbol_info",
+                _MockSymbolRow(),
+                False,
+                pd.Timestamp,
+                id="symbol_info-convert",
             ),
             pytest.param(
                 "symbol_info_tick_as_dict",
@@ -2730,7 +2738,26 @@ class TestMt5DataClientCoverageMissing:
                     flags=0,
                     volume_real=0,
                 ),
-                id="symbol_info_tick",
+                True,
+                int,
+                id="symbol_info_tick-skip",
+            ),
+            pytest.param(
+                "symbol_info_tick_as_dict",
+                "symbol_info_tick",
+                MockTick(
+                    time=1640995200,
+                    bid=1.1300,
+                    ask=1.1301,
+                    last=0,
+                    volume=0,
+                    time_msc=1640995200000,
+                    flags=0,
+                    volume_real=0,
+                ),
+                False,
+                pd.Timestamp,
+                id="symbol_info_tick-convert",
             ),
         ],
     )
@@ -2740,19 +2767,19 @@ class TestMt5DataClientCoverageMissing:
         client_method: str,
         mt5_method: str,
         row: object,
+        skip_to_datetime: bool,
+        time_type: type,
     ) -> None:
         """Test symbol_info_as_dict/symbol_info_tick_as_dict with skip_to_datetime."""
         getattr(mock_mt5_import, mt5_method).return_value = row
         client = create_initialized_client(mock_mt5_import)
 
-        # Test with skip_to_datetime=True
-        result = getattr(client, client_method)("EURUSD", skip_to_datetime=True)
-        assert result["time"] == 1640995200
-        assert isinstance(result["time"], int)
-
-        # Test with convert_time=True (default)
-        result = getattr(client, client_method)("EURUSD")
-        assert "time" in result
+        result = getattr(client, client_method)(
+            "EURUSD", skip_to_datetime=skip_to_datetime
+        )
+        assert isinstance(result["time"], time_type)
+        if time_type is int:
+            assert result["time"] == 1640995200
         assert "time_msc" in result
 
     def test_market_book_get_as_dicts(self, mock_mt5_import: ModuleType) -> None:
@@ -2803,14 +2830,23 @@ class TestMt5DataClientCoverageMissing:
             ),
         ],
     )
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "time_type"),
+        [
+            pytest.param(True, int, id="skip"),
+            pytest.param(False, pd.Timestamp, id="convert"),
+        ],
+    )
     def test_copy_rates_as_dicts(
         self,
         mock_mt5_import: ModuleType,
+        skip_to_datetime: bool,
+        time_type: type,
         mt5_method: str,
         client_method: str,
         args: tuple[object, ...],
     ) -> None:
-        """Test copy_rates_*_as_dicts with and without datetime conversion."""
+        """Test copy_rates_*_as_dicts with skip_to_datetime True and default."""
         rate_dtype = np.dtype([
             ("time", "int64"),
             ("open", "float64"),
@@ -2825,14 +2861,13 @@ class TestMt5DataClientCoverageMissing:
         getattr(mock_mt5_import, mt5_method).return_value = mock_rates
         client = create_initialized_client(mock_mt5_import)
 
-        result = getattr(client, client_method)(*args, skip_to_datetime=True)
+        result = getattr(client, client_method)(
+            *args, skip_to_datetime=skip_to_datetime
+        )
         assert len(result) == 1
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        result = getattr(client, client_method)(*args)
-        assert len(result) == 1
-        assert "time" in result[0]
+        assert isinstance(result[0]["time"], time_type)
+        if time_type is int:
+            assert result[0]["time"] == 1640995200
 
     @pytest.mark.parametrize(
         ("mt5_method", "client_method", "args"),
@@ -2854,14 +2889,23 @@ class TestMt5DataClientCoverageMissing:
             ),
         ],
     )
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "time_type"),
+        [
+            pytest.param(True, int, id="skip"),
+            pytest.param(False, pd.Timestamp, id="convert"),
+        ],
+    )
     def test_copy_ticks_as_dicts(
         self,
         mock_mt5_import: ModuleType,
+        skip_to_datetime: bool,
+        time_type: type,
         mt5_method: str,
         client_method: str,
         args: tuple[object, ...],
     ) -> None:
-        """Test copy_ticks_*_as_dicts with and without datetime conversion."""
+        """Test copy_ticks_*_as_dicts with skip_to_datetime True and default."""
         tick_dtype = np.dtype([
             ("time", "int64"),
             ("bid", "float64"),
@@ -2879,14 +2923,13 @@ class TestMt5DataClientCoverageMissing:
         getattr(mock_mt5_import, mt5_method).return_value = mock_ticks
         client = create_initialized_client(mock_mt5_import)
 
-        result = getattr(client, client_method)(*args, skip_to_datetime=True)
+        result = getattr(client, client_method)(
+            *args, skip_to_datetime=skip_to_datetime
+        )
         assert len(result) == 1
-        assert result[0]["time"] == 1640995200
-        assert isinstance(result[0]["time"], int)
-
-        result = getattr(client, client_method)(*args)
-        assert len(result) == 1
-        assert "time" in result[0]
+        assert isinstance(result[0]["time"], time_type)
+        if time_type is int:
+            assert result[0]["time"] == 1640995200
         assert "time_msc" in result[0]
 
     @pytest.mark.parametrize(
@@ -2895,10 +2938,8 @@ class TestMt5DataClientCoverageMissing:
             "mt5_method",
             "row",
             "call_kwargs",
-            "identity_key",
-            "identity_value",
-            "time_key",
-            "extra_time_key",
+            "identity",
+            "time_keys",
         ),
         [
             pytest.param(
@@ -2906,10 +2947,8 @@ class TestMt5DataClientCoverageMissing:
                 "symbols_get",
                 _MockSymbolRow(),
                 {},
-                "name",
-                "EURUSD",
-                "time",
-                "time_msc",
+                ("name", "EURUSD"),
+                ("time", "time_msc"),
                 id="symbols",
             ),
             pytest.param(
@@ -2942,10 +2981,8 @@ class TestMt5DataClientCoverageMissing:
                     external_id="",
                 ),
                 {},
-                "ticket",
-                12345,
-                "time_setup",
-                "time_setup_msc",
+                ("ticket", 12345),
+                ("time_setup", "time_setup_msc"),
                 id="orders",
             ),
             pytest.param(
@@ -2973,10 +3010,8 @@ class TestMt5DataClientCoverageMissing:
                     external_id="",
                 ),
                 {},
-                "ticket",
-                12345,
-                "time",
-                "time_msc",
+                ("ticket", 12345),
+                ("time", "time_msc"),
                 id="positions",
             ),
             pytest.param(
@@ -3012,10 +3047,8 @@ class TestMt5DataClientCoverageMissing:
                     "date_from": datetime(2023, 1, 1, tzinfo=UTC),
                     "date_to": datetime(2023, 1, 2, tzinfo=UTC),
                 },
-                "ticket",
-                12345,
-                "time_setup",
-                "time_done_msc",
+                ("ticket", 12345),
+                ("time_setup", "time_done_msc"),
                 id="history_orders",
             ),
             pytest.param(
@@ -3045,40 +3078,43 @@ class TestMt5DataClientCoverageMissing:
                     "date_from": datetime(2023, 1, 1, tzinfo=UTC),
                     "date_to": datetime(2023, 1, 2, tzinfo=UTC),
                 },
-                "ticket",
-                12345,
-                "time",
-                "time_msc",
+                ("ticket", 12345),
+                ("time", "time_msc"),
                 id="history_deals",
             ),
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "time_type"),
+        [
+            pytest.param(True, int, id="skip"),
+            pytest.param(False, pd.Timestamp, id="convert"),
         ],
     )
     def test_get_as_dicts_skip_to_datetime(
         self,
         mock_mt5_import: ModuleType,
+        skip_to_datetime: bool,
+        time_type: type,
         client_method: str,
         mt5_method: str,
         row: object,
         call_kwargs: dict[str, Any],
-        identity_key: str,
-        identity_value: object,
-        time_key: str,
-        extra_time_key: str,
+        identity: tuple[str, object],
+        time_keys: tuple[str, str],
     ) -> None:
-        """Test *_as_dicts methods with skip_to_datetime=True and default conversion."""
+        """Test *_as_dicts methods with skip_to_datetime True and default conversion."""
         getattr(mock_mt5_import, mt5_method).return_value = [row]
         client = create_initialized_client(mock_mt5_import)
+        identity_key, identity_value = identity
+        time_key, extra_time_key = time_keys
 
-        # Test without convert_time
-        result = getattr(client, client_method)(**call_kwargs, skip_to_datetime=True)
+        result = getattr(client, client_method)(
+            **call_kwargs, skip_to_datetime=skip_to_datetime
+        )
         assert len(result) == 1
         assert result[0][identity_key] == identity_value
-        assert isinstance(result[0][time_key], int)
-
-        # Test with convert_time (default True)
-        result = getattr(client, client_method)(**call_kwargs)
-        assert len(result) == 1
-        assert time_key in result[0]
+        assert isinstance(result[0][time_key], time_type)
         assert extra_time_key in result[0]
 
     @pytest.mark.parametrize(

@@ -288,21 +288,30 @@ class TestDetectAndConvertTimeToDatetime:
 
         assert_result(get_data())
 
-    def test_decorator_with_skip_toggle(self) -> None:
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "expected_type", "expected_value"),
+        [
+            pytest.param(
+                False, pd.Timestamp, pd.Timestamp("2024-01-01 00:00:00"), id="convert"
+            ),
+            pytest.param(True, int, 1704067200, id="skip"),
+        ],
+    )
+    def test_decorator_with_skip_toggle(
+        self,
+        skip_to_datetime: bool,
+        expected_type: type,
+        expected_value: object,
+    ) -> None:
         """Test decorator with skip_toggle parameter."""
 
         @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
         def get_data(skip_to_datetime: bool = False) -> dict[str, Any]:  # noqa: ARG001
             return {"time": 1704067200, "price": 100.5}
 
-        # With conversion (default)
-        result1 = get_data(skip_to_datetime=False)
-        assert isinstance(result1["time"], pd.Timestamp)
-
-        # Without conversion
-        result2 = get_data(skip_to_datetime=True)
-        assert isinstance(result2["time"], int)
-        assert result2["time"] == 1704067200
+        result = get_data(skip_to_datetime=skip_to_datetime)
+        assert isinstance(result["time"], expected_type)
+        assert result["time"] == expected_value
 
     @pytest.mark.parametrize(
         ("return_value"),
