@@ -288,40 +288,44 @@ class TestDetectAndConvertTimeToDatetime:
 
         assert_result(get_data())
 
-    def test_decorator_with_skip_toggle(self) -> None:
+    @pytest.mark.parametrize(
+        ("skip_to_datetime", "expected_type", "expected_value"),
+        [
+            pytest.param(
+                False, pd.Timestamp, pd.Timestamp("2024-01-01 00:00:00"), id="convert"
+            ),
+            pytest.param(True, int, 1704067200, id="skip"),
+        ],
+    )
+    def test_decorator_with_skip_toggle(
+        self,
+        skip_to_datetime: bool,
+        expected_type: type,
+        expected_value: object,
+    ) -> None:
         """Test decorator with skip_toggle parameter."""
 
         @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
         def get_data(skip_to_datetime: bool = False) -> dict[str, Any]:  # noqa: ARG001
             return {"time": 1704067200, "price": 100.5}
 
-        # With conversion (default)
-        result1 = get_data(skip_to_datetime=False)
-        assert isinstance(result1["time"], pd.Timestamp)
+        result = get_data(skip_to_datetime=skip_to_datetime)
+        assert isinstance(result["time"], expected_type)
+        assert result["time"] == expected_value
 
-        # Without conversion
-        result2 = get_data(skip_to_datetime=True)
-        assert isinstance(result2["time"], int)
-        assert result2["time"] == 1704067200
-
-    def test_decorator_with_other_result_type(self) -> None:
+    @pytest.mark.parametrize(
+        ("return_value"),
+        ["test string", 42, None],
+        ids=["string", "number", "none"],
+    )
+    def test_decorator_with_other_result_type(self, return_value: object) -> None:
         """Test decorator with function returning other types."""
 
         @detect_and_convert_time_to_datetime()
-        def get_string() -> str:
-            return "test string"
+        def get_data() -> object:
+            return return_value
 
-        @detect_and_convert_time_to_datetime()
-        def get_number() -> int:
-            return 42
-
-        @detect_and_convert_time_to_datetime()
-        def get_none() -> None:
-            return None
-
-        assert get_string() == "test string"
-        assert get_number() == 42
-        assert get_none() is None
+        assert get_data() == return_value
 
     def test_decorator_with_list_of_mixed_types(self) -> None:
         """Test decorator with list containing mixed types."""
