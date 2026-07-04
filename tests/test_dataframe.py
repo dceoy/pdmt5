@@ -2160,45 +2160,56 @@ class TestMt5DataClientRetryLogic:
         assert dict_result["time"] == pd.to_datetime(1640995200, unit="s")
         assert dict_result["flags"] == 134
 
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            # Inherited from Mt5Client
+            "initialize",
+            "shutdown",
+            "account_info",
+            "terminal_info",
+            "symbol_info",
+            "symbol_info_tick",
+            "copy_rates_from",
+            "copy_rates_from_pos",
+            "copy_rates_range",
+            "copy_ticks_from",
+            "copy_ticks_range",
+            "orders_get",
+            "positions_get",
+            "history_orders_get",
+            "history_deals_get",
+            # Added by Mt5DataClient
+            "account_info_as_df",
+            "terminal_info_as_df",
+            "copy_rates_from_as_df",
+            "copy_rates_from_pos_as_df",
+            "copy_rates_range_as_df",
+            "copy_ticks_from_as_df",
+            "copy_ticks_range_as_df",
+            "symbols_get_as_df",
+            "orders_get_as_df",
+            "positions_get_as_df",
+            "history_orders_get_as_df",
+            "history_deals_get_as_df",
+        ],
+    )
+    def test_inheritance_exposes_expected_methods(
+        self, mock_mt5_import: ModuleType | None, method_name: str
+    ) -> None:
+        """Test Mt5DataClient exposes inherited and DataFrame helper methods."""
+        assert mock_mt5_import is not None
+        client = Mt5DataClient(mt5=mock_mt5_import)
+
+        assert hasattr(client, method_name)
+
     def test_inheritance_behavior(self, mock_mt5_import: ModuleType | None) -> None:
-        """Test that Mt5DataClient properly inherits from Mt5Client."""
+        """Test that Mt5DataClient properly inherits parent-class behavior."""
         assert mock_mt5_import is not None
         client = Mt5DataClient(mt5=mock_mt5_import)
 
         assert isinstance(client, Mt5Client)
 
-        # Test that Mt5DataClient has access to parent class methods
-        assert hasattr(client, "initialize")
-        assert hasattr(client, "shutdown")
-        assert hasattr(client, "account_info")
-        assert hasattr(client, "terminal_info")
-        assert hasattr(client, "symbol_info")
-        assert hasattr(client, "symbol_info_tick")
-        assert hasattr(client, "copy_rates_from")
-        assert hasattr(client, "copy_rates_from_pos")
-        assert hasattr(client, "copy_rates_range")
-        assert hasattr(client, "copy_ticks_from")
-        assert hasattr(client, "copy_ticks_range")
-        assert hasattr(client, "orders_get")
-        assert hasattr(client, "positions_get")
-        assert hasattr(client, "history_orders_get")
-        assert hasattr(client, "history_deals_get")
-
-        # Test that Mt5DataClient has its own methods
-        assert hasattr(client, "account_info_as_df")
-        assert hasattr(client, "terminal_info_as_df")
-        assert hasattr(client, "copy_rates_from_as_df")
-        assert hasattr(client, "copy_rates_from_pos_as_df")
-        assert hasattr(client, "copy_rates_range_as_df")
-        assert hasattr(client, "copy_ticks_from_as_df")
-        assert hasattr(client, "copy_ticks_range_as_df")
-        assert hasattr(client, "symbols_get_as_df")
-        assert hasattr(client, "orders_get_as_df")
-        assert hasattr(client, "positions_get_as_df")
-        assert hasattr(client, "history_orders_get_as_df")
-        assert hasattr(client, "history_deals_get_as_df")
-
-        # Test that parent class methods work correctly
         mock_mt5_import.initialize.return_value = True
         mock_mt5_import.last_error.return_value = (0, "No error")
 
@@ -3143,45 +3154,6 @@ class TestMt5DataClientCoverageMissing:
         # Test with index_keys=None (should not set index)
         result = client.symbols_get_as_df(index_keys=None)
         assert result.index.name is None
-
-    def test_detect_and_convert_time_decorator(
-        self, mock_mt5_import: ModuleType
-    ) -> None:
-        """Test detect_and_convert_time_to_datetime decorator behavior."""
-        client = create_initialized_client(mock_mt5_import)
-
-        # Test with dict result
-        class MockSymbol:
-            def _asdict(self) -> dict[str, Any]:
-                return {
-                    "name": "EURUSD",
-                    "time": 1640995200,
-                    "time_msc": 1640995200000,
-                    "bid": 1.1300,
-                    "ask": 1.1301,
-                }
-
-        mock_symbol = MockSymbol()
-        mock_mt5_import.symbol_info.return_value = mock_symbol
-
-        # With convert_time=True (default)
-        result = client.symbol_info_as_dict("EURUSD")
-        assert isinstance(result["time"], pd.Timestamp)
-
-        # With skip_to_datetime=True
-        result = client.symbol_info_as_dict("EURUSD", skip_to_datetime=True)
-        assert isinstance(result["time"], int)
-
-        # Test with list result
-        mock_mt5_import.symbols_get.return_value = [mock_symbol]
-
-        result = client.symbols_get_as_dicts()
-        assert isinstance(result, list)
-        assert isinstance(result[0], dict)
-        assert isinstance(result[0]["time"], pd.Timestamp)
-
-        result = client.symbols_get_as_dicts(skip_to_datetime=True)
-        assert isinstance(result[0]["time"], int)
 
     def test_detect_and_convert_time_decorator_non_dict_object(
         self,
