@@ -42,8 +42,8 @@ These utilities are primarily used internally by Mt5DataClient methods through d
 
 ```python
 # Example of how decorators are applied internally
-@detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
 @set_index_if_possible(index_parameters="index_keys")
+@detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
 def some_method(
     self,
     skip_to_datetime: bool = False,
@@ -52,6 +52,11 @@ def some_method(
     # Method implementation
     pass
 ```
+
+`set_index_if_possible` must stay the outermost decorator: time conversion only
+touches DataFrame _columns_, so the index has to be set after the conversion
+has run. Reversing the order would move the raw epoch column into the index
+before conversion, leaving an unconverted integer index.
 
 ## Time Conversion Rules
 
@@ -116,7 +121,7 @@ The utilities module follows these principles:
 
 ## Performance Considerations
 
-- Conversions only happen when requested
+- Conversions run by default; opt out per call with `skip_to_datetime=True`
 - Dictionary operations use shallow copies
 - DataFrame operations use efficient pandas methods
 - Decorators add minimal overhead

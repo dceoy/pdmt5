@@ -41,18 +41,15 @@ config = Mt5Config(
     timeout=60000,
 )
 
-# Low-level API access with context manager
+# Low-level API access with context manager (initializes on entry)
 with Mt5Client() as client:
-    client.initialize()
-    client.login(config.login, config.password, config.server)
+    client.login(12345678, "your_password", "YourBroker-Server")
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Pandas-friendly interface with context-managed initialization
+# Pandas-friendly interface: entering the context manager initializes the
+# connection and logs in with the config credentials automatically
 with Mt5DataClient(config=config) as client:
-    # Optional: login when credentials are provided
-    client.login(config.login, config.password, config.server)
-
     # Get symbol information as DataFrame
     symbols_df = client.symbols_get_as_df()
     # Get OHLCV data as DataFrame

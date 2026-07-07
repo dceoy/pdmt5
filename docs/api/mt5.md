@@ -35,44 +35,46 @@ from pdmt5.mt5 import Mt5Client
 # Create client
 client = Mt5Client(mt5=mt5)
 
-# Use as context manager
+# Use as context manager: entering the block initializes the connection
+# and raises Mt5RuntimeError if initialization fails
 with client:
-    # Initialize connection
-    success = client.initialize()
-    if success:
-        print("Connected to MetaTrader 5")
+    print("Connected to MetaTrader 5")
 
-        # Get version info
-        version = client.version()
-        print(f"MT5 Version: {version}")
+    # Get version info
+    version = client.version()
+    print(f"MT5 Version: {version}")
 
-        # Get account info
-        account = client.account_info()
-        print(f"Account: {account}")
+    # Get account info
+    account = client.account_info()
+    print(f"Account: {account}")
 ```
 
 ### Connection with Login
 
 ```python
 with client:
-    # Initialize with path
-    client.initialize(path="C:\\Program Files\\MetaTrader 5\\terminal64.exe")
-
-    # Login to specific account
+    # The context manager already initialized the connection;
+    # log in to a specific account
     success = client.login(
         login=12345, password="your_password", server="broker_server"
     )
 
     if success:
         print("Logged in successfully")
+
+# To initialize with custom arguments (e.g. a terminal path), call
+# initialize() explicitly instead of relying on the context manager entry
+client.initialize(path="C:\\Program Files\\MetaTrader 5\\terminal64.exe")
+try:
+    ...
+finally:
+    client.shutdown()
 ```
 
 ### Symbol Operations
 
 ```python
 with client:
-    client.initialize()
-
     # Get total number of symbols
     total = client.symbols_total()
     print(f"Total symbols: {total}")
@@ -100,8 +102,6 @@ from datetime import datetime
 import MetaTrader5 as mt5
 
 with client:
-    client.initialize()
-
     # Get OHLCV rates from specific date
     rates = client.copy_rates_from(
         symbol="EURUSD",
@@ -131,7 +131,6 @@ with client:
 
 ```python
 with client:
-    client.initialize()
     client.login(12345, "password", "server")
 
     # Get current positions
@@ -165,8 +164,6 @@ with client:
 from datetime import datetime
 
 with client:
-    client.initialize()
-
     # Get historical orders
     history_orders = client.history_orders_get(
         date_from=datetime(2024, 1, 1), date_to=datetime(2024, 1, 31)
@@ -185,8 +182,6 @@ with client:
 
 ```python
 with client:
-    client.initialize()
-
     # Subscribe to market depth
     success = client.market_book_add("EURUSD")
     if success:
@@ -214,9 +209,9 @@ try:
 finally:
     client.shutdown()
 
-# Context manager (recommended)
+# Context manager (recommended): initializes on entry, shuts down on exit,
+# and raises Mt5RuntimeError if initialization fails
 with Mt5Client(mt5=mt5) as client:
-    client.initialize()
     # Your trading operations
     account = client.account_info()
 ```
@@ -230,24 +225,27 @@ from pdmt5.mt5 import Mt5RuntimeError
 
 try:
     with client:
-        client.initialize()
         rates = client.copy_rates_from("INVALID", mt5.TIMEFRAME_H1, datetime.now(), 100)
 except Mt5RuntimeError as e:
     print(f"MetaTrader 5 error: {e}")
 ```
 
+Entering the context manager also raises `Mt5RuntimeError` when the terminal
+cannot be initialized, and invalid argument combinations (e.g. mutually
+exclusive filters) raise `ValueError`.
+
 ## Logging
 
-The client includes comprehensive logging for all operations:
+The client includes comprehensive logging for all operations. Operations are
+logged at INFO level, and non-OK MT5 status codes at WARNING level:
 
 ```python
 import logging
 
-# Enable debug logging to see all MT5 operations
-logging.basicConfig(level=logging.DEBUG)
+# Enable INFO logging to see all MT5 operations
+logging.basicConfig(level=logging.INFO)
 
-with client:
-    client.initialize()  # Will log initialization details
+with client:  # Entry logs the initialization details
     account = client.account_info()  # Will log account retrieval
 ```
 
@@ -308,10 +306,14 @@ with client:
 
 ## Best Practices
 
-1. **Always use context manager** for automatic connection management
+1. **Always use context manager** for automatic connection management -
+   entering the `with` block initializes the connection and raises
+   `Mt5RuntimeError` on failure
 2. **Handle errors gracefully** with try-except blocks
-3. **Initialize before operations** - call `initialize()` after creating the client
-4. **Use logging** to debug connection and operation issues
-5. **Check return values** - many methods return None on failure
+3. **Call `initialize()` explicitly only outside the context manager** - for
+   example to pass a terminal path; pair it with `shutdown()`
+4. **Use logging** (INFO level) to debug connection and operation issues
+5. **Expect exceptions on failure** - data accessors raise `Mt5RuntimeError`
+   when MT5 returns None, and conflicting filter arguments raise `ValueError`
 6. **Use appropriate timeframes** and date ranges for data requests
 7. **Subscribe/unsubscribe** to market book properly to avoid resource leaks
