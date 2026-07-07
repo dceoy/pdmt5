@@ -67,6 +67,20 @@ timeframe = parse_timeframe("TIMEFRAME_H1")  # 16385
 tick_flags = parse_copy_ticks("ALL")  # -1
 ```
 
+## Timestamps and Timezones
+
+MT5 epoch timestamps are labels on the **trade server's wall clock** (typically
+UTC+2 or UTC+3), not true UTC. pdmt5 converts them to **timezone-naive**
+`datetime64`/`Timestamp` values that preserve those labels:
+
+- Converted datetimes are naive and represent server time — do **not** treat
+  them as UTC.
+- `date_from`/`date_to` arguments (e.g. in `history_deals_get`,
+  `copy_rates_range`, `copy_ticks_range`) are compared against server-labeled
+  epochs by the MetaTrader5 API, so pass datetimes expressed in server time.
+- To work with the raw epochs instead, pass `skip_to_datetime=True` to the
+  `*_as_dict`/`*_as_df` methods.
+
 ## Requirements
 
 - Python 3.11+

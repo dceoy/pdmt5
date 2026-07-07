@@ -438,7 +438,7 @@ class Mt5Client(BaseModel):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
             count: Number of bars to retrieve.
 
         Returns:
@@ -517,8 +517,8 @@ class Mt5Client(BaseModel):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
             Array of rates or None.
@@ -554,7 +554,7 @@ class Mt5Client(BaseModel):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
             count: Number of ticks to retrieve.
             flags: Tick flags.
 
@@ -591,8 +591,8 @@ class Mt5Client(BaseModel):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
             flags: Tick flags.
 
         Returns:
@@ -863,8 +863,8 @@ class Mt5Client(BaseModel):
         """Get the number of orders in trading history within the specified interval.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
             Number of historical orders.
@@ -895,8 +895,8 @@ class Mt5Client(BaseModel):
         """Get orders from trading history with the ability to filter by ticket or position.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
             group: Group filter. Mutually exclusive with ticket and position.
             ticket: Order ticket filter. Mutually exclusive with other filters.
             position: Position ticket filter. Mutually exclusive with other
@@ -954,8 +954,8 @@ class Mt5Client(BaseModel):
         """Get the number of deals in trading history within the specified interval.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
             Number of historical deals.
@@ -986,8 +986,8 @@ class Mt5Client(BaseModel):
         """Get deals from trading history within the specified interval with the ability to filter by ticket or position.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
             group: Group filter. Mutually exclusive with ticket and position.
             ticket: Order ticket filter. Mutually exclusive with other filters.
             position: Position ticket filter. Mutually exclusive with other

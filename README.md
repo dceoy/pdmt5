@@ -355,11 +355,29 @@ except Mt5RuntimeError as e:
     print("Inspect the exception message for the MT5 status details.")
 ```
 
+## Timestamps and Timezones
+
+MT5 epoch timestamps (`time`, `time_msc`, `time_setup`, etc.) are labels on the
+**trade server's wall clock** (typically UTC+2 or UTC+3), not true UTC. pdmt5
+converts them to **timezone-naive** `datetime64`/`Timestamp` values that
+preserve those labels:
+
+- Converted datetimes are naive and represent server time. Do **not** treat
+  them as UTC; comparing them against `datetime.now(UTC)` or persisting them
+  with a UTC label introduces a 2–3 hour bias.
+- `date_from`/`date_to` arguments (e.g. in `history_deals_get`,
+  `copy_rates_range`, `copy_ticks_range`) are compared against server-labeled
+  epochs by the MetaTrader5 API, so pass datetimes expressed in server time.
+- To skip the conversion and work with the raw epochs, pass
+  `skip_to_datetime=True` to the `*_as_dict`/`*_as_df` methods.
+
 ## Limitations
 
 - **Windows Only**: Due to MetaTrader5 API requirements
 - **MT5 Terminal Required**: The MetaTrader 5 terminal must be installed
 - **Single Thread**: MT5 API is not thread-safe
+- **Server-Time Timestamps**: Returned datetimes are timezone-naive server
+  time, not UTC (see [Timestamps and Timezones](#timestamps-and-timezones))
 
 ## Contributing
 

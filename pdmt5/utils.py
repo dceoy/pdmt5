@@ -25,6 +25,9 @@ def detect_and_convert_time_to_datetime(
     - list: converts time values in each dictionary item
     - DataFrame: converts time columns
 
+    MT5 epoch timestamps are trade-server wall-clock labels, so the converted
+    datetimes are timezone-naive and represent server time, not UTC.
+
     Args:
         skip_toggle: Name of the parameter to skip conversion if set to False.
 
