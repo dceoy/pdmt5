@@ -117,6 +117,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-bs-level="2"><a href="#timestamps-and-timezones" class="nav-link">Timestamps and Timezones</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
             <li class="nav-item" data-bs-level="2"><a href="#requirements" class="nav-link">Requirements</a>
               <ul class="nav flex-column">
               </ul>
@@ -174,31 +178,41 @@
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mi">60000</span><span class="p">,</span>
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="p">)</span>
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># Low-level API access with context manager</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># Low-level API access with context manager (initializes on entry)</span>
 <a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="k">with</span> <span class="n">Mt5Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">client</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">client</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">login</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">password</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">account</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">account_info</span><span class="p">()</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="n">rates</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_rates_from</span><span class="p">(</span><span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span> <span class="n">mt5</span><span class="o">.</span><span class="n">TIMEFRAME_H1</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="mi">100</span><span class="p">)</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="c1"># Pandas-friendly interface with context-managed initialization</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">client</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="mi">12345678</span><span class="p">,</span> <span class="s2">&quot;your_password&quot;</span><span class="p">,</span> <span class="s2">&quot;YourBroker-Server&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">account</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">account_info</span><span class="p">()</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">rates</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_rates_from</span><span class="p">(</span><span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span> <span class="n">mt5</span><span class="o">.</span><span class="n">TIMEFRAME_H1</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="mi">100</span><span class="p">)</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="c1"># Pandas-friendly interface: entering the context manager initializes the</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="c1"># connection and logs in with the config credentials automatically</span>
 <a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="k">with</span> <span class="n">Mt5DataClient</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="c1"># Optional: login when credentials are provided</span>
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="n">client</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">login</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">password</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
-<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="c1"># Get symbol information as DataFrame</span>
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="n">symbols_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">symbols_get_as_df</span><span class="p">()</span>
-<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="c1"># Get OHLCV data as DataFrame</span>
-<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    <span class="n">rates_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_rates_from_as_df</span><span class="p">(</span>
-<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>        <span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span> <span class="n">parse_timeframe</span><span class="p">(</span><span class="s2">&quot;H1&quot;</span><span class="p">),</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="mi">100</span>
-<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>    <span class="p">)</span>
-<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    <span class="c1"># Get account info as DataFrame</span>
-<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>    <span class="n">account_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">account_info_as_df</span><span class="p">()</span>
-<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>
-<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="c1"># Parse MT5 constants without importing the MetaTrader5 module</span>
-<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="n">timeframe</span> <span class="o">=</span> <span class="n">parse_timeframe</span><span class="p">(</span><span class="s2">&quot;TIMEFRAME_H1&quot;</span><span class="p">)</span>  <span class="c1"># 16385</span>
-<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="n">tick_flags</span> <span class="o">=</span> <span class="n">parse_copy_ticks</span><span class="p">(</span><span class="s2">&quot;ALL&quot;</span><span class="p">)</span>  <span class="c1"># -1</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="c1"># Get symbol information as DataFrame</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="n">symbols_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">symbols_get_as_df</span><span class="p">()</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    <span class="c1"># Get OHLCV data as DataFrame</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="n">rates_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_rates_from_as_df</span><span class="p">(</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>        <span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span> <span class="n">parse_timeframe</span><span class="p">(</span><span class="s2">&quot;H1&quot;</span><span class="p">),</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="mi">100</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="p">)</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    <span class="c1"># Get account info as DataFrame</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>    <span class="n">account_df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">account_info_as_df</span><span class="p">()</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="c1"># Parse MT5 constants without importing the MetaTrader5 module</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="n">timeframe</span> <span class="o">=</span> <span class="n">parse_timeframe</span><span class="p">(</span><span class="s2">&quot;TIMEFRAME_H1&quot;</span><span class="p">)</span>  <span class="c1"># 16385</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="n">tick_flags</span> <span class="o">=</span> <span class="n">parse_copy_ticks</span><span class="p">(</span><span class="s2">&quot;ALL&quot;</span><span class="p">)</span>  <span class="c1"># -1</span>
 </code></pre></div>
+<h2 id="timestamps-and-timezones">Timestamps and Timezones<a class="headerlink" href="#timestamps-and-timezones" title="Permanent link">&para;</a></h2>
+<p>MT5 epoch timestamps are labels on the <strong>trade server's wall clock</strong> (typically
+UTC+2 or UTC+3), not true UTC. pdmt5 converts them to <strong>timezone-naive</strong>
+<code>datetime64</code>/<code>Timestamp</code> values that preserve those labels:</p>
+<ul>
+<li>Converted datetimes are naive and represent server time — do <strong>not</strong> treat
+  them as UTC.</li>
+<li><code>date_from</code>/<code>date_to</code> arguments (e.g. in <code>history_deals_get</code>,
+  <code>copy_rates_range</code>, <code>copy_ticks_range</code>) are compared against server-labeled
+  epochs by the MetaTrader5 API, so pass datetimes expressed in server time.</li>
+<li>To work with the raw epochs instead, pass <code>skip_to_datetime=True</code> to the
+  <code>*_as_dict</code>/<code>*_as_df</code> methods.</li>
+</ul>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Python 3.11+</li>
@@ -304,5 +318,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-07-04 04:36:55.936019+00:00
+Build Date UTC : 2026-07-07 15:47:43.964107+00:00
 -->
