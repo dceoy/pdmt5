@@ -126,6 +126,7 @@ class Mt5DataClient(Mt5Client):
         )
         server_value = server if server is not None else self.config.server
         timeout_value = timeout if timeout is not None else self.config.timeout
+        last_error_value: tuple[int, str] | None = None
         for i in range(1 + max(0, self.retry_count)):
             if i:
                 logger.warning(
@@ -141,6 +142,7 @@ class Mt5DataClient(Mt5Client):
                 server=server_value,
                 timeout=timeout_value,
             ):
+                last_error_value = self.last_error()
                 continue
             try:
                 if login_value is None or self.login(
@@ -153,10 +155,11 @@ class Mt5DataClient(Mt5Client):
             except Exception:
                 self.shutdown()
                 raise
+            last_error_value = self.last_error()
             self.shutdown()
         error_message = (
             f"MT5 initialize and login failed after {self.retry_count} retries:"
-            f" {self.last_error()}"
+            f" {last_error_value}"
         )
         raise Mt5RuntimeError(error_message)
 

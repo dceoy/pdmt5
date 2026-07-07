@@ -848,6 +848,41 @@ class TestMt5DataClient:
         assert mock_mt5_import.login.call_count == 2
         mock_mt5_import.shutdown.assert_called_once()
 
+    def test_initialize_and_login_reports_login_error_before_shutdown(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test the raised error embeds the login failure read before shutdown."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.return_value = False
+
+        def last_error_side_effect() -> tuple[int, str]:
+            if mock_mt5_import.shutdown.called:
+                return (10004, "No IPC connection")
+            return (-6, "Terminal: Authorization failed")
+
+        mock_mt5_import.last_error.side_effect = last_error_side_effect
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=0,
+        )
+
+        pattern = (
+            r"MT5 initialize and login failed after 0 retries: "
+            r"\(-6, 'Terminal: Authorization failed'\)"
+        )
+        with pytest.raises(Mt5RuntimeError, match=pattern):
+            client.initialize_and_login_mt5()
+
+        mock_mt5_import.shutdown.assert_called_once()
+
     def test_initialize_and_login_shuts_down_after_login_exception(
         self, mock_mt5_import: ModuleType | None
     ) -> None:
