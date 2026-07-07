@@ -41,18 +41,15 @@ config = Mt5Config(
     timeout=60000,
 )
 
-# Low-level API access with context manager
+# Low-level API access with context manager (initializes on entry)
 with Mt5Client() as client:
-    client.initialize()
-    client.login(config.login, config.password, config.server)
+    client.login(12345678, "your_password", "YourBroker-Server")
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Pandas-friendly interface with context-managed initialization
+# Pandas-friendly interface: entering the context manager initializes the
+# connection and logs in with the config credentials automatically
 with Mt5DataClient(config=config) as client:
-    # Optional: login when credentials are provided
-    client.login(config.login, config.password, config.server)
-
     # Get symbol information as DataFrame
     symbols_df = client.symbols_get_as_df()
     # Get OHLCV data as DataFrame
@@ -66,6 +63,20 @@ with Mt5DataClient(config=config) as client:
 timeframe = parse_timeframe("TIMEFRAME_H1")  # 16385
 tick_flags = parse_copy_ticks("ALL")  # -1
 ```
+
+## Timestamps and Timezones
+
+MT5 epoch timestamps are labels on the **trade server's wall clock** (typically
+UTC+2 or UTC+3), not true UTC. pdmt5 converts them to **timezone-naive**
+`datetime64`/`Timestamp` values that preserve those labels:
+
+- Converted datetimes are naive and represent server time — do **not** treat
+  them as UTC.
+- `date_from`/`date_to` arguments (e.g. in `history_deals_get`,
+  `copy_rates_range`, `copy_ticks_range`) are compared against server-labeled
+  epochs by the MetaTrader5 API, so pass datetimes expressed in server time.
+- To work with the raw epochs instead, pass `skip_to_datetime=True` to the
+  `*_as_dict`/`*_as_df` methods.
 
 ## Requirements
 

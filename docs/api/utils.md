@@ -42,8 +42,8 @@ These utilities are primarily used internally by Mt5DataClient methods through d
 
 ```python
 # Example of how decorators are applied internally
-@detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
 @set_index_if_possible(index_parameters="index_keys")
+@detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
 def some_method(
     self,
     skip_to_datetime: bool = False,
@@ -53,13 +53,19 @@ def some_method(
     pass
 ```
 
+`set_index_if_possible` must stay the outermost decorator: time conversion only
+touches DataFrame _columns_, so the index has to be set after the conversion
+has run. Reversing the order would move the raw epoch column into the index
+before conversion, leaving an unconverted integer index.
+
 ## Time Conversion Rules
 
 The time conversion follows these rules:
 
-1. **Millisecond Timestamps**: Fields ending with `_msc` are converted using `pd.to_datetime(value, unit="ms")`
+1. **Millisecond Timestamps**: Fields starting with `time_` and ending with `_msc` are converted using `pd.to_datetime(value, unit="ms")`
 2. **Second Timestamps**: Fields named `time` or starting with `time_` are converted using `pd.to_datetime(value, unit="s")`
 3. **Automatic Detection**: Conversion happens automatically unless explicitly disabled
+4. **Server Time, Not UTC**: MT5 epochs are trade-server wall-clock labels (typically UTC+2 or UTC+3); the converted datetimes are timezone-naive and preserve server time — they are not UTC
 
 ## DataFrame Index Setting
 
@@ -115,7 +121,7 @@ The utilities module follows these principles:
 
 ## Performance Considerations
 
-- Conversions only happen when requested
+- Conversions run by default; opt out per call with `skip_to_datetime=True`
 - Dictionary operations use shallow copies
 - DataFrame operations use efficient pandas methods
 - Decorators add minimal overhead

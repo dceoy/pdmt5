@@ -755,6 +755,23 @@ class TestMt5DataClient:
 
         mock_mt5_import.shutdown.assert_called_once()
 
+    def test_context_manager_init_failure(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test context manager raises Mt5RuntimeError when initialization fails."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = False
+        mock_mt5_import.last_error.return_value = (1, "Connection failed")
+
+        client = Mt5DataClient(mt5=mock_mt5_import, retry_count=0)
+        with (
+            pytest.raises(Mt5RuntimeError, match=r"MT5 initialize and login failed"),
+            client,
+        ):
+            pass
+
+        mock_mt5_import.shutdown.assert_not_called()
+
     def test_context_manager_uses_config_and_retries(
         self, mock_mt5_import: ModuleType | None
     ) -> None:
@@ -846,6 +863,41 @@ class TestMt5DataClient:
 
         assert mock_mt5_import.initialize.call_count == 2
         assert mock_mt5_import.login.call_count == 2
+        mock_mt5_import.shutdown.assert_called_once()
+
+    def test_initialize_and_login_reports_login_error_before_shutdown(
+        self, mock_mt5_import: ModuleType | None
+    ) -> None:
+        """Test the raised error embeds the login failure read before shutdown."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        mock_mt5_import.login.return_value = False
+
+        def last_error_side_effect() -> tuple[int, str]:
+            if mock_mt5_import.shutdown.called:
+                return (10004, "No IPC connection")
+            return (-6, "Terminal: Authorization failed")
+
+        mock_mt5_import.last_error.side_effect = last_error_side_effect
+        config = Mt5Config(
+            login=123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+        client = Mt5DataClient(
+            mt5=mock_mt5_import,
+            config=config,
+            retry_count=0,
+        )
+
+        pattern = (
+            r"MT5 initialize and login failed after 0 retries: "
+            r"\(-6, 'Terminal: Authorization failed'\)"
+        )
+        with pytest.raises(Mt5RuntimeError, match=pattern):
+            client.initialize_and_login_mt5()
+
         mock_mt5_import.shutdown.assert_called_once()
 
     def test_initialize_and_login_shuts_down_after_login_exception(
@@ -1137,11 +1189,8 @@ class TestMt5DataClient:
         ("client_method", "mt5_method", "return_value"),
         [
             ("orders_total", "orders_total", 5),
-            ("orders_total", "orders_total", None),
             ("positions_total", "positions_total", 3),
-            ("positions_total", "positions_total", None),
             ("symbols_total", "symbols_total", 1000),
-            ("symbols_total", "symbols_total", None),
         ],
     )
     def test_total_methods(
@@ -1149,9 +1198,9 @@ class TestMt5DataClient:
         mock_mt5_import: ModuleType | None,
         client_method: str,
         mt5_method: str,
-        return_value: int | None,
+        return_value: int,
     ) -> None:
-        """Test total-returning methods with values and None."""
+        """Test total-returning methods with values."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         getattr(mock_mt5_import, mt5_method).return_value = return_value
@@ -1162,14 +1211,27 @@ class TestMt5DataClient:
         assert result == return_value
 
     @pytest.mark.parametrize(
+        "method_name", ["orders_total", "positions_total", "symbols_total"]
+    )
+    def test_total_methods_raise_on_none(
+        self, mock_mt5_import: ModuleType | None, method_name: str
+    ) -> None:
+        """Test total-returning methods raise Mt5RuntimeError on None."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, method_name).return_value = None
+
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(client, method_name)()
+
+    @pytest.mark.parametrize(
         ("client_method", "mt5_method", "return_value"),
         [
             ("history_orders_total", "history_orders_total", 10),
             ("history_orders_total", "history_orders_total", 0),
-            ("history_orders_total", "history_orders_total", None),
             ("history_deals_total", "history_deals_total", 15),
             ("history_deals_total", "history_deals_total", 0),
-            ("history_deals_total", "history_deals_total", None),
         ],
     )
     def test_history_totals_methods(
@@ -1177,7 +1239,7 @@ class TestMt5DataClient:
         mock_mt5_import: ModuleType | None,
         client_method: str,
         mt5_method: str,
-        return_value: int | None,
+        return_value: int,
     ) -> None:
         """Test history total methods with varied return values."""
         assert mock_mt5_import is not None
@@ -1191,6 +1253,24 @@ class TestMt5DataClient:
         )
 
         assert result == return_value
+
+    @pytest.mark.parametrize(
+        "method_name", ["history_orders_total", "history_deals_total"]
+    )
+    def test_history_totals_methods_raise_on_none(
+        self, mock_mt5_import: ModuleType | None, method_name: str
+    ) -> None:
+        """Test history total methods raise Mt5RuntimeError on None."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, method_name).return_value = None
+
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(client, method_name)(
+                datetime(2022, 1, 1, tzinfo=UTC),
+                datetime(2022, 1, 2, tzinfo=UTC),
+            )
 
     @pytest.mark.parametrize(
         ("volume", "price", "last_error"),
@@ -1307,7 +1387,7 @@ class TestMt5DataClient:
 
         client = create_initialized_client(mock_mt5_import)
 
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+        with pytest.raises(Mt5RuntimeError, match=r"^MT5 version returned None"):
             client.version()
 
     @pytest.mark.parametrize("enable", [True, False])
@@ -1460,6 +1540,131 @@ class TestMt5DataClient:
             assert df_result.iloc[0][key] == val
         getattr(mock_mt5_import, mt5_method).assert_called_once_with(
             *expected_mt5_args, **expected_mt5_kwargs
+        )
+
+    @pytest.mark.parametrize(
+        "client_method",
+        [
+            "history_orders_get_as_dicts",
+            "history_deals_get_as_dicts",
+            "history_orders_get_as_df",
+            "history_deals_get_as_df",
+        ],
+    )
+    def test_history_get_symbol_and_group_conflict(
+        self, mock_mt5_import: ModuleType | None, client_method: str
+    ) -> None:
+        """Test history getters reject combined symbol and group filters."""
+        assert mock_mt5_import is not None
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(
+            ValueError, match=r"symbol and group filters are mutually exclusive"
+        ):
+            getattr(client, client_method)(
+                date_from=datetime(2022, 1, 1, tzinfo=UTC),
+                date_to=datetime(2022, 1, 2, tzinfo=UTC),
+                symbol="EURUSD",
+                group="*USD*",
+            )
+
+    @pytest.mark.parametrize(
+        "client_method",
+        [
+            "history_orders_get_as_dicts",
+            "history_deals_get_as_dicts",
+            "history_orders_get_as_df",
+            "history_deals_get_as_df",
+        ],
+    )
+    def test_history_get_symbol_and_ticket_conflict(
+        self, mock_mt5_import: ModuleType | None, client_method: str
+    ) -> None:
+        """Test history getters reject symbol combined with ticket."""
+        assert mock_mt5_import is not None
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(
+            ValueError, match=r"Mutually exclusive filters provided: ticket, symbol"
+        ):
+            getattr(client, client_method)(symbol="EURUSD", ticket=12345)
+
+    @pytest.mark.parametrize(
+        "client_method",
+        [
+            "orders_get_as_dicts",
+            "positions_get_as_dicts",
+            "orders_get_as_df",
+            "positions_get_as_df",
+        ],
+    )
+    def test_orders_positions_get_conflicting_filters(
+        self, mock_mt5_import: ModuleType | None, client_method: str
+    ) -> None:
+        """Test orders/positions getters reject combined symbol and group filters."""
+        assert mock_mt5_import is not None
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(ValueError, match=r"Mutually exclusive filters provided"):
+            getattr(client, client_method)(symbol="EURUSD", group="*USD*")
+
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "row_factory"),
+        [
+            pytest.param(
+                "history_orders_get_as_df",
+                "history_orders_get",
+                _build_history_order_row,
+                id="orders-df",
+            ),
+            pytest.param(
+                "history_deals_get_as_df",
+                "history_deals_get",
+                _build_history_deal_row,
+                id="deals-df",
+            ),
+            pytest.param(
+                "history_orders_get_as_dicts",
+                "history_orders_get",
+                _build_history_order_row,
+                id="orders-dicts",
+            ),
+            pytest.param(
+                "history_deals_get_as_dicts",
+                "history_deals_get",
+                _build_history_deal_row,
+                id="deals-dicts",
+            ),
+        ],
+    )
+    def test_history_get_symbol_exact_match(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        row_factory: Callable[[int], Any],
+    ) -> None:
+        """Test symbol filter excludes broker-suffixed symbol variants."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, mt5_method).return_value = [
+            row_factory(0),
+            row_factory(0)._replace(symbol="EURUSD.m"),
+        ]
+
+        client = create_initialized_client(mock_mt5_import)
+        result = getattr(client, client_method)(
+            date_from=datetime(2022, 1, 1, tzinfo=UTC),
+            date_to=datetime(2022, 1, 2, tzinfo=UTC),
+            symbol="EURUSD",
+        )
+
+        if isinstance(result, pd.DataFrame):
+            symbols = result["symbol"].tolist()
+        else:
+            symbols = [d["symbol"] for d in result]
+        assert symbols == ["EURUSD"]
+        getattr(mock_mt5_import, mt5_method).assert_called_once_with(
+            datetime(2022, 1, 1, tzinfo=UTC),
+            datetime(2022, 1, 2, tzinfo=UTC),
+            group="*EURUSD*",
         )
 
     @pytest.mark.parametrize(
@@ -2335,7 +2540,7 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import.version.return_value = None
         client = create_initialized_client(mock_mt5_import)
 
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+        with pytest.raises(Mt5RuntimeError, match=r"^MT5 version returned None"):
             getattr(client, client_method)()
 
     def test_last_error_as_dict(self, mock_mt5_import: ModuleType) -> None:

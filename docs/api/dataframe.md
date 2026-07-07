@@ -41,11 +41,9 @@ config = Mt5Config(login=123456, password="your_password", server="broker_server
 # Create client
 client = Mt5DataClient(mt5=mt5, config=config)
 
-# Use as context manager
+# Use as context manager: entering the block initializes the connection and
+# logs in with the config credentials automatically
 with client:
-    # Optional: login when credentials are provided
-    client.login(config.login, config.password, config.server)
-
     # Get account information
     account_df = client.account_info_as_df()
     print(account_df)

@@ -126,6 +126,7 @@ class Mt5DataClient(Mt5Client):
         )
         server_value = server if server is not None else self.config.server
         timeout_value = timeout if timeout is not None else self.config.timeout
+        last_error_value: tuple[int, str] | None = None
         for i in range(1 + max(0, self.retry_count)):
             if i:
                 logger.warning(
@@ -141,6 +142,7 @@ class Mt5DataClient(Mt5Client):
                 server=server_value,
                 timeout=timeout_value,
             ):
+                last_error_value = self.last_error()
                 continue
             try:
                 if login_value is None or self.login(
@@ -153,10 +155,11 @@ class Mt5DataClient(Mt5Client):
             except Exception:
                 self.shutdown()
                 raise
+            last_error_value = self.last_error()
             self.shutdown()
         error_message = (
             f"MT5 initialize and login failed after {self.retry_count} retries:"
-            f" {self.last_error()}"
+            f" {last_error_value}"
         )
         raise Mt5RuntimeError(error_message)
 
@@ -415,7 +418,7 @@ class Mt5DataClient(Mt5Client):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date.
+            date_from: Start date in trade-server time (not UTC).
             count: Number of rates to retrieve.
             skip_to_datetime: Whether to skip converting time to datetime.
 
@@ -449,7 +452,7 @@ class Mt5DataClient(Mt5Client):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date.
+            date_from: Start date in trade-server time (not UTC).
             count: Number of rates to retrieve.
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
@@ -546,8 +549,8 @@ class Mt5DataClient(Mt5Client):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date.
-            date_to: End date.
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
@@ -580,8 +583,8 @@ class Mt5DataClient(Mt5Client):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date.
-            date_to: End date.
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
@@ -610,7 +613,7 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date.
+            date_from: Start date in trade-server time (not UTC).
             count: Number of ticks to retrieve.
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -644,7 +647,7 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date.
+            date_from: Start date in trade-server time (not UTC).
             count: Number of ticks to retrieve.
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -675,8 +678,8 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date.
-            date_to: End date.
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
 
@@ -709,8 +712,8 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date.
-            date_to: End date.
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
@@ -739,9 +742,12 @@ class Mt5DataClient(Mt5Client):
         """Get active orders with optional filters as a list of dictionaries.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional order ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional order ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
@@ -764,9 +770,12 @@ class Mt5DataClient(Mt5Client):
         """Get active orders with optional filters as a data frame.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional order ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional order ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
@@ -857,9 +866,12 @@ class Mt5DataClient(Mt5Client):
         """Get open positions with optional filters as a list of dictionaries.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional position ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional position ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
@@ -883,9 +895,12 @@ class Mt5DataClient(Mt5Client):
         """Get open positions with optional filters as a data frame.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional position ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional position ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
@@ -915,10 +930,13 @@ class Mt5DataClient(Mt5Client):
         """Get historical orders with optional filters as a list of dictionaries.
 
         Args:
-            date_from: Start date (required if not using ticket/position).
-            date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            date_from: Start date in trade-server time, not UTC (required if
+                not using ticket/position).
+            date_to: End date in trade-server time, not UTC (required if not
+                using ticket/position).
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get orders by ticket.
             position: Get orders by position.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -931,8 +949,10 @@ class Mt5DataClient(Mt5Client):
             date_to=date_to,
             ticket=ticket,
             position=position,
+            group=group,
+            symbol=symbol,
         )
-        return self._as_dicts(
+        dicts = self._as_dicts(
             self.history_orders_get(
                 date_from=date_from,
                 date_to=date_to,
@@ -941,6 +961,7 @@ class Mt5DataClient(Mt5Client):
                 position=position,
             )
         )
+        return [d for d in dicts if d["symbol"] == symbol] if symbol else dicts
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -958,10 +979,13 @@ class Mt5DataClient(Mt5Client):
         """Get historical orders with optional filters as a data frame.
 
         Args:
-            date_from: Start date (required if not using ticket/position).
-            date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            date_from: Start date in trade-server time, not UTC (required if
+                not using ticket/position).
+            date_to: End date in trade-server time, not UTC (required if not
+                using ticket/position).
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get orders by ticket.
             position: Get orders by position.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -996,10 +1020,13 @@ class Mt5DataClient(Mt5Client):
         """Get historical deals with optional filters as a list of dictionaries.
 
         Args:
-            date_from: Start date (required if not using ticket/position).
-            date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            date_from: Start date in trade-server time, not UTC (required if
+                not using ticket/position).
+            date_to: End date in trade-server time, not UTC (required if not
+                using ticket/position).
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -1012,8 +1039,10 @@ class Mt5DataClient(Mt5Client):
             date_to=date_to,
             ticket=ticket,
             position=position,
+            group=group,
+            symbol=symbol,
         )
-        return self._as_dicts(
+        dicts = self._as_dicts(
             self.history_deals_get(
                 date_from=date_from,
                 date_to=date_to,
@@ -1022,6 +1051,7 @@ class Mt5DataClient(Mt5Client):
                 position=position,
             )
         )
+        return [d for d in dicts if d["symbol"] == symbol] if symbol else dicts
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -1039,10 +1069,13 @@ class Mt5DataClient(Mt5Client):
         """Get historical deals with optional filters as a data frame.
 
         Args:
-            date_from: Start date (required if not using ticket/position).
-            date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            date_from: Start date in trade-server time, not UTC (required if
+                not using ticket/position).
+            date_to: End date in trade-server time, not UTC (required if not
+                using ticket/position).
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -1069,6 +1102,8 @@ class Mt5DataClient(Mt5Client):
         date_to: datetime | None = None,
         ticket: int | None = None,
         position: int | None = None,
+        group: str | None = None,
+        symbol: str | None = None,
     ) -> None:
         """Validate input parameters for history retrieval methods.
 
@@ -1077,20 +1112,31 @@ class Mt5DataClient(Mt5Client):
             date_to: End date.
             ticket: Order ticket.
             position: Position ticket.
+            group: Group filter.
+            symbol: Symbol filter.
 
         Raises:
-            ValueError: If both date_from and date_to are not provided
-                when not using ticket or position.
+            ValueError: If both symbol and group are provided, if symbol or
+                group is combined with ticket or position, or if the date
+                range is missing or invalid when not using ticket or position.
         """
-        if ticket is not None or position is not None:
-            pass
-        elif date_from is None or date_to is None:
-            error_message = (
-                "Both date_from and date_to must be provided"
-                " if not using ticket or position."
-            )
+        if symbol is not None and group is not None:
+            error_message = "symbol and group filters are mutually exclusive."
             raise ValueError(error_message)
-        else:
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            ticket=ticket,
+            position=position,
+            group=group,
+            symbol=symbol,
+        )
+        if (
+            ticket is None
+            and position is None
+            and date_from is not None
+            and date_to is not None
+        ):
             self._validate_date_range(date_from=date_from, date_to=date_to)
 
     @staticmethod

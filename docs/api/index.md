@@ -56,17 +56,16 @@ from pdmt5 import (
 import MetaTrader5 as mt5
 from datetime import datetime
 
-# Low-level API access with Mt5Client
+# Low-level API access with Mt5Client (the context manager initializes on
+# entry and raises Mt5RuntimeError on failure)
 with Mt5Client(mt5=mt5) as client:
-    client.initialize()
     account = client.account_info()
     rates = client.copy_rates_from("EURUSD", mt5.TIMEFRAME_H1, datetime.now(), 100)
 
-# Pandas-friendly interface with Mt5DataClient and configuration
+# Pandas-friendly interface with Mt5DataClient and configuration (the context
+# manager initializes and logs in with the config credentials automatically)
 config = Mt5Config(login=12345, password="pass", server="MetaQuotes-Demo")
 with Mt5DataClient(mt5=mt5, config=config) as client:
-    # Optional: login when credentials are provided
-    client.login(config.login, config.password, config.server)
     symbols_df = client.symbols_get_as_df()
     rates_df = client.copy_rates_from_as_df(
         "EURUSD", parse_timeframe("H1"), datetime.now(), 100

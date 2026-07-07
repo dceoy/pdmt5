@@ -64,6 +64,28 @@ class TestMt5Client:
         mock_mt5.shutdown.assert_called_once()
         assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
 
+    def test_context_manager_raises_on_initialize_failure(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test context manager raises Mt5RuntimeError when initialization fails."""
+        mock_mt5.initialize.return_value = False
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 initialize failed"), client:
+            pass
+
+        mock_mt5.shutdown.assert_not_called()
+
+    def test_initialize_if_needed_raises_on_failure(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test methods raise Mt5RuntimeError when auto-initialization fails."""
+        mock_mt5.initialize.return_value = False
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 initialize failed"):
+            client.symbols_total()
+
+        mock_mt5.symbols_total.assert_not_called()
+
     def test_initialize_success(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test successful initialization."""
         mock_mt5.initialize.return_value = True
@@ -243,7 +265,7 @@ class TestMt5Client:
         """Test version method raises Mt5RuntimeError on None response."""
         mock_mt5.version.return_value = None
 
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+        with pytest.raises(Mt5RuntimeError, match=r"^MT5 version returned None"):
             initialized_client.version()
 
     @pytest.mark.parametrize(
@@ -563,15 +585,37 @@ class TestMt5Client:
         assert len(result) == 1
         getattr(mock_mt5, method_name).assert_called_once_with(**kwargs)
 
-    def test_history_orders_get_missing_dates(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({}, id="no-dates"),
+            pytest.param(
+                {"date_from": datetime(2023, 1, 1, tzinfo=UTC)},
+                id="date_from-only",
+            ),
+            pytest.param(
+                {"date_to": datetime(2023, 1, 31, tzinfo=UTC)},
+                id="date_to-only",
+            ),
+            pytest.param({"group": "*USD*"}, id="group-without-dates"),
+        ],
+    )
+    def test_history_get_missing_dates(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
     ) -> None:
-        """Test history_orders_get without required dates."""
-        # With new implementation, calling without dates passes None, None to MT5
-        mock_mt5.history_orders_get.return_value = ()
-        result = initialized_client.history_orders_get()
-        assert result == ()
-        mock_mt5.history_orders_get.assert_called_once_with(None, None)
+        """Test history getters reject calls without a full date range."""
+        with pytest.raises(
+            ValueError,
+            match=r"Both date_from and date_to must be provided",
+        ):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
 
     @pytest.mark.parametrize(
         ("method_name", "args", "mt5_return_value"),
@@ -663,26 +707,38 @@ class TestMt5Client:
             getattr(initialized_client, method_name)()
 
     @pytest.mark.parametrize(
-        "method_name", ["symbols_total", "orders_total", "positions_total"]
+        ("method_name", "args"),
+        [
+            ("symbols_total", ()),
+            ("orders_total", ()),
+            ("positions_total", ()),
+            (
+                "history_orders_total",
+                (
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+            (
+                "history_deals_total",
+                (
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+        ],
     )
-    def test_total_methods_pass_through_none(
-        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    def test_total_methods_raise_on_none(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        args: tuple[Any, ...],
     ) -> None:
-        """Test that total methods pass through None without raising."""
+        """Test that total methods raise Mt5RuntimeError when MT5 returns None."""
         getattr(mock_mt5, method_name).return_value = None
-        assert getattr(initialized_client, method_name)() is None
-
-    @pytest.mark.parametrize(
-        "method_name", ["history_orders_total", "history_deals_total"]
-    )
-    def test_history_total_methods_pass_through_none(
-        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
-    ) -> None:
-        """Test that history total methods pass through None without raising."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        getattr(mock_mt5, method_name).return_value = None
-        assert getattr(initialized_client, method_name)(date_from, date_to) is None
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(initialized_client, method_name)(*args)
 
     @pytest.mark.parametrize("method_name", ["market_book_add", "market_book_release"])
     def test_market_book_add_release_pass_through_false(
@@ -844,6 +900,57 @@ class TestMt5Client:
         result = getattr(initialized_client, method_name)(**kwargs)
         assert result is not None
         getattr(mock_mt5, method_name).assert_called_with(**kwargs)
+
+    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({"symbol": "EURUSD", "group": "*USD*"}, id="symbol-group"),
+            pytest.param({"symbol": "EURUSD", "ticket": 12345}, id="symbol-ticket"),
+            pytest.param({"group": "*USD*", "ticket": 12345}, id="group-ticket"),
+        ],
+    )
+    def test_get_methods_conflicting_filters(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Test orders_get and positions_get reject combined filters."""
+        with pytest.raises(ValueError, match=r"Mutually exclusive filters provided"):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
+
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({"ticket": 12345, "position": 54321}, id="ticket-position"),
+            pytest.param(
+                {
+                    "ticket": 12345,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 31, tzinfo=UTC),
+                },
+                id="ticket-dates",
+            ),
+            pytest.param({"position": 54321, "group": "*USD*"}, id="position-group"),
+        ],
+    )
+    def test_history_get_conflicting_filters(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Test history getters reject ticket/position combined with others."""
+        with pytest.raises(ValueError, match=r"Mutually exclusive filters provided"):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
 
     def test_empty_market_book_get(
         self, initialized_client: Mt5Client, mock_mt5: Mock

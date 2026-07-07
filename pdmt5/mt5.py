@@ -67,6 +67,12 @@ class Mt5Client(BaseModel):
         ) -> R:
             try:
                 response = func(self, *args, **kwargs)
+            except ValueError:
+                # Invalid argument combinations are caller errors, not MT5 failures.
+                raise
+            except Mt5RuntimeError:
+                # Already-classified MT5 failures must not be wrapped again.
+                raise
             except Exception as e:
                 error_message = f"MT5 {func.__name__} failed with error: {e}"
                 raise Mt5RuntimeError(error_message) from e
@@ -93,7 +99,7 @@ class Mt5Client(BaseModel):
         Returns:
             Mt5Client: The client instance.
         """
-        self.initialize()
+        self._initialize_or_raise()
         return self
 
     def __exit__(
@@ -233,7 +239,7 @@ class Mt5Client(BaseModel):
         """Get info on the current trading account.
 
         Returns:
-            AccountInfo structure or None.
+            AccountInfo structure.
         """
         self._initialize_if_needed()
         logger.info("Retrieving account information.")
@@ -248,7 +254,7 @@ class Mt5Client(BaseModel):
         """Get the connected MetaTrader 5 client terminal status and settings.
 
         Returns:
-            TerminalInfo structure or None.
+            TerminalInfo structure.
         """
         self._initialize_if_needed()
         logger.info("Retrieving terminal information.")
@@ -268,7 +274,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of symbols.")
-        return self.mt5.symbols_total()
+        response = self.mt5.symbols_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="symbols_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def symbols_get(self, group: str | None = None) -> tuple[Any, ...]:
@@ -278,7 +289,7 @@ class Mt5Client(BaseModel):
             group: Symbol group filter.
 
         Returns:
-            Tuple of symbol info structures or None.
+            Tuple of symbol info structures.
         """
         self._initialize_if_needed()
         if group is not None:
@@ -304,7 +315,7 @@ class Mt5Client(BaseModel):
             symbol: Symbol name.
 
         Returns:
-            Symbol info structure or None.
+            Symbol info structure.
         """
         self._initialize_if_needed()
         logger.info("Retrieving information for symbol: %s", symbol)
@@ -324,7 +335,7 @@ class Mt5Client(BaseModel):
             symbol: Symbol name.
 
         Returns:
-            Tick info structure or None.
+            Tick info structure.
         """
         self._initialize_if_needed()
         logger.info("Retrieving last tick for symbol: %s", symbol)
@@ -385,7 +396,7 @@ class Mt5Client(BaseModel):
             symbol: Symbol name.
 
         Returns:
-            Tuple of BookInfo structures or None.
+            Tuple of BookInfo structures.
         """  # noqa: E501
         self._initialize_if_needed()
         logger.info("Retrieving market book for symbol: %s", symbol)
@@ -430,11 +441,11 @@ class Mt5Client(BaseModel):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
             count: Number of bars to retrieve.
 
         Returns:
-            Array of rates or None.
+            Array of rates.
         """
         self._initialize_if_needed()
         logger.info(
@@ -472,7 +483,7 @@ class Mt5Client(BaseModel):
             count: Number of bars to retrieve.
 
         Returns:
-            Array of rates or None.
+            Array of rates.
         """
         self._initialize_if_needed()
         logger.info(
@@ -509,11 +520,11 @@ class Mt5Client(BaseModel):
         Args:
             symbol: Symbol name.
             timeframe: Timeframe constant.
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
-            Array of rates or None.
+            Array of rates.
         """
         self._initialize_if_needed()
         logger.info(
@@ -546,12 +557,12 @@ class Mt5Client(BaseModel):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
             count: Number of ticks to retrieve.
             flags: Tick flags.
 
         Returns:
-            Array of ticks or None.
+            Array of ticks.
         """
         self._initialize_if_needed()
         logger.info(
@@ -583,12 +594,12 @@ class Mt5Client(BaseModel):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
             flags: Tick flags.
 
         Returns:
-            Array of ticks or None.
+            Array of ticks.
         """
         self._initialize_if_needed()
         logger.info(
@@ -618,7 +629,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of active orders.")
-        return self.mt5.orders_total()
+        response = self.mt5.orders_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="orders_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def orders_get(
@@ -627,16 +643,17 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
     ) -> tuple[Any, ...]:
-        """Get active orders with the ability to filter by symbol or ticket.
+        """Get active orders with the ability to filter by symbol, group, or ticket.
 
         Args:
-            symbol: Symbol name filter.
-            group: Group filter.
-            ticket: Order ticket filter.
+            symbol: Symbol name filter. Mutually exclusive with group and ticket.
+            group: Group filter. Mutually exclusive with symbol and ticket.
+            ticket: Order ticket filter. Mutually exclusive with symbol and group.
 
         Returns:
-            Tuple of order info structures or None.
+            Tuple of order info structures.
         """
+        self._validate_filters_are_exclusive(symbol=symbol, group=group, ticket=ticket)
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving order with ticket: %d", ticket)
@@ -678,7 +695,7 @@ class Mt5Client(BaseModel):
             price: Open price.
 
         Returns:
-            Required margin amount or None.
+            Required margin amount.
         """  # noqa: E501
         self._initialize_if_needed()
         logger.info(
@@ -715,7 +732,7 @@ class Mt5Client(BaseModel):
             price_close: Close price.
 
         Returns:
-            Calculated profit or None.
+            Calculated profit.
         """
         self._initialize_if_needed()
         logger.info(
@@ -750,7 +767,7 @@ class Mt5Client(BaseModel):
             request: Trade request dictionary.
 
         Returns:
-            OrderCheckResult structure or None.
+            OrderCheckResult structure.
         """
         self._initialize_if_needed()
         logger.info("Checking order with request: %s", request)
@@ -770,7 +787,7 @@ class Mt5Client(BaseModel):
             request: Trade request dictionary.
 
         Returns:
-            OrderSendResult structure or None.
+            OrderSendResult structure.
         """  # noqa: E501
         self._initialize_if_needed()
         logger.info("Sending order with request: %s", request)
@@ -791,7 +808,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of open positions.")
-        return self.mt5.positions_total()
+        response = self.mt5.positions_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="positions_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def positions_get(
@@ -800,16 +822,17 @@ class Mt5Client(BaseModel):
         group: str | None = None,
         ticket: int | None = None,
     ) -> tuple[Any, ...]:
-        """Get open positions with the ability to filter by symbol or ticket.
+        """Get open positions with the ability to filter by symbol, group, or ticket.
 
         Args:
-            symbol: Symbol name filter.
-            group: Group filter.
-            ticket: Position ticket filter.
+            symbol: Symbol name filter. Mutually exclusive with group and ticket.
+            group: Group filter. Mutually exclusive with symbol and ticket.
+            ticket: Position ticket filter. Mutually exclusive with symbol and group.
 
         Returns:
-            Tuple of position info structures or None.
+            Tuple of position info structures.
         """
+        self._validate_filters_are_exclusive(symbol=symbol, group=group, ticket=ticket)
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving position with ticket: %d", ticket)
@@ -843,8 +866,8 @@ class Mt5Client(BaseModel):
         """Get the number of orders in trading history within the specified interval.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
             Number of historical orders.
@@ -855,7 +878,13 @@ class Mt5Client(BaseModel):
             date_from,
             date_to,
         )
-        return self.mt5.history_orders_total(date_from, date_to)
+        response = self.mt5.history_orders_total(date_from, date_to)
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="history_orders_total",
+            context=f"date_from={date_from}, date_to={date_to}",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def history_orders_get(
@@ -866,18 +895,26 @@ class Mt5Client(BaseModel):
         ticket: int | None = None,
         position: int | None = None,
     ) -> tuple[Any, ...]:
-        """Get orders from trading history with the ability to filter by ticket or position.
+        """Get orders from trading history with the ability to filter by ticket, position, or group.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
-            group: Group filter.
-            ticket: Order ticket filter.
-            position: Position ticket filter.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
+            group: Group filter. Mutually exclusive with ticket and position.
+            ticket: Order ticket filter. Mutually exclusive with other filters.
+            position: Position ticket filter. Mutually exclusive with other
+                filters.
 
         Returns:
-            Tuple of historical order info structures or None.
+            Tuple of historical order info structures.
         """  # noqa: E501
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            ticket=ticket,
+            position=position,
+        )
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving order with ticket: %d", ticket)
@@ -920,8 +957,8 @@ class Mt5Client(BaseModel):
         """Get the number of deals in trading history within the specified interval.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
 
         Returns:
             Number of historical deals.
@@ -932,7 +969,13 @@ class Mt5Client(BaseModel):
             date_from,
             date_to,
         )
-        return self.mt5.history_deals_total(date_from, date_to)
+        response = self.mt5.history_deals_total(date_from, date_to)
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="history_deals_total",
+            context=f"date_from={date_from}, date_to={date_to}",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def history_deals_get(
@@ -943,18 +986,26 @@ class Mt5Client(BaseModel):
         ticket: int | None = None,
         position: int | None = None,
     ) -> tuple[Any, ...]:
-        """Get deals from trading history within the specified interval with the ability to filter by ticket or position.
+        """Get deals from trading history within the specified interval with the ability to filter by ticket, position, or group.
 
         Args:
-            date_from: Start date or timestamp.
-            date_to: End date or timestamp.
-            group: Group filter.
-            ticket: Order ticket filter.
-            position: Position ticket filter.
+            date_from: Start date or timestamp in trade-server time (not UTC).
+            date_to: End date or timestamp in trade-server time (not UTC).
+            group: Group filter. Mutually exclusive with ticket and position.
+            ticket: Order ticket filter. Mutually exclusive with other filters.
+            position: Position ticket filter. Mutually exclusive with other
+                filters.
 
         Returns:
-            Tuple of historical deal info structures or None.
+            Tuple of historical deal info structures.
         """  # noqa: E501
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            ticket=ticket,
+            position=position,
+        )
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving deal with ticket: %d", ticket)
@@ -991,7 +1042,89 @@ class Mt5Client(BaseModel):
     def _initialize_if_needed(self) -> None:
         """Ensure the MetaTrader5 client is initialized before performing operations."""
         if not self._is_initialized:
-            self.initialize()
+            self._initialize_or_raise()
+
+    def _initialize_or_raise(self) -> None:
+        """Initialize the MetaTrader5 client and raise on failure.
+
+        Raises:
+            Mt5RuntimeError: If initialization fails.
+        """
+        if not self.initialize():
+            error_message = f"MT5 initialize failed: last_error={self.mt5.last_error()}"
+            raise Mt5RuntimeError(error_message)
+
+    @staticmethod
+    def _validate_filters_are_exclusive(**filters: str | int | None) -> None:
+        """Validate that at most one of the given filters is provided.
+
+        Args:
+            **filters: Filter names mapped to their values.
+
+        Raises:
+            ValueError: If more than one filter is not None.
+        """
+        provided = [k for k, v in filters.items() if v is not None]
+        if len(provided) > 1:
+            error_message = (
+                f"Mutually exclusive filters provided: {', '.join(provided)}."
+                " Use only one of them."
+            )
+            raise ValueError(error_message)
+
+    @staticmethod
+    def _validate_history_filters(
+        date_from: datetime | int | None,
+        date_to: datetime | int | None,
+        ticket: int | None = None,
+        position: int | None = None,
+        **name_filters: str | None,
+    ) -> None:
+        """Validate that history filters are not combined ambiguously.
+
+        Valid combinations are a ticket alone, a position alone, or a date
+        range with an optional name filter such as group.
+
+        Args:
+            date_from: Start date or timestamp.
+            date_to: End date or timestamp.
+            ticket: Ticket filter.
+            position: Position filter.
+            **name_filters: Name-based filters such as group.
+
+        Raises:
+            ValueError: If ticket or position is combined with another filter,
+                or if either date is missing when no ticket or position is
+                provided.
+        """
+        id_filters = [
+            k
+            for k, v in {"ticket": ticket, "position": position}.items()
+            if v is not None
+        ]
+        range_filters = [
+            k
+            for k, v in {
+                "date_from": date_from,
+                "date_to": date_to,
+                **name_filters,
+            }.items()
+            if v is not None
+        ]
+        if len(id_filters) > 1 or (id_filters and range_filters):
+            error_message = (
+                "Mutually exclusive filters provided:"
+                f" {', '.join([*id_filters, *range_filters])}."
+                " Use a ticket alone, a position alone,"
+                " or a date range with an optional name filter."
+            )
+            raise ValueError(error_message)
+        if not id_filters and (date_from is None or date_to is None):
+            error_message = (
+                "Both date_from and date_to must be provided"
+                " if not using ticket or position."
+            )
+            raise ValueError(error_message)
 
     def _validate_mt5_response_is_not_none(
         self,
