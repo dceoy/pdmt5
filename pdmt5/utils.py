@@ -29,7 +29,8 @@ def detect_and_convert_time_to_datetime(
     datetimes are timezone-naive and represent server time, not UTC.
 
     Args:
-        skip_toggle: Name of the parameter to skip conversion if set to False.
+        skip_toggle: Name of the bound parameter that skips conversion when
+            its value is truthy.
 
     Returns:
         Decorator function.

@@ -1116,22 +1116,27 @@ class Mt5DataClient(Mt5Client):
             symbol: Symbol filter.
 
         Raises:
-            ValueError: If both symbol and group are provided, or if both
-                date_from and date_to are not provided when not using ticket
-                or position.
+            ValueError: If both symbol and group are provided, if symbol or
+                group is combined with ticket or position, or if the date
+                range is missing or invalid when not using ticket or position.
         """
         if symbol is not None and group is not None:
             error_message = "symbol and group filters are mutually exclusive."
             raise ValueError(error_message)
-        if ticket is not None or position is not None:
-            pass
-        elif date_from is None or date_to is None:
-            error_message = (
-                "Both date_from and date_to must be provided"
-                " if not using ticket or position."
-            )
-            raise ValueError(error_message)
-        else:
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            ticket=ticket,
+            position=position,
+            group=group,
+            symbol=symbol,
+        )
+        if (
+            ticket is None
+            and position is None
+            and date_from is not None
+            and date_to is not None
+        ):
             self._validate_date_range(date_from=date_from, date_to=date_to)
 
     @staticmethod

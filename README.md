@@ -368,6 +368,11 @@ preserve those labels:
 - `date_from`/`date_to` arguments (e.g. in `history_deals_get`,
   `copy_rates_range`, `copy_ticks_range`) are compared against server-labeled
   epochs by the MetaTrader5 API, so pass datetimes expressed in server time.
+- The official MQL5 docs call these epochs "UTC" because no timezone shift is
+  applied to them, and they recommend `tzinfo=timezone.utc` so that the
+  MetaTrader5 package does not shift naive datetimes by your local timezone.
+  Both hold here: construct datetimes with `tzinfo=timezone.utc`, but choose
+  wall-clock values that follow the trade server's clock.
 - To skip the conversion and work with the raw epochs, pass
   `skip_to_datetime=True` to the `*_as_dict`/`*_as_df` methods.
 

@@ -265,7 +265,7 @@ class TestMt5Client:
         """Test version method raises Mt5RuntimeError on None response."""
         mock_mt5.version.return_value = None
 
-        with pytest.raises(Mt5RuntimeError, match=r"MT5 version failed with error:"):
+        with pytest.raises(Mt5RuntimeError, match=r"^MT5 version returned None"):
             initialized_client.version()
 
     @pytest.mark.parametrize(
@@ -585,15 +585,37 @@ class TestMt5Client:
         assert len(result) == 1
         getattr(mock_mt5, method_name).assert_called_once_with(**kwargs)
 
-    def test_history_orders_get_missing_dates(
-        self, initialized_client: Mt5Client, mock_mt5: Mock
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({}, id="no-dates"),
+            pytest.param(
+                {"date_from": datetime(2023, 1, 1, tzinfo=UTC)},
+                id="date_from-only",
+            ),
+            pytest.param(
+                {"date_to": datetime(2023, 1, 31, tzinfo=UTC)},
+                id="date_to-only",
+            ),
+            pytest.param({"group": "*USD*"}, id="group-without-dates"),
+        ],
+    )
+    def test_history_get_missing_dates(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
     ) -> None:
-        """Test history_orders_get without required dates."""
-        # With new implementation, calling without dates passes None, None to MT5
-        mock_mt5.history_orders_get.return_value = ()
-        result = initialized_client.history_orders_get()
-        assert result == ()
-        mock_mt5.history_orders_get.assert_called_once_with(None, None)
+        """Test history getters reject calls without a full date range."""
+        with pytest.raises(
+            ValueError,
+            match=r"Both date_from and date_to must be provided",
+        ):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
 
     @pytest.mark.parametrize(
         ("method_name", "args", "mt5_return_value"),

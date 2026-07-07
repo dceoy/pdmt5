@@ -62,7 +62,7 @@ before conversion, leaving an unconverted integer index.
 
 The time conversion follows these rules:
 
-1. **Millisecond Timestamps**: Fields ending with `_msc` are converted using `pd.to_datetime(value, unit="ms")`
+1. **Millisecond Timestamps**: Fields starting with `time_` and ending with `_msc` are converted using `pd.to_datetime(value, unit="ms")`
 2. **Second Timestamps**: Fields named `time` or starting with `time_` are converted using `pd.to_datetime(value, unit="s")`
 3. **Automatic Detection**: Conversion happens automatically unless explicitly disabled
 4. **Server Time, Not UTC**: MT5 epochs are trade-server wall-clock labels (typically UTC+2 or UTC+3); the converted datetimes are timezone-naive and preserve server time — they are not UTC

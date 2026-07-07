@@ -218,7 +218,7 @@ with Mt5Client(mt5=mt5) as client:
 
 ## Error Handling
 
-All methods include proper error handling and raise `Mt5RuntimeError` with detailed information when operations fail:
+Data-retrieval and trading methods raise `Mt5RuntimeError` with detailed information when the terminal reports a failure (for example, a `None` response or a failed initialization):
 
 ```python
 from pdmt5.mt5 import Mt5RuntimeError
