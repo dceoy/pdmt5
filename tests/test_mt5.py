@@ -64,6 +64,28 @@ class TestMt5Client:
         mock_mt5.shutdown.assert_called_once()
         assert client._is_initialized is False  # type: ignore[reportPrivateUsage]
 
+    def test_context_manager_raises_on_initialize_failure(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test context manager raises Mt5RuntimeError when initialization fails."""
+        mock_mt5.initialize.return_value = False
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 initialize failed"), client:
+            pass
+
+        mock_mt5.shutdown.assert_not_called()
+
+    def test_initialize_if_needed_raises_on_failure(
+        self, client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test methods raise Mt5RuntimeError when auto-initialization fails."""
+        mock_mt5.initialize.return_value = False
+
+        with pytest.raises(Mt5RuntimeError, match=r"MT5 initialize failed"):
+            client.symbols_total()
+
+        mock_mt5.symbols_total.assert_not_called()
+
     def test_initialize_success(self, client: Mt5Client, mock_mt5: Mock) -> None:
         """Test successful initialization."""
         mock_mt5.initialize.return_value = True
@@ -663,26 +685,38 @@ class TestMt5Client:
             getattr(initialized_client, method_name)()
 
     @pytest.mark.parametrize(
-        "method_name", ["symbols_total", "orders_total", "positions_total"]
+        ("method_name", "args"),
+        [
+            ("symbols_total", ()),
+            ("orders_total", ()),
+            ("positions_total", ()),
+            (
+                "history_orders_total",
+                (
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+            (
+                "history_deals_total",
+                (
+                    datetime(2023, 1, 1, tzinfo=UTC),
+                    datetime(2023, 1, 31, tzinfo=UTC),
+                ),
+            ),
+        ],
     )
-    def test_total_methods_pass_through_none(
-        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
+    def test_total_methods_raise_on_none(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        args: tuple[Any, ...],
     ) -> None:
-        """Test that total methods pass through None without raising."""
+        """Test that total methods raise Mt5RuntimeError when MT5 returns None."""
         getattr(mock_mt5, method_name).return_value = None
-        assert getattr(initialized_client, method_name)() is None
-
-    @pytest.mark.parametrize(
-        "method_name", ["history_orders_total", "history_deals_total"]
-    )
-    def test_history_total_methods_pass_through_none(
-        self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str
-    ) -> None:
-        """Test that history total methods pass through None without raising."""
-        date_from = datetime(2023, 1, 1, tzinfo=UTC)
-        date_to = datetime(2023, 1, 31, tzinfo=UTC)
-        getattr(mock_mt5, method_name).return_value = None
-        assert getattr(initialized_client, method_name)(date_from, date_to) is None
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(initialized_client, method_name)(*args)
 
     @pytest.mark.parametrize("method_name", ["market_book_add", "market_book_release"])
     def test_market_book_add_release_pass_through_false(

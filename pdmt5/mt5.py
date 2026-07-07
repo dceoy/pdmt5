@@ -93,7 +93,7 @@ class Mt5Client(BaseModel):
         Returns:
             Mt5Client: The client instance.
         """
-        self.initialize()
+        self._initialize_or_raise()
         return self
 
     def __exit__(
@@ -268,7 +268,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of symbols.")
-        return self.mt5.symbols_total()
+        response = self.mt5.symbols_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="symbols_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def symbols_get(self, group: str | None = None) -> tuple[Any, ...]:
@@ -618,7 +623,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of active orders.")
-        return self.mt5.orders_total()
+        response = self.mt5.orders_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="orders_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def orders_get(
@@ -791,7 +801,12 @@ class Mt5Client(BaseModel):
         """
         self._initialize_if_needed()
         logger.info("Retrieving total number of open positions.")
-        return self.mt5.positions_total()
+        response = self.mt5.positions_total()
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="positions_total",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def positions_get(
@@ -855,7 +870,13 @@ class Mt5Client(BaseModel):
             date_from,
             date_to,
         )
-        return self.mt5.history_orders_total(date_from, date_to)
+        response = self.mt5.history_orders_total(date_from, date_to)
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="history_orders_total",
+            context=f"date_from={date_from}, date_to={date_to}",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def history_orders_get(
@@ -932,7 +953,13 @@ class Mt5Client(BaseModel):
             date_from,
             date_to,
         )
-        return self.mt5.history_deals_total(date_from, date_to)
+        response = self.mt5.history_deals_total(date_from, date_to)
+        self._validate_mt5_response_is_not_none(
+            response=response,
+            operation="history_deals_total",
+            context=f"date_from={date_from}, date_to={date_to}",
+        )
+        return response
 
     @_log_mt5_last_status_code
     def history_deals_get(
@@ -991,7 +1018,17 @@ class Mt5Client(BaseModel):
     def _initialize_if_needed(self) -> None:
         """Ensure the MetaTrader5 client is initialized before performing operations."""
         if not self._is_initialized:
-            self.initialize()
+            self._initialize_or_raise()
+
+    def _initialize_or_raise(self) -> None:
+        """Initialize the MetaTrader5 client and raise on failure.
+
+        Raises:
+            Mt5RuntimeError: If initialization fails.
+        """
+        if not self.initialize():
+            error_message = f"MT5 initialize failed: last_error={self.mt5.last_error()}"
+            raise Mt5RuntimeError(error_message)
 
     def _validate_mt5_response_is_not_none(
         self,

@@ -1172,11 +1172,8 @@ class TestMt5DataClient:
         ("client_method", "mt5_method", "return_value"),
         [
             ("orders_total", "orders_total", 5),
-            ("orders_total", "orders_total", None),
             ("positions_total", "positions_total", 3),
-            ("positions_total", "positions_total", None),
             ("symbols_total", "symbols_total", 1000),
-            ("symbols_total", "symbols_total", None),
         ],
     )
     def test_total_methods(
@@ -1184,9 +1181,9 @@ class TestMt5DataClient:
         mock_mt5_import: ModuleType | None,
         client_method: str,
         mt5_method: str,
-        return_value: int | None,
+        return_value: int,
     ) -> None:
-        """Test total-returning methods with values and None."""
+        """Test total-returning methods with values."""
         assert mock_mt5_import is not None
         mock_mt5_import.initialize.return_value = True
         getattr(mock_mt5_import, mt5_method).return_value = return_value
@@ -1197,14 +1194,27 @@ class TestMt5DataClient:
         assert result == return_value
 
     @pytest.mark.parametrize(
+        "method_name", ["orders_total", "positions_total", "symbols_total"]
+    )
+    def test_total_methods_raise_on_none(
+        self, mock_mt5_import: ModuleType | None, method_name: str
+    ) -> None:
+        """Test total-returning methods raise Mt5RuntimeError on None."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, method_name).return_value = None
+
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(client, method_name)()
+
+    @pytest.mark.parametrize(
         ("client_method", "mt5_method", "return_value"),
         [
             ("history_orders_total", "history_orders_total", 10),
             ("history_orders_total", "history_orders_total", 0),
-            ("history_orders_total", "history_orders_total", None),
             ("history_deals_total", "history_deals_total", 15),
             ("history_deals_total", "history_deals_total", 0),
-            ("history_deals_total", "history_deals_total", None),
         ],
     )
     def test_history_totals_methods(
@@ -1212,7 +1222,7 @@ class TestMt5DataClient:
         mock_mt5_import: ModuleType | None,
         client_method: str,
         mt5_method: str,
-        return_value: int | None,
+        return_value: int,
     ) -> None:
         """Test history total methods with varied return values."""
         assert mock_mt5_import is not None
@@ -1226,6 +1236,24 @@ class TestMt5DataClient:
         )
 
         assert result == return_value
+
+    @pytest.mark.parametrize(
+        "method_name", ["history_orders_total", "history_deals_total"]
+    )
+    def test_history_totals_methods_raise_on_none(
+        self, mock_mt5_import: ModuleType | None, method_name: str
+    ) -> None:
+        """Test history total methods raise Mt5RuntimeError on None."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, method_name).return_value = None
+
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(Mt5RuntimeError, match=rf"MT5 {method_name} returned None"):
+            getattr(client, method_name)(
+                datetime(2022, 1, 1, tzinfo=UTC),
+                datetime(2022, 1, 2, tzinfo=UTC),
+            )
 
     @pytest.mark.parametrize(
         ("volume", "price", "last_error"),
