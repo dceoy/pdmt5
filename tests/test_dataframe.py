@@ -1526,6 +1526,73 @@ class TestMt5DataClient:
         )
 
     @pytest.mark.parametrize(
+        "client_method",
+        ["history_orders_get_as_dicts", "history_deals_get_as_dicts"],
+    )
+    def test_history_get_symbol_and_group_conflict(
+        self, mock_mt5_import: ModuleType | None, client_method: str
+    ) -> None:
+        """Test history getters reject combined symbol and group filters."""
+        assert mock_mt5_import is not None
+        client = create_initialized_client(mock_mt5_import)
+        with pytest.raises(
+            ValueError, match=r"symbol and group filters are mutually exclusive"
+        ):
+            getattr(client, client_method)(
+                date_from=datetime(2022, 1, 1, tzinfo=UTC),
+                date_to=datetime(2022, 1, 2, tzinfo=UTC),
+                symbol="EURUSD",
+                group="*USD*",
+            )
+
+    @pytest.mark.parametrize(
+        ("client_method", "mt5_method", "row_factory"),
+        [
+            pytest.param(
+                "history_orders_get_as_df",
+                "history_orders_get",
+                _build_history_order_row,
+                id="orders",
+            ),
+            pytest.param(
+                "history_deals_get_as_df",
+                "history_deals_get",
+                _build_history_deal_row,
+                id="deals",
+            ),
+        ],
+    )
+    def test_history_get_symbol_exact_match(
+        self,
+        mock_mt5_import: ModuleType | None,
+        client_method: str,
+        mt5_method: str,
+        row_factory: Callable[[int], Any],
+    ) -> None:
+        """Test symbol filter excludes broker-suffixed symbol variants."""
+        assert mock_mt5_import is not None
+        mock_mt5_import.initialize.return_value = True
+        getattr(mock_mt5_import, mt5_method).return_value = [
+            row_factory(0),
+            row_factory(0)._replace(symbol="EURUSD.m"),
+        ]
+
+        client = create_initialized_client(mock_mt5_import)
+        df_result = getattr(client, client_method)(
+            date_from=datetime(2022, 1, 1, tzinfo=UTC),
+            date_to=datetime(2022, 1, 2, tzinfo=UTC),
+            symbol="EURUSD",
+        )
+
+        assert isinstance(df_result, pd.DataFrame)
+        assert df_result["symbol"].tolist() == ["EURUSD"]
+        getattr(mock_mt5_import, mt5_method).assert_called_once_with(
+            datetime(2022, 1, 1, tzinfo=UTC),
+            datetime(2022, 1, 2, tzinfo=UTC),
+            group="*EURUSD*",
+        )
+
+    @pytest.mark.parametrize(
         ("client_method", "mt5_method"),
         [
             pytest.param(

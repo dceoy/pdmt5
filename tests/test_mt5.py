@@ -879,6 +879,57 @@ class TestMt5Client:
         assert result is not None
         getattr(mock_mt5, method_name).assert_called_with(**kwargs)
 
+    @pytest.mark.parametrize("method_name", ["orders_get", "positions_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({"symbol": "EURUSD", "group": "*USD*"}, id="symbol-group"),
+            pytest.param({"symbol": "EURUSD", "ticket": 12345}, id="symbol-ticket"),
+            pytest.param({"group": "*USD*", "ticket": 12345}, id="group-ticket"),
+        ],
+    )
+    def test_get_methods_conflicting_filters(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Test orders_get and positions_get reject combined filters."""
+        with pytest.raises(ValueError, match=r"Mutually exclusive filters provided"):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
+
+    @pytest.mark.parametrize("method_name", ["history_orders_get", "history_deals_get"])
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            pytest.param({"ticket": 12345, "position": 54321}, id="ticket-position"),
+            pytest.param(
+                {
+                    "ticket": 12345,
+                    "date_from": datetime(2023, 1, 1, tzinfo=UTC),
+                    "date_to": datetime(2023, 1, 31, tzinfo=UTC),
+                },
+                id="ticket-dates",
+            ),
+            pytest.param({"position": 54321, "group": "*USD*"}, id="position-group"),
+        ],
+    )
+    def test_history_get_conflicting_filters(
+        self,
+        initialized_client: Mt5Client,
+        mock_mt5: Mock,
+        method_name: str,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Test history getters reject ticket/position combined with others."""
+        with pytest.raises(ValueError, match=r"Mutually exclusive filters provided"):
+            getattr(initialized_client, method_name)(**kwargs)
+
+        getattr(mock_mt5, method_name).assert_not_called()
+
     def test_empty_market_book_get(
         self, initialized_client: Mt5Client, mock_mt5: Mock
     ) -> None:

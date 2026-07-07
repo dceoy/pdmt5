@@ -67,6 +67,9 @@ class Mt5Client(BaseModel):
         ) -> R:
             try:
                 response = func(self, *args, **kwargs)
+            except ValueError:
+                # Invalid argument combinations are caller errors, not MT5 failures.
+                raise
             except Exception as e:
                 error_message = f"MT5 {func.__name__} failed with error: {e}"
                 raise Mt5RuntimeError(error_message) from e
@@ -640,13 +643,14 @@ class Mt5Client(BaseModel):
         """Get active orders with the ability to filter by symbol or ticket.
 
         Args:
-            symbol: Symbol name filter.
-            group: Group filter.
-            ticket: Order ticket filter.
+            symbol: Symbol name filter. Mutually exclusive with group and ticket.
+            group: Group filter. Mutually exclusive with symbol and ticket.
+            ticket: Order ticket filter. Mutually exclusive with symbol and group.
 
         Returns:
             Tuple of order info structures or None.
         """
+        self._validate_filters_are_exclusive(symbol=symbol, group=group, ticket=ticket)
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving order with ticket: %d", ticket)
@@ -818,13 +822,14 @@ class Mt5Client(BaseModel):
         """Get open positions with the ability to filter by symbol or ticket.
 
         Args:
-            symbol: Symbol name filter.
-            group: Group filter.
-            ticket: Position ticket filter.
+            symbol: Symbol name filter. Mutually exclusive with group and ticket.
+            group: Group filter. Mutually exclusive with symbol and ticket.
+            ticket: Position ticket filter. Mutually exclusive with symbol and group.
 
         Returns:
             Tuple of position info structures or None.
         """
+        self._validate_filters_are_exclusive(symbol=symbol, group=group, ticket=ticket)
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving position with ticket: %d", ticket)
@@ -892,13 +897,21 @@ class Mt5Client(BaseModel):
         Args:
             date_from: Start date or timestamp.
             date_to: End date or timestamp.
-            group: Group filter.
-            ticket: Order ticket filter.
-            position: Position ticket filter.
+            group: Group filter. Mutually exclusive with ticket and position.
+            ticket: Order ticket filter. Mutually exclusive with other filters.
+            position: Position ticket filter. Mutually exclusive with other
+                filters.
 
         Returns:
             Tuple of historical order info structures or None.
         """  # noqa: E501
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            ticket=ticket,
+            position=position,
+        )
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving order with ticket: %d", ticket)
@@ -975,13 +988,21 @@ class Mt5Client(BaseModel):
         Args:
             date_from: Start date or timestamp.
             date_to: End date or timestamp.
-            group: Group filter.
-            ticket: Order ticket filter.
-            position: Position ticket filter.
+            group: Group filter. Mutually exclusive with ticket and position.
+            ticket: Order ticket filter. Mutually exclusive with other filters.
+            position: Position ticket filter. Mutually exclusive with other
+                filters.
 
         Returns:
             Tuple of historical deal info structures or None.
         """  # noqa: E501
+        self._validate_history_filters(
+            date_from=date_from,
+            date_to=date_to,
+            group=group,
+            ticket=ticket,
+            position=position,
+        )
         self._initialize_if_needed()
         if ticket is not None:
             logger.info("Retrieving deal with ticket: %d", ticket)
@@ -1029,6 +1050,70 @@ class Mt5Client(BaseModel):
         if not self.initialize():
             error_message = f"MT5 initialize failed: last_error={self.mt5.last_error()}"
             raise Mt5RuntimeError(error_message)
+
+    @staticmethod
+    def _validate_filters_are_exclusive(**filters: Any) -> None:
+        """Validate that at most one of the given filters is provided.
+
+        Args:
+            **filters: Filter names mapped to their values.
+
+        Raises:
+            ValueError: If more than one filter is not None.
+        """
+        provided = [k for k, v in filters.items() if v is not None]
+        if len(provided) > 1:
+            error_message = (
+                f"Mutually exclusive filters provided: {', '.join(provided)}."
+                " Use only one of them."
+            )
+            raise ValueError(error_message)
+
+    @staticmethod
+    def _validate_history_filters(
+        date_from: datetime | int | None,
+        date_to: datetime | int | None,
+        group: str | None,
+        ticket: int | None,
+        position: int | None,
+    ) -> None:
+        """Validate that history filters are not combined ambiguously.
+
+        Valid combinations are a ticket alone, a position alone, or a date
+        range with an optional group.
+
+        Args:
+            date_from: Start date or timestamp.
+            date_to: End date or timestamp.
+            group: Group filter.
+            ticket: Ticket filter.
+            position: Position filter.
+
+        Raises:
+            ValueError: If ticket or position is combined with another filter.
+        """
+        id_filters = [
+            k
+            for k, v in {"ticket": ticket, "position": position}.items()
+            if v is not None
+        ]
+        range_filters = [
+            k
+            for k, v in {
+                "date_from": date_from,
+                "date_to": date_to,
+                "group": group,
+            }.items()
+            if v is not None
+        ]
+        if len(id_filters) > 1 or (id_filters and range_filters):
+            error_message = (
+                "Mutually exclusive filters provided:"
+                f" {', '.join([*id_filters, *range_filters])}."
+                " Use a ticket alone, a position alone,"
+                " or a date range with an optional group."
+            )
+            raise ValueError(error_message)
 
     def _validate_mt5_response_is_not_none(
         self,

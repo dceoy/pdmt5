@@ -742,9 +742,12 @@ class Mt5DataClient(Mt5Client):
         """Get active orders with optional filters as a list of dictionaries.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional order ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional order ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
@@ -767,9 +770,12 @@ class Mt5DataClient(Mt5Client):
         """Get active orders with optional filters as a data frame.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional order ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional order ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
@@ -860,9 +866,12 @@ class Mt5DataClient(Mt5Client):
         """Get open positions with optional filters as a list of dictionaries.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional position ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional position ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
 
         Returns:
@@ -886,9 +895,12 @@ class Mt5DataClient(Mt5Client):
         """Get open positions with optional filters as a data frame.
 
         Args:
-            symbol: Optional symbol filter.
-            group: Optional group filter.
-            ticket: Optional position ticket filter.
+            symbol: Optional symbol filter. Mutually exclusive with group and
+                ticket.
+            group: Optional group filter. Mutually exclusive with symbol and
+                ticket.
+            ticket: Optional position ticket filter. Mutually exclusive with
+                symbol and group.
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
 
@@ -920,8 +932,9 @@ class Mt5DataClient(Mt5Client):
         Args:
             date_from: Start date (required if not using ticket/position).
             date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get orders by ticket.
             position: Get orders by position.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -934,8 +947,10 @@ class Mt5DataClient(Mt5Client):
             date_to=date_to,
             ticket=ticket,
             position=position,
+            group=group,
+            symbol=symbol,
         )
-        return self._as_dicts(
+        dicts = self._as_dicts(
             self.history_orders_get(
                 date_from=date_from,
                 date_to=date_to,
@@ -944,6 +959,7 @@ class Mt5DataClient(Mt5Client):
                 position=position,
             )
         )
+        return [d for d in dicts if d["symbol"] == symbol] if symbol else dicts
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -963,8 +979,9 @@ class Mt5DataClient(Mt5Client):
         Args:
             date_from: Start date (required if not using ticket/position).
             date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get orders by ticket.
             position: Get orders by position.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -1001,8 +1018,9 @@ class Mt5DataClient(Mt5Client):
         Args:
             date_from: Start date (required if not using ticket/position).
             date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -1015,8 +1033,10 @@ class Mt5DataClient(Mt5Client):
             date_to=date_to,
             ticket=ticket,
             position=position,
+            group=group,
+            symbol=symbol,
         )
-        return self._as_dicts(
+        dicts = self._as_dicts(
             self.history_deals_get(
                 date_from=date_from,
                 date_to=date_to,
@@ -1025,6 +1045,7 @@ class Mt5DataClient(Mt5Client):
                 position=position,
             )
         )
+        return [d for d in dicts if d["symbol"] == symbol] if symbol else dicts
 
     @set_index_if_possible(index_parameters="index_keys")
     @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
@@ -1044,8 +1065,9 @@ class Mt5DataClient(Mt5Client):
         Args:
             date_from: Start date (required if not using ticket/position).
             date_to: End date (required if not using ticket/position).
-            group: Optional group filter.
-            symbol: Optional symbol filter.
+            group: Optional group filter. Mutually exclusive with symbol.
+            symbol: Optional symbol filter matching the symbol name exactly.
+                Mutually exclusive with group.
             ticket: Get deals by order ticket.
             position: Get deals by position ticket.
             skip_to_datetime: Whether to skip converting time to datetime.
@@ -1072,6 +1094,8 @@ class Mt5DataClient(Mt5Client):
         date_to: datetime | None = None,
         ticket: int | None = None,
         position: int | None = None,
+        group: str | None = None,
+        symbol: str | None = None,
     ) -> None:
         """Validate input parameters for history retrieval methods.
 
@@ -1080,11 +1104,17 @@ class Mt5DataClient(Mt5Client):
             date_to: End date.
             ticket: Order ticket.
             position: Position ticket.
+            group: Group filter.
+            symbol: Symbol filter.
 
         Raises:
-            ValueError: If both date_from and date_to are not provided
-                when not using ticket or position.
+            ValueError: If both symbol and group are provided, or if both
+                date_from and date_to are not provided when not using ticket
+                or position.
         """
+        if symbol is not None and group is not None:
+            error_message = "symbol and group filters are mutually exclusive."
+            raise ValueError(error_message)
         if ticket is not None or position is not None:
             pass
         elif date_from is None or date_to is None:
