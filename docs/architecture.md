@@ -52,9 +52,27 @@ helpers convert MT5 time fields to timezone-naive trade-server timestamps by
 default; pass `skip_to_datetime=True` where supported to retain raw epochs.
 
 Invalid pdmt5 inputs, such as conflicting filters, invalid date ranges, or
-non-positive counts, raise `ValueError`. An MT5 failure, including a `None`
-response, failed initialization, or an underlying MT5 exception, raises
-`Mt5RuntimeError` with MT5 error context.
+non-positive counts, raise `ValueError`.
+
+Boolean-returning MT5 wrappers, such as `initialize()`, `login()`,
+`symbol_select()`, `market_book_add()`, and `market_book_release()`, report an
+MT5-side failure by returning `False`. pdmt5 does not convert that `False`
+into an exception, so callers must check the return value themselves.
+
+Methods whose native MT5 result is validated for `None` (via
+`_validate_mt5_response_is_not_none()`) raise `Mt5RuntimeError` only when MT5
+returns `None`; any other response, including one whose fields indicate
+failure (such as an `order_send()` `retcode`), is returned as-is.
+
+Failed initialization raises `Mt5RuntimeError` through `_initialize_or_raise()`,
+which runs both when entering the `Mt5Client` context manager and implicitly,
+via `_initialize_if_needed()`, before other raw MT5 calls that require an
+active connection. `Mt5DataClient.initialize_and_login_mt5()`, used by its own
+context manager, raises `Mt5RuntimeError` after retrying initialization and
+login failures.
+
+Any unexpected exception raised by the underlying `MetaTrader5` package is
+wrapped and re-raised as `Mt5RuntimeError` with MT5 error context.
 
 ## Explicit non-goals
 
@@ -69,5 +87,6 @@ the downstream application.
 ## Enforcement
 
 Contract tests assert the root allowlist and module `__all__` declarations and
-scan every production module for imports of `mt5cli` or `mteor`. Any new root
-export, accidental module API, or reverse dependency fails CI.
+recursively scan every production module under `pdmt5/`, including nested
+subpackages, for imports of `mt5cli` or `mteor`. Any new root export,
+accidental module API, or reverse dependency fails CI.

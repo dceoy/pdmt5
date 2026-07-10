@@ -52,6 +52,24 @@ def test_module_public_apis_match_contract() -> None:
 
 def test_production_modules_do_not_import_downstream_packages() -> None:
     """Test the dependency direction never points from pdmt5 downstream."""
-    for module_path in _PACKAGE_ROOT.glob("*.py"):
+    for module_path in _PACKAGE_ROOT.rglob("*.py"):
         imported_names = _imported_root_names(module_path)
-        assert not imported_names & _FORBIDDEN_DOWNSTREAM_PACKAGES, module_path
+        forbidden_imports = imported_names & _FORBIDDEN_DOWNSTREAM_PACKAGES
+        assert not forbidden_imports, (
+            f"{module_path} imports forbidden downstream package(s):"
+            f" {sorted(forbidden_imports)}"
+        )
+
+
+def test_nested_module_importing_downstream_package_is_detected(
+    tmp_path: Path,
+) -> None:
+    """Test that the recursive scan reaches modules under nested subpackages."""
+    nested_module = tmp_path / "execution" / "workflow.py"
+    nested_module.parent.mkdir(parents=True)
+    nested_module.write_text("import mt5cli\n", encoding="utf-8")
+
+    imported_names = _imported_root_names(nested_module)
+
+    assert imported_names & _FORBIDDEN_DOWNSTREAM_PACKAGES == {"mt5cli"}
+    assert list(tmp_path.rglob("*.py")) == [nested_module]
