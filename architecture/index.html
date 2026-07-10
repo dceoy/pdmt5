@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="dceoy">
+        <link rel="canonical" href="https://github.com/dceoy/pdmt5/architecture/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Architecture contract - pdmt5 API Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">pdmt5 API Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Architecture contract</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">API Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../api/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../api/mt5/" class="dropdown-item">MetaTrader5</a>
+</li>
+                                    
+<li>
+    <a href="../api/constants/" class="dropdown-item">Constants</a>
+</li>
+                                    
+<li>
+    <a href="../api/dataframe/" class="dropdown-item">DataFrame</a>
+</li>
+                                    
+<li>
+    <a href="../api/utils/" class="dropdown-item">Utilities</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../api/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/dceoy/pdmt5/edit/master/docs/architecture.md" class="nav-link">Edit on dceoy/pdmt5
+                                    </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#architecture-contract" class="nav-link">Architecture contract</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#stable-package-root-api" class="nav-link">Stable package-root API</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#owned-low-level-responsibilities" class="nav-link">Owned low-level responsibilities</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#return-shapes-and-errors" class="nav-link">Return shapes and errors</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#explicit-non-goals" class="nav-link">Explicit non-goals</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#enforcement" class="nav-link">Enforcement</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="architecture-contract">Architecture contract<a class="headerlink" href="#architecture-contract" title="Permanent link">&para;</a></h1>
+<p>pdmt5 is a small adapter over the official <code>MetaTrader5</code> Python package. Direct
+pdmt5 use is appropriate for low-level MT5 access. Application execution
+workflows belong in <code>mt5cli</code> or the consuming application.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mteor or another application
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    -&gt; mt5cli
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        -&gt; pdmt5
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>            -&gt; MetaTrader5
+</code></pre></div>
+<h2 id="stable-package-root-api">Stable package-root API<a class="headerlink" href="#stable-package-root-api" title="Permanent link">&para;</a></h2>
+<p>Only these names are stable package-root exports:</p>
+<ul>
+<li><code>__version__</code></li>
+<li><code>Mt5Client</code>, <code>Mt5DataClient</code>, <code>Mt5Config</code>, <code>Mt5RuntimeError</code></li>
+<li><code>TIMEFRAME_MAP</code>, <code>COPY_TICKS_MAP</code>, <code>ORDER_TYPE_MAP</code></li>
+<li><code>parse_timeframe</code>, <code>parse_copy_ticks</code>, <code>parse_order_type</code></li>
+</ul>
+<p>Use <code>pdmt5.constants</code> for constant-name/value introspection helpers. Those
+helpers are intentionally no longer re-exported from <code>pdmt5</code>; this keeps the
+root API focused on client construction and canonical parsing.</p>
+<p>The deliberately public module APIs are <code>pdmt5.mt5</code> (<code>Mt5Client</code>,
+<code>Mt5RuntimeError</code>), <code>pdmt5.dataframe</code> (<code>Mt5Config</code>, <code>Mt5DataClient</code>), and the
+explicit <code>pdmt5.constants.__all__</code>. <code>pdmt5.utils</code> is implementation-only.</p>
+<h2 id="owned-low-level-responsibilities">Owned low-level responsibilities<a class="headerlink" href="#owned-low-level-responsibilities" title="Permanent link">&para;</a></h2>
+<p>pdmt5 owns direct wrappers around official <code>MetaTrader5</code> functions, including
+terminal initialization, login, shutdown, account and terminal access, market
+data, market book, orders, positions, margin, profit, history, <code>order_check</code>,
+and <code>order_send</code>. It owns <code>Mt5Config</code>, <code>Mt5RuntimeError</code>, canonical MT5
+constants/parsers, and native-result conversion to dictionaries and pandas
+DataFrames.</p>
+<p><code>Mt5Client</code> owns raw MT5 access and lifecycle primitives. Its context manager
+initializes on entry and always shuts down on exit; failed initialization raises
+<code>Mt5RuntimeError</code>. <code>Mt5DataClient</code> owns config-aware lifecycle: its context
+manager initializes and logs in using <code>Mt5Config</code>, then shuts down on exit.</p>
+<h2 id="return-shapes-and-errors">Return shapes and errors<a class="headerlink" href="#return-shapes-and-errors" title="Permanent link">&para;</a></h2>
+<p>Raw <code>Mt5Client</code> methods return the native MT5 result (or the corresponding
+scalar). <code>Mt5DataClient</code> methods ending in <code>_as_dict</code> return a single
+dictionary, those ending in <code>_as_dicts</code> return a list of dictionaries, and
+those ending in <code>_as_df</code> return a pandas <code>DataFrame</code>. DataFrame and dictionary
+helpers convert MT5 time fields to timezone-naive trade-server timestamps by
+default; pass <code>skip_to_datetime=True</code> where supported to retain raw epochs.</p>
+<p>Invalid pdmt5 inputs, such as conflicting filters, invalid date ranges, or
+non-positive counts, raise <code>ValueError</code>.</p>
+<p>Boolean-returning MT5 wrappers, such as <code>initialize()</code>, <code>login()</code>,
+<code>symbol_select()</code>, <code>market_book_add()</code>, and <code>market_book_release()</code>, report an
+MT5-side failure by returning <code>False</code>. pdmt5 does not convert that <code>False</code>
+into an exception, so callers must check the return value themselves.</p>
+<p>Methods whose native MT5 result is validated for <code>None</code> (via
+<code>_validate_mt5_response_is_not_none()</code>) raise <code>Mt5RuntimeError</code> only when MT5
+returns <code>None</code>; any other response, including one whose fields indicate
+failure (such as an <code>order_send()</code> <code>retcode</code>), is returned as-is.</p>
+<p>Failed initialization raises <code>Mt5RuntimeError</code> through <code>_initialize_or_raise()</code>,
+which runs both when entering the <code>Mt5Client</code> context manager and implicitly,
+via <code>_initialize_if_needed()</code>, before other raw MT5 calls that require an
+active connection. <code>Mt5DataClient.initialize_and_login_mt5()</code>, used by its own
+context manager, raises <code>Mt5RuntimeError</code> after retrying initialization and
+login failures.</p>
+<p>Any unexpected exception raised by the underlying <code>MetaTrader5</code> package is
+wrapped and re-raised as <code>Mt5RuntimeError</code> with MT5 error context.</p>
+<h2 id="explicit-non-goals">Explicit non-goals<a class="headerlink" href="#explicit-non-goals" title="Permanent link">&para;</a></h2>
+<p>pdmt5 does not construct market-order requests, select filling modes, size
+positions from margin budgets, orchestrate position lifecycles, or implement
+close, reversal, or retry workflows. It does not provide SQLite or other
+persistence; CSV, JSON, Parquet, Grafana, or reporting workflows; command-line
+or batch workflows; strategies, signals, risk thresholds, betting,
+backtesting, or optimization. Put these policies and workflows in <code>mt5cli</code> or
+the downstream application.</p>
+<h2 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h2>
+<p>Contract tests assert the root allowlist and module <code>__all__</code> declarations and
+recursively scan every production module under <code>pdmt5/</code>, including nested
+subpackages, for imports of <code>mt5cli</code> or <code>mteor</code>. Any new root export,
+accidental module API, or reverse dependency fails CI.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
