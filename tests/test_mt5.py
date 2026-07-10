@@ -361,6 +361,14 @@ class TestMt5Client:
         assert result is True
         mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # noqa: FBT003
 
+    def test_symbol_select_pass_through_false(
+        self, initialized_client: Mt5Client, mock_mt5: Mock
+    ) -> None:
+        """Test symbol_select returns False without raising on MT5-side failure."""
+        mock_mt5.symbol_select.return_value = False
+
+        assert initialized_client.symbol_select("EURUSD") is False
+
     @pytest.mark.parametrize("method_name", ["market_book_add", "market_book_release"])
     def test_market_book_actions(
         self, initialized_client: Mt5Client, mock_mt5: Mock, method_name: str

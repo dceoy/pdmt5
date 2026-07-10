@@ -2,6 +2,10 @@
 
 This section contains the complete API documentation for pdmt5.
 
+The [architecture contract](../architecture.md) defines the stable package-root
+API and the boundary between pdmt5's low-level MT5 primitives and downstream
+application workflows.
+
 ## Modules
 
 The pdmt5 package consists of the following modules:
