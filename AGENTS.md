@@ -36,6 +36,16 @@ Apply KISS, DRY, and YAGNI. Keep changes straightforward, remove duplication
 only when it improves clarity, and do not add extension points or features before
 they are needed. Prefer small, test-backed changes that are easy to review.
 
+## Architecture Boundary
+
+pdmt5 is a low-level adapter over `MetaTrader5`. It owns direct MT5 wrappers,
+lifecycle primitives, canonical constants/parsers, and native-result
+dictionary/DataFrame conversion. Keep market-order construction, filling-mode
+selection, sizing, position workflows, retries, persistence, reporting, CLI or
+batch workflows, and strategy/risk/backtesting features in `mt5cli` or the
+consuming application. Proposals in those areas should be directed downstream
+unless they are unavoidable low-level MT5 primitives.
+
 ## Testing Guidelines
 
 Tests use `pytest`, `pytest-mock`, doctests, and `pytest-cov`. Name files

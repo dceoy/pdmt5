@@ -53,6 +53,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Architecture contract: architecture.md
   - API Reference:
     - Overview: api/index.md
     - MetaTrader5: api/mt5.md

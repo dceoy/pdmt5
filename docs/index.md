@@ -6,6 +6,9 @@ Low-level MetaTrader 5 wrapper and pandas/dict conversion package.
 
 pdmt5 is a Python library that provides a low-level wrapper around the MetaTrader 5 (MT5) API with pandas DataFrame and dictionary conversion helpers. It simplifies data access and conversion for financial market data analysis.
 
+For the stable root API and the low-level/downstream responsibility split, see
+the [architecture contract](architecture.md).
+
 ## Features
 
 - **MetaTrader 5 Integration**: Direct connection to MetaTrader 5 platform (Windows only)

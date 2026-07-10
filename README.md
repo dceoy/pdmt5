@@ -13,6 +13,11 @@ Low-level MetaTrader 5 wrapper and pandas/dict conversion package
 
 High-level trading orchestration (market-order construction, margin-budget sizing, position lifecycle management, strategy or batch workflows) is out of scope. Those concerns belong in downstream applications or tools such as mt5cli.
 
+See the [architecture contract](docs/architecture.md) for the stable root API,
+return shapes, lifecycle and error semantics, dependency direction, and the
+full list of responsibilities deliberately left to `mt5cli` or downstream
+applications.
+
 ### Key Features
 
 - **Pandas Integration**: DataFrame and dictionary helpers for easy analysis
@@ -170,16 +175,14 @@ and other application layers. The constants module does not import
 generation without a live terminal.
 
 ```python
-from pdmt5 import (
+from pdmt5 import parse_copy_ticks, parse_order_type, parse_timeframe
+from pdmt5.constants import (
     list_copy_ticks_names,
     list_copy_ticks_values,
     list_order_type_names,
     list_order_type_values,
     list_timeframe_names,
     list_timeframe_values,
-    parse_copy_ticks,
-    parse_order_type,
-    parse_timeframe,
 )
 
 parse_timeframe("TIMEFRAME_M1")  # 1

@@ -22,6 +22,8 @@ R = TypeVar("R")
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["Mt5Client", "Mt5RuntimeError"]
+
 
 class Mt5RuntimeError(RuntimeError):
     """MetaTrader5 specific runtime error.

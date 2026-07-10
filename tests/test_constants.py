@@ -8,7 +8,7 @@ from typing import cast
 
 import pytest
 
-import pdmt5
+from pdmt5 import constants
 from pdmt5.constants import (
     COPY_TICKS_MAP,
     ORDER_TYPE_MAP,
@@ -288,9 +288,9 @@ def test_public_constant_maps_are_immutable_and_do_not_affect_parsers(
     ],
 )
 def test_constants_exports_available(export: str) -> None:
-    """Test new public constants APIs are exported by pdmt5."""
-    assert hasattr(pdmt5, export), f"Missing export: {export}"
-    assert export in pdmt5.__all__, f"Export {export} not in __all__"
+    """Test public constants APIs are exported by pdmt5.constants."""
+    assert hasattr(constants, export), f"Missing export: {export}"
+    assert export in constants.__all__, f"Export {export} not in __all__"
 
 
 @_WINDOWS_ONLY
