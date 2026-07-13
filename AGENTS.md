@@ -50,8 +50,10 @@ unless they are unavoidable low-level MT5 primitives.
 
 Tests use `pytest`, `pytest-mock`, doctests, and `pytest-cov`. Name files
 `test_*.py`, classes `Test*`, and functions `test_*`. Coverage targets `pdmt5`
-with branch coverage and a 100% threshold. Add tests for behavior changes,
-including MT5 import failures, validation errors, and DataFrame conversion paths.
+with branch coverage and a 100% threshold. Parametrize unit tests with
+`pytest.mark.parametrize` when exercising multiple input/output cases instead of
+duplicating test logic. Add tests for behavior changes, including MT5 import
+failures, validation errors, and DataFrame conversion paths.
 
 ## Commit & Pull Request Guidelines
 
