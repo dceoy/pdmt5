@@ -1,13 +1,5 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-
-This is a Python package for pandas-friendly MetaTrader 5 access. Core code
-lives in `pdmt5/`: `mt5.py` wraps MT5 calls, `dataframe.py` adds DataFrame/dict
-conversions, and `constants.py`/`utils.py` hold shared parsing and utilities.
-Tests live in `tests/`, documentation in `docs/`, and project settings in
-`pyproject.toml`. Keep `uv.lock` in sync.
-
 ## Build, Test, and Development Commands
 
 - `uv sync --group dev`: install runtime and development dependencies.
