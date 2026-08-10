@@ -700,8 +700,8 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date in trade-server time, not UTC (required if not using ticket/position).
-            date_to: End date in trade-server time, not UTC (required if not using ticket/position).
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
 
@@ -734,8 +734,8 @@ class Mt5DataClient(Mt5Client):
 
         Args:
             symbol: Symbol name.
-            date_from: Start date in trade-server time, not UTC (required if not using ticket/position).
-            date_to: End date in trade-server time, not UTC (required if not using ticket/position).
+            date_from: Start date in trade-server time (not UTC).
+            date_to: End date in trade-server time (not UTC).
             flags: Tick flags (use constants from MetaTrader5).
             skip_to_datetime: Whether to skip converting time to datetime.
             index_keys: Column name to set as index if provided.
@@ -1042,8 +1042,10 @@ class Mt5DataClient(Mt5Client):
         """Get historical deals with optional filters as a list of dictionaries.
 
         Args:
-            date_from: Start date in trade-server time, not UTC (required if not using ticket/position).
-            date_to: End date in trade-server time, not UTC (required if not using ticket/position).
+            date_from: Start date in trade-server time, not UTC (required if
+                not using ticket/position).
+            date_to: End date in trade-server time, not UTC (required if not
+                using ticket/position).
             group: Optional group filter. Mutually exclusive with symbol.
             symbol: Optional symbol filter matching the symbol name exactly.
                 Mutually exclusive with group.
