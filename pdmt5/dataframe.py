@@ -109,7 +109,13 @@ class Mt5DataClient(Mt5Client):
         server: str | None = None,
         timeout: int | None = None,
     ) -> None:
-        """Initialize an MT5 connection with config-aware retry and login support.
+        """Initialize MT5 and ensure the requested account is active.
+
+        ``MetaTrader5.initialize()`` accepts account credentials and normally
+        connects directly to the requested account. After initialization, this
+        method verifies the active account and only calls ``login()`` when the
+        terminal reports a different account, avoiding redundant authentication
+        while preserving account-switch fallback behavior.
 
         Args:
             path: Path to terminal EXE file (overrides config).
@@ -119,7 +125,7 @@ class Mt5DataClient(Mt5Client):
             timeout: Connection timeout (overrides config).
 
         Raises:
-            Mt5RuntimeError: If initialization fails after retries.
+            Mt5RuntimeError: If initialization or account selection fails after retries.
         """
         path = path or self.config.path
         login_value = login if login is not None else self.config.login
@@ -146,8 +152,22 @@ class Mt5DataClient(Mt5Client):
             ):
                 last_error_value = self.last_error()
                 continue
+            if login_value is None:
+                return
             try:
-                if login_value is None or self.login(
+                active_account = self.account_info()
+            except Mt5RuntimeError:
+                active_account = None
+            if active_account is not None and (
+                getattr(active_account, "login", None) == login_value
+                and (
+                    server_value is None
+                    or getattr(active_account, "server", None) == server_value
+                )
+            ):
+                return
+            try:
+                if self.login(
                     login=login_value,
                     password=password_value,
                     server=server_value,
