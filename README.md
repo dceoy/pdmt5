@@ -3,7 +3,6 @@
 Low-level MetaTrader 5 wrapper and pandas/dict conversion package
 
 [![CI/CD](https://github.com/dceoy/pdmt5/actions/workflows/ci.yml/badge.svg)](https://github.com/dceoy/pdmt5/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
@@ -33,7 +32,6 @@ applications.
 ## Requirements
 
 - **Operating System**: Windows (required by MetaTrader5 API)
-- **Python**: 3.11 or higher
 - **MetaTrader 5**: Terminal must be installed
 
 ## Installation
