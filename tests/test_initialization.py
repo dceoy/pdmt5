@@ -12,7 +12,11 @@ from tests.helpers import create_mock_mt5_module
 _MT5_METHODS = ("initialize", "login", "account_info", "last_error", "shutdown")
 
 
-def _make_client(mocker: MockerFixture) -> tuple[ModuleType, Mt5DataClient]:
+def _make_client(
+    mocker: MockerFixture,
+    *,
+    server: str | None,
+) -> tuple[ModuleType, Mt5DataClient]:
     mt5 = create_mock_mt5_module(
         mocker,
         methods=_MT5_METHODS,
@@ -27,7 +31,7 @@ def _make_client(mocker: MockerFixture) -> tuple[ModuleType, Mt5DataClient]:
         config=Mt5Config(
             login=123456,
             password="secret",
-            server="Demo",
+            server=server,
             timeout=60000,
         ),
         retry_count=0,
@@ -36,34 +40,44 @@ def _make_client(mocker: MockerFixture) -> tuple[ModuleType, Mt5DataClient]:
 
 
 @pytest.mark.parametrize(
-    ("active_account", "should_login"),
+    ("active_account", "requested_server", "should_login"),
     [
         pytest.param(
             SimpleNamespace(login=123456, server="Demo"),
+            "Demo",
             False,
             id="matching-account",
         ),
         pytest.param(
+            SimpleNamespace(login=123456, server="Other"),
+            None,
+            False,
+            id="matching-login-without-requested-server",
+        ),
+        pytest.param(
             SimpleNamespace(login=654321, server="Demo"),
+            "Demo",
             True,
             id="different-login",
         ),
         pytest.param(
             SimpleNamespace(login=123456, server="Other"),
+            "Demo",
             True,
             id="different-server",
         ),
-        pytest.param(None, True, id="account-info-unavailable"),
+        pytest.param(None, "Demo", True, id="account-info-unavailable"),
     ],
 )
 def test_initialize_uses_explicit_login_only_when_requested_account_is_not_active(
     mocker: MockerFixture,
     active_account: SimpleNamespace | None,
+    requested_server: str | None,
     *,
     should_login: bool,
 ) -> None:
-    """Skip only when both the requested login and server are already active."""
-    mt5, client = _make_client(mocker)
+    """Skip only when the requested account identity is already active."""
+    mt5, client = _make_client(mocker, server=requested_server)
     mt5_any = cast("Any", mt5)
     mt5_any.account_info.return_value = active_account
 
