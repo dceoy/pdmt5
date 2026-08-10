@@ -83,7 +83,6 @@ UTC+2 or UTC+3), not true UTC. pdmt5 converts them to **timezone-naive**
 
 ## Requirements
 
-- Python 3.11+
 - Windows OS (MetaTrader 5 requirement)
 - MetaTrader 5 platform
 

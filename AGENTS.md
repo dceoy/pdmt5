@@ -15,12 +15,12 @@ MetaTrader5 and live terminal access are Windows-specific; CI runs on Windows.
 
 ## Coding Style & Naming Conventions
 
-Target Python 3.11+. Use type hints throughout and keep Pyright strict mode
-clean. Ruff enforces 88-character lines, import sorting, Google-style
-docstrings, pandas-vet rules, security checks, and bug-prevention rules.
-Use `snake_case` for functions, methods, variables, and modules; `PascalCase`
-for classes; and uppercase names for constants. Prefer small typed helpers over
-duplicated conversion logic, especially around MT5 result normalization.
+Use type hints throughout and keep Pyright strict mode clean. Ruff enforces
+88-character lines, import sorting, Google-style docstrings, pandas-vet rules,
+security checks, and bug-prevention rules. Use `snake_case` for functions,
+methods, variables, and modules; `PascalCase` for classes; and uppercase names
+for constants. Prefer small typed helpers over duplicated conversion logic,
+especially around MT5 result normalization.
 
 ## Design Principles
 
