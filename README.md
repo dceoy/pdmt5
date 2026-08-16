@@ -265,7 +265,7 @@ with Mt5DataClient(config=config) as client:
         flags=parse_copy_ticks("COPY_TICKS_ALL"),
     )
 
-    # Tick data includes: time, bid, ask, last, volume, flags
+    # Data includes: time, bid, ask, last, volume, flags
     print(ticks.head())
 ```
 
@@ -394,7 +394,7 @@ Contributions are welcome! Please:
 3. Ensure tests pass and coverage is maintained
 4. Submit a pull request
 
-See [CLAUDE.md](CLAUDE.md) for development guidelines.
+See [Development](#development) for development setup and quality checks.
 
 ## License
 
