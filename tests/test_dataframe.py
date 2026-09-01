@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, NamedTuple, cast
 
 import numpy as np
@@ -91,6 +91,75 @@ def create_initialized_client(mock_mt5_import: ModuleType) -> Mt5DataClient:
     client = Mt5DataClient(mt5=mock_mt5_import)
     client.initialize()
     return client
+
+
+@pytest.mark.parametrize(
+    ("active_account", "requested_server", "should_login"),
+    [
+        pytest.param(
+            SimpleNamespace(login=123456, server="Demo"),
+            "Demo",
+            False,
+            id="matching-account",
+        ),
+        pytest.param(
+            SimpleNamespace(login=123456, server="Other"),
+            None,
+            False,
+            id="matching-login-without-requested-server",
+        ),
+        pytest.param(
+            SimpleNamespace(login=654321, server="Demo"),
+            "Demo",
+            True,
+            id="different-login",
+        ),
+        pytest.param(
+            SimpleNamespace(login=123456, server="Other"),
+            "Demo",
+            True,
+            id="different-server",
+        ),
+        pytest.param(None, "Demo", True, id="account-info-unavailable"),
+    ],
+)
+def test_initialize_uses_explicit_login_only_when_requested_account_is_not_active(
+    mock_mt5_import: ModuleType | None,
+    active_account: SimpleNamespace | None,
+    requested_server: str | None,
+    *,
+    should_login: bool,
+) -> None:
+    """Skip only when the requested account identity is already active."""
+    assert mock_mt5_import is not None
+    mock_mt5_import.initialize.return_value = True
+    mock_mt5_import.login.return_value = True
+    mock_mt5_import.last_error.return_value = (1, "Success")
+    mt5_any = cast("Any", mock_mt5_import)
+    mt5_any.account_info.return_value = active_account
+    client = Mt5DataClient(
+        mt5=mock_mt5_import,
+        config=Mt5Config(
+            login=123456,
+            password="secret",
+            server=requested_server,
+            timeout=60000,
+        ),
+        retry_count=0,
+    )
+
+    client.initialize_and_login_mt5()
+
+    mt5_any.account_info.assert_called_once()
+    if should_login:
+        mt5_any.login.assert_called_once_with(
+            123456,
+            password="secret",
+            server="Demo",
+            timeout=60000,
+        )
+    else:
+        mt5_any.login.assert_not_called()
 
 
 class MockAccountInfo(NamedTuple):
