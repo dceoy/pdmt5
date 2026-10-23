@@ -1,6 +1,6 @@
 [project]
 name = "pdmt5"
-version = "1.2.2"
+version = "1.2.3"
 description = "Low-level MetaTrader 5 wrapper and pandas/dict conversion package"
 authors = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
 maintainers = [{name = "dceoy", email = "dceoy@users.noreply.github.com"}]
@@ -30,6 +30,7 @@ Repository = "https://github.com/dceoy/pdmt5.git"
 [tool.uv]
 required-environments = ["platform_system == 'Windows'"]
 exclude-newer = "1 day"
+exclude-newer-package = { certifi = false }
 
 [dependency-groups]
 dev = [
