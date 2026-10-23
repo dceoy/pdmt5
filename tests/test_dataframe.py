@@ -56,9 +56,10 @@ _MT5_METHODS = (
     "market_book_get",
 )
 _MASKED_SECRET = "*" * 10
+pytestmark = pytest.mark.usefixtures("mock_mt5_import")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_mt5_import(
     request: pytest.FixtureRequest,
     mocker: MockerFixture,
@@ -2032,7 +2033,7 @@ class TestMt5DataClientValidation:
         client_method: str,
         mt5_method: str,
         extra_key: str,
-        extra_value: int | float,  # noqa: PYI041
+        extra_value: int | float,  # ruff: ignore[redundant-numeric-union]
     ) -> None:
         """Test order_check_as_dict and order_send_as_dict methods."""
         config = Mt5Config()
@@ -2826,10 +2827,10 @@ class TestMt5DataClientCoverageMissing:
         mock_mt5_import.symbols_get.return_value = [MockSymbol()]
         client = create_initialized_client(mock_mt5_import)
 
-        dict_result = client.symbols_get_as_dicts(None, True)  # noqa: FBT003
+        dict_result = client.symbols_get_as_dicts(None, True)  # ruff: ignore[boolean-positional-value-in-call]
         assert isinstance(dict_result[0]["time"], int)
 
-        df_result = client.symbols_get_as_df(None, False, "name")  # noqa: FBT003
+        df_result = client.symbols_get_as_df(None, False, "name")  # ruff: ignore[boolean-positional-value-in-call]
         assert df_result.index.name == "name"
         assert isinstance(df_result["time"].iloc[0], pd.Timestamp)
 
@@ -3465,7 +3466,7 @@ class TestMt5DataClientCoverageMissing:
         # This test specifically targets return result (else case)
 
         @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
-        def mock_function_returning_string(skip_to_datetime: bool = False) -> str:  # noqa: ARG001
+        def mock_function_returning_string(skip_to_datetime: bool = False) -> str:  # ruff: ignore[unused-function-argument]
             """Mock function that returns a string."""
             return "test_string"  # Return string instead of dict/list/DataFrame
 

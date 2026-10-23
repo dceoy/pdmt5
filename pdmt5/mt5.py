@@ -1,13 +1,13 @@
 """MetaTrader5 client wrapper class."""
 
-# ruff: noqa: ANN401
+# ruff: file-ignore[any-type]
 
 from __future__ import annotations
 
 import importlib
 import logging
 from functools import wraps
-from types import ModuleType  # noqa: TC003
+from types import ModuleType  # ruff: ignore[typing-only-standard-library-import]
 from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -379,7 +379,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             True if successful, False otherwise.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._initialize_if_needed()
         logger.info("Adding market book for symbol: %s", symbol)
         response = self.mt5.market_book_add(symbol)
@@ -399,7 +399,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             Tuple of BookInfo structures.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._initialize_if_needed()
         logger.info("Retrieving market book for symbol: %s", symbol)
         response = self.mt5.market_book_get(symbol)
@@ -419,7 +419,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             True if successful, False otherwise.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._initialize_if_needed()
         logger.info("Releasing market book for symbol: %s", symbol)
         response = self.mt5.market_book_release(symbol)
@@ -698,7 +698,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             Required margin amount.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._initialize_if_needed()
         logger.info(
             "Calculating margin: action=%d, symbol=%s, volume=%.2f, price=%.5f",
@@ -790,7 +790,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             OrderSendResult structure.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._initialize_if_needed()
         logger.info("Sending order with request: %s", request)
         response = self.mt5.order_send(request)
@@ -909,7 +909,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             Tuple of historical order info structures.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._validate_history_filters(
             date_from=date_from,
             date_to=date_to,
@@ -1000,7 +1000,7 @@ class Mt5Client(BaseModel):
 
         Returns:
             Tuple of historical deal info structures.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         self._validate_history_filters(
             date_from=date_from,
             date_to=date_to,
