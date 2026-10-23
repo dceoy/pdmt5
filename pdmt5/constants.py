@@ -196,7 +196,7 @@ def _parse_constant(value: object, family: _ConstantFamily) -> int:
             raise ValueError(message) from None
     elif isinstance(value, bool) or not isinstance(value, int):
         message = f"Invalid {family.label}: {value!r}. Use a name or integer value."
-        raise ValueError(message)  # noqa: TRY004
+        raise ValueError(message)  # ruff: ignore[type-check-without-type-error]
     else:
         parsed_value = value
 

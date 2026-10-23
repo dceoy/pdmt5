@@ -283,7 +283,7 @@ class TestDetectAndConvertTimeToDatetime:
         """Test decorator with dict, list of dicts, and DataFrame results."""
 
         @detect_and_convert_time_to_datetime()
-        def get_data() -> Any:  # noqa: ANN401
+        def get_data() -> Any:  # ruff: ignore[any-type]
             return return_factory()
 
         assert_result(get_data())
@@ -306,7 +306,7 @@ class TestDetectAndConvertTimeToDatetime:
         """Test decorator with skip_toggle parameter."""
 
         @detect_and_convert_time_to_datetime(skip_toggle="skip_to_datetime")
-        def get_data(skip_to_datetime: bool = False) -> dict[str, Any]:  # noqa: ARG001
+        def get_data(skip_to_datetime: bool = False) -> dict[str, Any]:  # ruff: ignore[unused-function-argument]
             return {"time": 1704067200, "price": 100.5}
 
         result = get_data(skip_to_datetime=skip_to_datetime)
@@ -381,7 +381,7 @@ class TestSetIndexIfPossible:
         """Test decorator with normal DataFrames and varied index configuration."""
 
         @set_index_if_possible(**decorator_kwargs)
-        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG001
+        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-function-argument]
             return pd.DataFrame({
                 "symbol": ["EURUSD", "GBPUSD"],
                 "price": [1.1, 1.3],
@@ -398,7 +398,7 @@ class TestSetIndexIfPossible:
         """Test decorator with empty DataFrame."""
 
         @set_index_if_possible(index_parameters="index_keys")
-        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG001
+        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-function-argument]
             return pd.DataFrame()
 
         result = get_data(index_keys="symbol")
@@ -408,7 +408,7 @@ class TestSetIndexIfPossible:
         """Test decorator raises TypeError for non-DataFrame return."""
 
         @set_index_if_possible(index_parameters="index_keys")  # type: ignore[arg-type]
-        def get_data(index_keys: str | None = None) -> dict[str, Any]:  # noqa: ARG001
+        def get_data(index_keys: str | None = None) -> dict[str, Any]:  # ruff: ignore[unused-function-argument]
             return {"data": "not a dataframe"}
 
         with pytest.raises(
@@ -424,7 +424,7 @@ class TestSetIndexIfPossible:
         """Test decorator preserves original function metadata."""
 
         @set_index_if_possible(index_parameters="index_keys")
-        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG001
+        def get_data(index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-function-argument]
             """Get test data."""
             return pd.DataFrame()
 
@@ -435,7 +435,7 @@ class TestSetIndexIfPossible:
         """Test decorator with list of columns as index."""
 
         @set_index_if_possible(index_parameters="index_keys")
-        def get_data(index_keys: list[str] | None = None) -> pd.DataFrame:  # noqa: ARG001
+        def get_data(index_keys: list[str] | None = None) -> pd.DataFrame:  # ruff: ignore[unused-function-argument]
             return pd.DataFrame({
                 "date": ["2024-01-01", "2024-01-02"],
                 "symbol": ["EURUSD", "GBPUSD"],

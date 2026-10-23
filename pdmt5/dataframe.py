@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime  # noqa: TC003
+from datetime import datetime  # ruff: ignore[typing-only-standard-library-import]
 from typing import Any, Self, cast
 
 import pandas as pd
@@ -79,12 +79,12 @@ class Mt5DataClient(Mt5Client):
         return self
 
     @staticmethod
-    def _as_dicts(items: Any) -> list[dict[str, Any]]:  # noqa: ANN401
+    def _as_dicts(items: Any) -> list[dict[str, Any]]:  # ruff: ignore[any-type]
         """Return MT5 namedtuple-like results as dictionaries."""
         return [item._asdict() for item in items]
 
     @staticmethod
-    def _as_order_result_dict(result: Any) -> dict[str, Any]:  # noqa: ANN401
+    def _as_order_result_dict(result: Any) -> dict[str, Any]:  # ruff: ignore[any-type]
         """Return order result data with nested request data flattened one level."""
         return {
             key: (value._asdict() if key == "request" else value)
@@ -199,7 +199,7 @@ class Mt5DataClient(Mt5Client):
         }
 
     @set_index_if_possible(index_parameters="index_keys")
-    def version_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG002
+    def version_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-method-argument]
         """Return MetaTrader5 version information as a data frame.
 
         Args:
@@ -220,7 +220,7 @@ class Mt5DataClient(Mt5Client):
         return {"error_code": response[0], "error_description": response[1]}
 
     @set_index_if_possible(index_parameters="index_keys")
-    def last_error_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG002
+    def last_error_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-method-argument]
         """Get the last error information as a data frame.
 
         Args:
@@ -240,7 +240,7 @@ class Mt5DataClient(Mt5Client):
         return self.account_info()._asdict()
 
     @set_index_if_possible(index_parameters="index_keys")
-    def account_info_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG002
+    def account_info_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-method-argument]
         """Get info on the current account as a data frame.
 
         Args:
@@ -260,7 +260,7 @@ class Mt5DataClient(Mt5Client):
         return self.terminal_info()._asdict()
 
     @set_index_if_possible(index_parameters="index_keys")
-    def terminal_info_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # noqa: ARG002
+    def terminal_info_as_df(self, index_keys: str | None = None) -> pd.DataFrame:  # ruff: ignore[unused-method-argument]
         """Get the connected terminal status and settings as a data frame.
 
         Args:
@@ -275,7 +275,7 @@ class Mt5DataClient(Mt5Client):
     def symbols_get_as_dicts(
         self,
         group: str | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get symbols as a list of dictionaries.
 
@@ -293,8 +293,8 @@ class Mt5DataClient(Mt5Client):
     def symbols_get_as_df(
         self,
         group: str | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get symbols as a data frame.
 
@@ -314,7 +314,7 @@ class Mt5DataClient(Mt5Client):
     def symbol_info_as_dict(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> dict[str, Any]:
         """Get data on a specific symbol as a dictionary.
 
@@ -332,8 +332,8 @@ class Mt5DataClient(Mt5Client):
     def symbol_info_as_df(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get data on a specific symbol as a data frame.
 
@@ -353,7 +353,7 @@ class Mt5DataClient(Mt5Client):
     def symbol_info_tick_as_dict(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> dict[str, Any]:
         """Get the last tick for the specified financial instrument as a dictionary.
 
@@ -371,8 +371,8 @@ class Mt5DataClient(Mt5Client):
     def symbol_info_tick_as_df(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get the last tick for the specified financial instrument as a data frame.
 
@@ -392,7 +392,7 @@ class Mt5DataClient(Mt5Client):
     def market_book_get_as_dicts(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get market depth for a specified symbol as a list of dictionaries.
 
@@ -410,8 +410,8 @@ class Mt5DataClient(Mt5Client):
     def market_book_get_as_df(
         self,
         symbol: str,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get market depth for a specified symbol as a data frame.
 
@@ -466,8 +466,8 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         date_from: datetime,
         count: int,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get bars for a specified date range as a data frame.
 
@@ -531,8 +531,8 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         start_pos: int,
         count: int,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get bars from a specified position as a data frame.
 
@@ -597,8 +597,8 @@ class Mt5DataClient(Mt5Client):
         timeframe: int,
         date_from: datetime,
         date_to: datetime,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get bars for a specified date range as a data frame.
 
@@ -662,8 +662,8 @@ class Mt5DataClient(Mt5Client):
         date_from: datetime,
         count: int,
         flags: int,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get ticks from a specified date as a data frame.
 
@@ -727,8 +727,8 @@ class Mt5DataClient(Mt5Client):
         date_from: datetime,
         date_to: datetime,
         flags: int,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get ticks for a specified date range as a data frame.
 
@@ -759,7 +759,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get active orders with optional filters as a list of dictionaries.
 
@@ -786,8 +786,8 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get active orders with optional filters as a data frame.
 
@@ -821,14 +821,14 @@ class Mt5DataClient(Mt5Client):
 
         Returns:
             Dictionary with order check results.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         return self._as_order_result_dict(self.order_check(request=request))
 
     @set_index_if_possible(index_parameters="index_keys")
     def order_check_as_df(
         self,
         request: dict[str, Any],
-        index_keys: str | None = None,  # noqa: ARG002
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Check funds sufficiency for performing a requested trading operation as a data frame.
 
@@ -838,7 +838,7 @@ class Mt5DataClient(Mt5Client):
 
         Returns:
             DataFrame with order check results.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         return self._as_single_row_df(
             self._flatten_dict_to_one_level(
                 dictionary=self.order_check_as_dict(request=request),
@@ -853,14 +853,14 @@ class Mt5DataClient(Mt5Client):
 
         Returns:
             Dictionary with order send results.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         return self._as_order_result_dict(self.order_send(request=request))
 
     @set_index_if_possible(index_parameters="index_keys")
     def order_send_as_df(
         self,
         request: dict[str, Any],
-        index_keys: str | None = None,  # noqa: ARG002
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Send a request to perform a trading operation from the terminal to the trade server as a data frame.
 
@@ -870,7 +870,7 @@ class Mt5DataClient(Mt5Client):
 
         Returns:
             DataFrame with order send results.
-        """  # noqa: E501
+        """  # ruff: ignore[line-too-long]
         return self._as_single_row_df(
             self._flatten_dict_to_one_level(
                 dictionary=self.order_send_as_dict(request=request),
@@ -883,7 +883,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get open positions with optional filters as a list of dictionaries.
 
@@ -911,8 +911,8 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         group: str | None = None,
         ticket: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get open positions with optional filters as a data frame.
 
@@ -947,7 +947,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get historical orders with optional filters as a list of dictionaries.
 
@@ -995,8 +995,8 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get historical orders with optional filters as a data frame.
 
@@ -1037,7 +1037,7 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
     ) -> list[dict[str, Any]]:
         """Get historical deals with optional filters as a list of dictionaries.
 
@@ -1085,8 +1085,8 @@ class Mt5DataClient(Mt5Client):
         symbol: str | None = None,
         ticket: int | None = None,
         position: int | None = None,
-        skip_to_datetime: bool = False,  # noqa: ARG002
-        index_keys: str | None = None,  # noqa: ARG002
+        skip_to_datetime: bool = False,  # ruff: ignore[unused-method-argument]
+        index_keys: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> pd.DataFrame:
         """Get historical deals with optional filters as a data frame.
 

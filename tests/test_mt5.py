@@ -10,13 +10,15 @@ from pydantic import SecretStr
 
 from pdmt5.mt5 import Mt5Client, Mt5RuntimeError
 
+pytestmark = pytest.mark.usefixtures("mock_metatrader5_import")
+
 if TYPE_CHECKING:
     from unittest.mock import Mock
 
     from pytest_mock import MockerFixture
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_metatrader5_import(mocker: MockerFixture) -> Mock:
     """Mock MetaTrader5 import globally for all tests."""
     mock_mt5 = mocker.Mock()
@@ -35,7 +37,7 @@ class TestMt5Client:
         return mock_metatrader5_import
 
     @pytest.fixture
-    def client(self, mock_mt5: Mock) -> Mt5Client:  # noqa: ARG002
+    def client(self, mock_mt5: Mock) -> Mt5Client:  # ruff: ignore[unused-method-argument]
         """Create Mt5Client instance with mocked MT5 module."""
         return Mt5Client()
 
@@ -359,7 +361,7 @@ class TestMt5Client:
         result = initialized_client.symbol_select("EURUSD")
 
         assert result is True
-        mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # noqa: FBT003
+        mock_mt5.symbol_select.assert_called_once_with("EURUSD", True)  # ruff: ignore[boolean-positional-value-in-call]
 
     def test_symbol_select_pass_through_false(
         self, initialized_client: Mt5Client, mock_mt5: Mock
