@@ -1799,7 +1799,7 @@ filters.</p>
 <a id="__codelineno-0-1000" name="__codelineno-0-1000"></a>
 <a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">        Tuple of historical deal info structures.</span>
-<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-1004" name="__codelineno-0-1004"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_validate_history_filters</span><span class="p">(</span>
 <a id="__codelineno-0-1005" name="__codelineno-0-1005"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">date_from</span><span class="p">,</span>
 <a id="__codelineno-0-1006" name="__codelineno-0-1006"></a>        <span class="n">date_to</span><span class="o">=</span><span class="n">date_to</span><span class="p">,</span>
@@ -2220,7 +2220,7 @@ filters.</p>
 <a id="__codelineno-0-909" name="__codelineno-0-909"></a>
 <a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">        Tuple of historical order info structures.</span>
-<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-913" name="__codelineno-0-913"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_validate_history_filters</span><span class="p">(</span>
 <a id="__codelineno-0-914" name="__codelineno-0-914"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">date_from</span><span class="p">,</span>
 <a id="__codelineno-0-915" name="__codelineno-0-915"></a>        <span class="n">date_to</span><span class="o">=</span><span class="n">date_to</span><span class="p">,</span>
@@ -3017,7 +3017,7 @@ filters.</p>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        True if successful, False otherwise.</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-384" name="__codelineno-0-384"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Adding market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-385" name="__codelineno-0-385"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_add</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -3132,7 +3132,7 @@ filters.</p>
 <a id="__codelineno-0-399" name="__codelineno-0-399"></a>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">        Tuple of BookInfo structures.</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Retrieving market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_get</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -3247,7 +3247,7 @@ filters.</p>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a>
 <a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">        True if successful, False otherwise.</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Releasing market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_release</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -3436,7 +3436,7 @@ filters.</p>
 <a id="__codelineno-0-698" name="__codelineno-0-698"></a>
 <a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="sd">        Required margin amount.</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-702" name="__codelineno-0-702"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-703" name="__codelineno-0-703"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
 <a id="__codelineno-0-704" name="__codelineno-0-704"></a>        <span class="s2">&quot;Calculating margin: action=</span><span class="si">%d</span><span class="s2">, symbol=</span><span class="si">%s</span><span class="s2">, volume=</span><span class="si">%.2f</span><span class="s2">, price=</span><span class="si">%.5f</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -3909,7 +3909,7 @@ filters.</p>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="sd">        OrderSendResult structure.</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-795" name="__codelineno-0-795"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Sending order with request: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
 <a id="__codelineno-0-796" name="__codelineno-0-796"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">order_send</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
@@ -6792,7 +6792,7 @@ filters.</p>
 <a id="__codelineno-0-1000" name="__codelineno-0-1000"></a>
 <a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">        Tuple of historical deal info structures.</span>
-<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-1004" name="__codelineno-0-1004"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_validate_history_filters</span><span class="p">(</span>
 <a id="__codelineno-0-1005" name="__codelineno-0-1005"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">date_from</span><span class="p">,</span>
 <a id="__codelineno-0-1006" name="__codelineno-0-1006"></a>        <span class="n">date_to</span><span class="o">=</span><span class="n">date_to</span><span class="p">,</span>
@@ -7213,7 +7213,7 @@ filters.</p>
 <a id="__codelineno-0-909" name="__codelineno-0-909"></a>
 <a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">        Tuple of historical order info structures.</span>
-<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-913" name="__codelineno-0-913"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_validate_history_filters</span><span class="p">(</span>
 <a id="__codelineno-0-914" name="__codelineno-0-914"></a>        <span class="n">date_from</span><span class="o">=</span><span class="n">date_from</span><span class="p">,</span>
 <a id="__codelineno-0-915" name="__codelineno-0-915"></a>        <span class="n">date_to</span><span class="o">=</span><span class="n">date_to</span><span class="p">,</span>
@@ -8010,7 +8010,7 @@ filters.</p>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        True if successful, False otherwise.</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-384" name="__codelineno-0-384"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Adding market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-385" name="__codelineno-0-385"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_add</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -8125,7 +8125,7 @@ filters.</p>
 <a id="__codelineno-0-399" name="__codelineno-0-399"></a>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">        Tuple of BookInfo structures.</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Retrieving market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_get</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -8240,7 +8240,7 @@ filters.</p>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a>
 <a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">        True if successful, False otherwise.</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Releasing market book for symbol: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">market_book_release</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
@@ -8429,7 +8429,7 @@ filters.</p>
 <a id="__codelineno-0-698" name="__codelineno-0-698"></a>
 <a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="sd">        Required margin amount.</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-702" name="__codelineno-0-702"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-703" name="__codelineno-0-703"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
 <a id="__codelineno-0-704" name="__codelineno-0-704"></a>        <span class="s2">&quot;Calculating margin: action=</span><span class="si">%d</span><span class="s2">, symbol=</span><span class="si">%s</span><span class="s2">, volume=</span><span class="si">%.2f</span><span class="s2">, price=</span><span class="si">%.5f</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -8902,7 +8902,7 @@ filters.</p>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="sd">        OrderSendResult structure.</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># ruff: ignore[line-too-long]</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_if_needed</span><span class="p">()</span>
 <a id="__codelineno-0-795" name="__codelineno-0-795"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Sending order with request: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
 <a id="__codelineno-0-796" name="__codelineno-0-796"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mt5</span><span class="o">.</span><span class="n">order_send</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
