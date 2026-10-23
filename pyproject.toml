@@ -30,6 +30,7 @@ Repository = "https://github.com/dceoy/pdmt5.git"
 [tool.uv]
 required-environments = ["platform_system == 'Windows'"]
 exclude-newer = "1 week"
+exclude-newer-package = { certifi = false }
 
 [dependency-groups]
 dev = [
