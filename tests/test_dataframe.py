@@ -2168,7 +2168,8 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
         # Mock time.sleep to capture the call
-        mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
+        mock_sleep = mocker.Mock()
+        mocker.patch("pdmt5.dataframe.time", SimpleNamespace(sleep=mock_sleep))
 
         # Should succeed on second attempt
         client.initialize_and_login_mt5()
@@ -2189,7 +2190,8 @@ class TestMt5DataClientRetryLogic:
         mock_mt5_import.last_error.return_value = (1, "Test error")
 
         # Mock time.sleep to capture the calls
-        mock_sleep = mocker.patch("pdmt5.dataframe.time.sleep")
+        mock_sleep = mocker.Mock()
+        mocker.patch("pdmt5.dataframe.time", SimpleNamespace(sleep=mock_sleep))
 
         with pytest.raises(Mt5RuntimeError) as exc_info:
             client.initialize_and_login_mt5()
