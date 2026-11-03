@@ -1,18 +1,21 @@
 ---
 name: local-qa
 description: Run local QA including formatting, linting, and testing for the repository. Use whenever any file has been updated.
-disable-model-invocation: false
 ---
 
 # Local QA (format, lint, and test)
 
-Run the local QA script `scripts/qa.sh` in this skill.
+Run the bundled QA script. From the repository root (the script itself also `cd`s to the root):
+
+```bash
+.agents/skills/local-qa/scripts/qa.sh
+```
 
 ## Procedure
 
-- Execute the script exactly as shown above when this skill is triggered.
+- Execute the script exactly as shown above when this skill is triggered (it formats and fixes files in place, so check `git status` afterward).
 - Capture and summarize key output (success/failure, major warnings, and any files modified).
-- If the script fails due to missing tooling (`command not found`, missing executable, or equivalent), install the missing tool(s) and rerun `./scripts/qa.sh`.
+- If the script fails due to missing tooling (`command not found`, missing executable, or equivalent), install the missing tool(s) and rerun `.agents/skills/local-qa/scripts/qa.sh`.
 - Install tools using this order of preference:
   1. Use the project's package manager when applicable (`uv`/`poetry` for Python, package manager scripts/dependencies for Node.js).
   2. Use a system package manager (`brew` on macOS, `apt` on Debian/Ubuntu) when project-local install is not applicable.
