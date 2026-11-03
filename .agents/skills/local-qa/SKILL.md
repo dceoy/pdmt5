@@ -18,4 +18,5 @@ Run `scripts/qa.sh` relative to this skill's directory, not the shell's current 
   3. Use language-specific installers as fallback (`pipx`/`pip`, `npm`, `go install`, etc.).
 - If multiple tools are missing, repeat install -> rerun until QA completes or you hit a blocker.
 - If installation fails or requires unavailable privileges, report what was attempted, the exact failure, and stop.
-- Do not run unrelated commands; only run commands needed for QA and missing-tool installation.
+- If QA fails for another reason, fix the root cause and rerun until QA passes or a blocker is reached. Do not bypass or weaken checks.
+- Do not run unrelated commands; only run commands needed for QA, fixes, and missing-tool installation.
