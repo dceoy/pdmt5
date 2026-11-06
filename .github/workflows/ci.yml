@@ -63,7 +63,7 @@ jobs:
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   dependabot-auto-merge:
-    if: >
+    if: >  # zizmor: ignore[bot-conditions]
       github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     needs:
       - python-lint-and-scan
