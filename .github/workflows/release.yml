@@ -21,7 +21,7 @@ jobs:
       actions: read
       contents: write
       id-token: write
-    uses: dceoy/gha-for-devops/.github/workflows/python-package-release-prepare.yml@3c095843a4b74f00bd6f9879c68cc1ab6c7fa13c  # Pending shared workflow PR
+    uses: dceoy/gha-for-devops/.github/workflows/python-package-release-prepare.yml@d10600763aea6639f36e3eb3dec15c80ac2e5048  # dceoy/gha-for-devops#1196; repin after merge
     with:
       package-path: .
   publish-to-pypi:
