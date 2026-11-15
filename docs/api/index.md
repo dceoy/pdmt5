@@ -52,11 +52,10 @@ from pdmt5 import (
     Mt5Client,
     Mt5Config,
     Mt5DataClient,
-    list_timeframe_names,
-    list_timeframe_values,
     parse_copy_ticks,
     parse_timeframe,
 )
+from pdmt5.constants import list_timeframe_names, list_timeframe_values
 import MetaTrader5 as mt5
 from datetime import datetime
 
