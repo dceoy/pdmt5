@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: python-release-${ github.repository }
+  group: python-release-${{ github.repository }}
   cancel-in-progress: false
 defaults:
   run:
@@ -29,19 +29,19 @@ jobs:
       && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     outputs:
-      release-tag: ${ steps.plan.outputs.tag }
+      release-tag: ${{ steps.plan.outputs.tag }}
     steps:
       - name: Check out validated source and tags
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Plan release from pyproject.toml
         id: plan
         env:
-          GH_TOKEN: ${ github.token }
-          SOURCE_SHA: ${ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
           if [[ "$(git rev-parse HEAD)" != "${SOURCE_SHA}" || "${GITHUB_SHA}" != "${SOURCE_SHA}" ]]; then
             echo '::notice::Workflow SHA differs from the validated source; skipping.'
@@ -112,7 +112,7 @@ jobs:
       contents: write
     uses: dceoy/gha-for-devops/.github/workflows/github-release.yml@9e394d7c18b3a00fb853cd3c693cc4eeb5f0c825  # v2.3.0
     with:
-      tag-name: ${ needs.plan.outputs.release-tag }
+      tag-name: ${{ needs.plan.outputs.release-tag }}
       create-new-tag: true
       draft: true
   attach-assets:
@@ -127,17 +127,17 @@ jobs:
       - name: Download distributions
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          name: ${ needs.build.outputs.distribution-artifact-name }
+          name: ${{ needs.build.outputs.distribution-artifact-name }}
           path: dist/
       - name: Check distribution version
         env:
-          RELEASE_TAG: ${ needs.draft-release.outputs.release-tag }
+          RELEASE_TAG: ${{ needs.draft-release.outputs.release-tag }}
         run: |
           version="${RELEASE_TAG#v}"
           test -f "dist/pdmt5-${version}.tar.gz"
           shopt -s nullglob
           wheels=(dist/pdmt5-"${version}"-*.whl)
-          if (("${#wheels[@]}" == 0)); then
+          if ((${#wheels[@]} == 0)); then
             echo "::error::No wheel found for ${RELEASE_TAG}."
             exit 1
           fi
@@ -147,8 +147,8 @@ jobs:
           inputs: ./dist/*.whl
       - name: Attach distributions and signatures
         env:
-          GH_TOKEN: ${ github.token }
-          RELEASE_TAG: ${ needs.draft-release.outputs.release-tag }
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.draft-release.outputs.release-tag }}
         run: |
           gh release upload "${RELEASE_TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --clobber
   publish-to-pypi:
@@ -165,7 +165,7 @@ jobs:
       - name: Download distributions
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          name: ${ needs.build.outputs.distribution-artifact-name }
+          name: ${{ needs.build.outputs.distribution-artifact-name }}
           path: dist/
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
@@ -182,7 +182,7 @@ jobs:
     steps:
       - name: Publish GitHub Release
         env:
-          GH_TOKEN: ${ github.token }
-          RELEASE_TAG: ${ needs.draft-release.outputs.release-tag }
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.draft-release.outputs.release-tag }}
         run: |
           gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false
