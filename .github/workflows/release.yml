@@ -97,8 +97,6 @@ jobs:
   build:
     needs: plan
     if: needs.plan.outputs.release-tag != ''
-    # The reusable workflow declares publishing jobs that require these permissions
-    # at validation time, even when both publishing inputs are disabled.
     permissions:
       contents: write
       id-token: write
