@@ -1,14 +1,6 @@
 ---
 name: Release
 on:
-  # Intentional: runs only for successful same-repo push CI on main; `plan` pins the SHA.
-  workflow_run:  # zizmor: ignore[dangerous-triggers]
-    workflows:
-      - CI/CD
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,11 +15,7 @@ jobs:
   plan:
     if: >-
       github.repository == 'dceoy/pdmt5'
-      && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'workflow_run'
-      && github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.event == 'push'
-      && github.event.workflow_run.head_repository.full_name == github.repository))
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -46,7 +34,7 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           if [[ "$(git rev-parse HEAD)" != "${SOURCE_SHA}" || "${GITHUB_SHA}" != "${SOURCE_SHA}" ]]; then
             echo '::notice::Workflow SHA differs from the validated source; skipping.'
