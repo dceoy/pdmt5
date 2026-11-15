@@ -833,7 +833,7 @@ wheels = [
 
 [[package]]
 name = "pdmt5"
-version = "1.2.4"
+version = "1.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "metatrader5", marker = "sys_platform == 'win32'" },
