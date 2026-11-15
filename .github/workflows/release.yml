@@ -28,8 +28,12 @@ jobs:
       && github.event.workflow_run.event == 'push'
       && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       release-tag: ${{ steps.plan.outputs.tag }}
+      source-sha: ${{ steps.plan.outputs.source-sha }}
     steps:
       - name: Check out validated source and tags
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -51,6 +55,11 @@ jobs:
           if [[ "${main_sha}" != "${SOURCE_SHA}" ]]; then
             echo '::notice::main advanced since validation; skipping stale release.'
             exit 0
+          fi
+          ci_runs="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow ci.yml --commit "${SOURCE_SHA}" --event push --branch main --status success --json databaseId --jq 'length')"
+          if [[ "${ci_runs}" == 0 ]]; then
+            echo "::error::No successful CI/CD push run found for ${SOURCE_SHA}."
+            exit 1
           fi
           version="$(python3 - <<'PY'
           import tomllib
@@ -92,7 +101,10 @@ jobs:
               exit 1
             fi
           fi
-          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "tag=${tag}"
+            echo "source-sha=${SOURCE_SHA}"
+          } >> "${GITHUB_OUTPUT}"
   build:
     needs: plan
     if: needs.plan.outputs.release-tag != ''
@@ -103,11 +115,36 @@ jobs:
       package-path: .
       create-github-release: false
       publish-to-pypi: false
-  draft-release:
+  verify-source:
     needs:
       - plan
       - build
     if: needs.plan.outputs.release-tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      current: ${{ steps.verify.outputs.current }}
+    steps:
+      - name: Recheck that main still matches the validated source
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.plan.outputs.source-sha }}
+        run: |
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ -z "${SOURCE_SHA}" || "${main_sha}" != "${SOURCE_SHA}" ]]; then
+            echo '::notice::main advanced during the build; skipping stale release.'
+            echo 'current=false' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo 'current=true' >> "${GITHUB_OUTPUT}"
+  draft-release:
+    needs:
+      - plan
+      - build
+      - verify-source
+    if: needs.verify-source.outputs.current == 'true'
     permissions:
       contents: write
     uses: dceoy/gha-for-devops/.github/workflows/github-release.yml@9e394d7c18b3a00fb853cd3c693cc4eeb5f0c825  # v2.3.0
@@ -171,7 +208,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
         with:
           verbose: true
-          skip-existing: true
   publish-release:
     needs:
       - draft-release
