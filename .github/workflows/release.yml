@@ -1,7 +1,8 @@
 ---
 name: Release
 on:
-  workflow_run:
+  # Intentional: runs only for successful same-repo push CI on main; `plan` pins the SHA.
+  workflow_run:  # zizmor: ignore[dangerous-triggers]
     workflows:
       - CI/CD
     types:
@@ -131,12 +132,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ needs.plan.outputs.source-sha }}
+          RELEASE_TAG: ${{ needs.plan.outputs.release-tag }}
         run: |
           main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
           if [[ -z "${SOURCE_SHA}" || "${main_sha}" != "${SOURCE_SHA}" ]]; then
             echo '::notice::main advanced during the build; skipping stale release.'
             echo 'current=false' >> "${GITHUB_OUTPUT}"
             exit 0
+          fi
+          # The release helper accepts an existing tag without checking its commit.
+          # The last ls-remote line is the peeled commit for annotated tags.
+          tagged_sha="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" "refs/tags/${RELEASE_TAG}^{}" | awk 'END {print $1}')"
+          if [[ -n "${tagged_sha}" && "${tagged_sha}" != "${SOURCE_SHA}" ]]; then
+            echo "::error::${RELEASE_TAG} points to ${tagged_sha}, not the validated source ${SOURCE_SHA}."
+            exit 1
           fi
           echo 'current=true' >> "${GITHUB_OUTPUT}"
   draft-release:
@@ -208,6 +217,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
         with:
           verbose: true
+  # Recovery: if publish-to-pypi succeeded but this job failed, a rerun fails closed at
+  # PyPI (duplicate version) and re-uploads draft assets via `--clobber`. Do not publish
+  # the draft by hand until the wheel/sdist filenames and SHA-256 digests in
+  # https://pypi.org/pypi/pdmt5/<version>/json match the draft's assets; then run
+  # `gh release edit v<version> --draft=false`.
   publish-release:
     needs:
       - draft-release
