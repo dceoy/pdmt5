@@ -21,7 +21,7 @@ jobs:
       actions: read
       contents: write
       id-token: write
-    uses: dceoy/gha-for-devops/.github/workflows/python-package-release-prepare.yml@d5d9e4499131a0696f48db0486010ed845b2f142  # dceoy/gha-for-devops#1195; repin after merge
+    uses: dceoy/gha-for-devops/.github/workflows/python-package-release-prepare.yml@6e1222b803a1fc4dc4c5d5b0e166ba870c6eb2ab  # merged #1195
     with:
       package-path: .
   publish-to-pypi:
