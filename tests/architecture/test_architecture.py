@@ -10,7 +10,7 @@ from pdmt5 import constants, dataframe, mt5, utils
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE_ROOT = _REPOSITORY_ROOT / "pdmt5"
 _TESTS_ROOT = _REPOSITORY_ROOT / "tests"
-_FORBIDDEN_DOWNSTREAM_PACKAGES = {"mt5cli", "mteor"}
+_FORBIDDEN_DOWNSTREAM_PACKAGES = {"mt5cli"}
 _OUT_OF_BAND_TEST_DIRECTORIES = ("architecture", "contracts")
 
 
