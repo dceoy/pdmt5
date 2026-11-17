@@ -5,7 +5,7 @@ pdmt5 use is appropriate for low-level MT5 access. Application execution
 workflows belong in `mt5cli` or the consuming application.
 
 ```text
-mteor or another application
+trading application
     -> mt5cli
         -> pdmt5
             -> MetaTrader5
@@ -88,5 +88,5 @@ the downstream application.
 
 Contract tests assert the root allowlist and module `__all__` declarations and
 recursively scan every production module under `pdmt5/`, including nested
-subpackages, for imports of `mt5cli` or `mteor`. Any new root export,
+subpackages, for imports of the downstream `mt5cli` package. Any new root export,
 accidental module API, or reverse dependency fails CI.
