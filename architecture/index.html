@@ -139,7 +139,7 @@
 <p>pdmt5 is a small adapter over the official <code>MetaTrader5</code> Python package. Direct
 pdmt5 use is appropriate for low-level MT5 access. Application execution
 workflows belong in <code>mt5cli</code> or the consuming application.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mteor or another application
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>trading application
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    -&gt; mt5cli
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        -&gt; pdmt5
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>            -&gt; MetaTrader5
@@ -205,7 +205,7 @@ the downstream application.</p>
 <h2 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h2>
 <p>Contract tests assert the root allowlist and module <code>__all__</code> declarations and
 recursively scan every production module under <code>pdmt5/</code>, including nested
-subpackages, for imports of <code>mt5cli</code> or <code>mteor</code>. Any new root export,
+subpackages, for imports of the downstream <code>mt5cli</code> package. Any new root export,
 accidental module API, or reverse dependency fails CI.</p></div>
             </div>
         </div>
