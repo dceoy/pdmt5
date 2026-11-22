@@ -34,7 +34,7 @@ exclude-newer-package = { certifi = false }
 
 [dependency-groups]
 dev = [
-  "semgrep",
+  "semgrep>=1.186.0",
   "ruff >= 0.15.18",
   "pyright >= 1.1.410",
   "pytest >= 9.1.1",
